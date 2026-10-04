@@ -14,8 +14,11 @@ Jogue em [linhagem.vercel.app](https://linhagem.vercel.app).
 - Ter filhos, que herdam o tom de pele, a cor do cabelo e dos olhos dos pais
 - Matricular os filhos todo janeiro: creche, escola e ensino médio, na rede pública, num colégio
   particular ou no instituto federal, para quem passa na prova
-- Ver na aba Estudos quem estuda, onde, a mensalidade e a nota de cada um
-- Escolher o primeiro emprego de quem faz 18 anos, entre três vagas; o tempo para até a escolha
+- Fazer o ENEM no fim do médio e escolher o que vem depois: universidade federal (quando a nota
+  alcança o corte do curso), faculdade particular, curso técnico, cursinho ou trabalhar
+- Ver na aba Estudos quem estuda, onde, a mensalidade e a nota ou o ENEM de cada um
+- Escolher o primeiro emprego entre três vagas, ao sair dos estudos, com a vaga da área de quem se
+  formou num curso que já tem carreira no jogo; o tempo para até a escolha
 - Casar quem fez 18 anos, escolhendo entre pessoas sugeridas; o cônjuge entra na família e
   trabalha
 - Acompanhar o dinheiro em reais, com salários e despesas por mês e o 13º salário em dezembro
@@ -90,7 +93,7 @@ por mês do jogo e o dinheiro entra aos poucos, a cada instante. Os eventos (ani
 maioridade, aposentadoria, morte e o 13º salário, em 20 de dezembro) acontecem na virada de cada
 dia do jogo.
 
-Quando alguém precisa de uma escolha, como o primeiro emprego aos 18 anos, o relógio para até o
+Quando alguém precisa de uma escolha, como a matrícula ou o primeiro emprego, o relógio para até o
 jogador decidir. As escolhas abertas ficam no save (`choices`), e a sugestão de cada uma já vem
 marcada no painel.
 
@@ -99,6 +102,16 @@ Como no Brasil, as matrículas são em janeiro. Quem começa a creche (no ano em
 particular cobra mensalidade e soma pontos na nota, que é a aptidão de cada um mais esses pontos; o
 instituto federal é gratuito, pede nota 550 na prova e forma técnico. As regras ficam em
 `src/engine/enrollment.ts` e `src/engine/school.ts`, e os valores em `BALANCE.school`.
+
+No janeiro em que termina o médio, a pessoa faz o ENEM (a nota da escola, para mais ou para menos
+até 50 pontos) e o jogador escolhe o caminho. A universidade federal é gratuita e cada curso tem
+nota de corte, de 600 em Licenciatura a 780 em Medicina; a faculdade particular aceita qualquer
+nota e cobra mensalidade; o curso técnico dura 2 anos, no instituto federal para quem tirou 550 ou
+mais; o cursinho dura 1 ano, soma 30 pontos e leva a um ENEM novo; e trabalhar abre na hora a
+escolha do primeiro emprego. Quem estuda não tem salário. Na formatura, também em janeiro, a
+formação fica registrada e abre a escolha do emprego. Os cursos ficam em `src/content/schools.ts`,
+as regras em `src/engine/college.ts` e os valores em `BALANCE.college`. Quem chega aos 18 sem
+estudar nem trabalhar, como quem veio de um save antigo, escolhe o emprego no aniversário.
 
 Com o jogo fechado ou a aba escondida, o relógio não anda. Ao voltar, o tempo fora é simulado de
 uma vez, com limite de 5 anos do jogo (`BALANCE.offlineCapYears`), e para na primeira escolha que
