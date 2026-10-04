@@ -204,14 +204,14 @@ describe('matrículas', () => {
   it('o instituto federal aprova quem chega à nota de corte e vira a sugestão', () => {
     const born = withChild(makeGame(8))
     const child = lastMember(born)
-    const strong = withAptitude(born, child.id, 650, 700)
+    const strong = withAptitude(born, child.id, 680)
     const { choice } = untilEnrollment(strong, child.id, 'medio')
     const federal = choice.options.filter((option) => option.network === 'federal')
     expect(federal).toHaveLength(BALANCE.school.federalCourses)
     expect(federal.every((option) => option.available && option.course)).toBe(true)
     expect(choice.options[choice.suggested].network).toBe('federal')
 
-    const weak = withAptitude(born, child.id, 400, 450)
+    const weak = withAptitude(born, child.id, 420)
     const failed = untilEnrollment(weak, child.id, 'medio')
     expect(schoolScore(failed.state.members[child.id])).toBeLessThan(BALANCE.school.federalCutoff)
     expect(failed.choice.options.filter((option) => option.network === 'federal')).toEqual([
@@ -227,7 +227,7 @@ describe('matrículas', () => {
   it('no ano em que faz 18, termina o médio com a formação e para de pagar mensalidade', () => {
     const born = withChild(makeGame(9))
     const child = lastMember(born)
-    const strong = withAptitude(born, child.id, 650, 700)
+    const strong = withAptitude(born, child.id, 680)
     const { state: waiting, choice } = untilEnrollment(strong, child.id, 'medio')
     const federal = choice.options.find((option) => option.network === 'federal')
     let state = enroll(waiting, choice, 'federal')

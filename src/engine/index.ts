@@ -90,13 +90,16 @@ export { deserialize, serialize } from './save'
 export { canHaveTutor, tutorPoints } from './tutor'
 export {
   aptitudeOf,
+  baseAptitude,
   halfTimeCaregivers,
+  inheritAptitude,
   schoolFee,
   schoolScore,
   stageFee,
   stageForAge,
   stagePoints,
   stageYears,
+  suitorAptitude,
   yearlyPoints,
 } from './school'
 export {

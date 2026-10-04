@@ -53,6 +53,7 @@ export function PartnerSheet({ game, member }: { game: GameState; member: Member
                 <p className="text-ink-soft truncate text-[13px]">
                   {formationLabel(suitor, suitor.formation)}
                 </p>
+                <p className="tabular text-ink-soft text-[13px]">Aptidão {suitor.aptitude}</p>
                 <p className="tabular text-income text-[13px] font-bold">
                   {formatRate(level.salaryPerMonth)}
                 </p>
@@ -82,7 +83,7 @@ export function PartnerSheet({ game, member }: { game: GameState; member: Member
       </button>
       <p className="text-ink-soft mt-3 text-center text-[13px]">
         Quem casa entra na família, trabalha e soma na renda. {byGender(member, 'Ela', 'Ele')} e o
-        par vão poder ter filhos.
+        par vão poder ter filhos, que herdam parte da aptidão dos dois.
       </p>
     </Sheet>
   )

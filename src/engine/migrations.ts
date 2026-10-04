@@ -1,12 +1,12 @@
 import { BALANCE } from '../content/balance'
 import { rollAppearance } from './appearance'
 import { createRng, hashString } from './rng'
-import { stageForAge } from './school'
+import { baseAptitude, stageForAge, suitorAptitude } from './school'
 import { ageInYears, lastDayOfYear } from './time'
 import type { GameState } from './types'
 
 /** Versão atual do formato do save. Sobe a cada migração nova. */
-export const CURRENT_SCHEMA_VERSION = 9
+export const CURRENT_SCHEMA_VERSION = 10
 
 export type SaveErrorCode = 'corrupt' | 'futureVersion' | 'missingMigration'
 
@@ -211,6 +211,33 @@ const toVersion9: Migration = (save) => {
 }
 
 /**
+ * Versão 9 para 10: a aptidão passa a ficar guardada em cada pessoa, para os
+ * filhos herdarem dos pais. Quem já existia fica com a aptidão que tinha, que
+ * saía da semente do avatar, e quem aparece como par ganha a sua.
+ */
+const toVersion10: Migration = (save) => {
+  const members = isRecord(save.members) ? save.members : {}
+  const upgraded: RawSave = {}
+  for (const [id, member] of Object.entries(members)) {
+    upgraded[id] = isRecord(member)
+      ? { ...member, aptitude: baseAptitude(String(member.avatarSeed), String(member.id ?? id)) }
+      : member
+  }
+  const lists = isRecord(save.suitors) ? save.suitors : {}
+  const suitors: RawSave = {}
+  for (const [id, list] of Object.entries(lists)) {
+    suitors[id] = Array.isArray(list)
+      ? list.map((suitor) =>
+          isRecord(suitor)
+            ? { ...suitor, aptitude: suitorAptitude(String(suitor.avatarSeed)) }
+            : suitor,
+        )
+      : list
+  }
+  return { ...save, members: upgraded, suitors }
+}
+
+/**
  * Migrações, indexadas pela versão de origem. São sempre aditivas: criam
  * campos novos com valores padrão e nunca apagam dados do jogador; uma troca
  * de unidade, como a do dinheiro na versão 3, converte o valor sem perder
@@ -227,6 +254,7 @@ export const MIGRATIONS: Readonly<Record<number, Migration>> = {
   6: toVersion7,
   7: toVersion8,
   8: toVersion9,
+  9: toVersion10,
 }
 
 /** Valida um save lido de JSON e o leva até a versão atual. */
@@ -291,6 +319,7 @@ function assertGameState(save: RawSave): asserts save is RawSave & GameState {
         typeof member.id === 'string' &&
         typeof member.birthDay === 'number' &&
         typeof member.origin === 'string' &&
+        typeof member.aptitude === 'number' &&
         isRecord(member.appearance) &&
         isRecord(member.education),
     )

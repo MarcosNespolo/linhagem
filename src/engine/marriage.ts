@@ -12,7 +12,7 @@ import {
   rollLifespan,
 } from './members'
 import type { Rng } from './rng'
-import { newEducation } from './school'
+import { newEducation, suitorAptitude } from './school'
 import type { GameState, Member, MemberId, Suitor } from './types'
 
 /**
@@ -87,6 +87,8 @@ function rollSuitor(
   const lifespan = Math.max(rollLifespan(rng), Math.floor(ageDays / daysPerYear) + 2)
   const birthDay = day - ageDays
   const { formation, career } = rollSuitorBackground(rng, birthDay, day)
+  const appearance = rollAppearance(rng, gender)
+  const avatarSeed = rollAvatarSeed(rng)
   return {
     firstName,
     gender,
@@ -94,8 +96,9 @@ function rollSuitor(
     lifespan,
     formation,
     career,
-    appearance: rollAppearance(rng, gender),
-    avatarSeed: rollAvatarSeed(rng),
+    aptitude: suitorAptitude(avatarSeed),
+    appearance,
+    avatarSeed,
   }
 }
 
@@ -113,6 +116,7 @@ export function joinFamily(draft: GameState, rng: Rng, member: Member, suitor: S
     lifespan: suitor.lifespan,
     avatarSeed: suitor.avatarSeed,
     education: newEducation(suitor.formation),
+    aptitude: suitor.aptitude,
   })
   const day = draft.clock.day
   member.partnerId = spouse.id

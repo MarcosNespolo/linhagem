@@ -1,7 +1,7 @@
 import { BALANCE } from '../content/balance'
 import { FEMALE_NAMES, MALE_NAMES } from '../content/names'
 import type { Rng } from './rng'
-import { newEducation } from './school'
+import { baseAptitude, newEducation } from './school'
 import { ageInYears } from './time'
 import type {
   Appearance,
@@ -93,19 +93,24 @@ export type NewMember = {
   avatarSeed?: string
   /** Vida escolar. Sem valor, a de quem nasce: sem escola e sem formação. */
   education?: Education
+  /** Aptidão para os estudos. Sem valor, a de nascença de quem vem de fora. */
+  aptitude?: number
 }
 
 /** Cria um membro e o registra no rascunho do estado, que é alterado. */
 export function addMember(draft: GameState, rng: Rng, input: NewMember): Member {
   const id = `m${draft.nextMemberId}`
   draft.nextMemberId += 1
+  const firstName = input.firstName ?? rollFirstName(draft, rng, input.gender)
+  const lifespan = input.lifespan ?? rollLifespan(rng)
+  const avatarSeed = input.avatarSeed ?? rollAvatarSeed(rng)
   const member: Member = {
     id,
-    firstName: input.firstName ?? rollFirstName(draft, rng, input.gender),
+    firstName,
     gender: input.gender,
     birthDay: input.birthDay,
     deathDay: null,
-    lifespan: input.lifespan ?? rollLifespan(rng),
+    lifespan,
     generation: input.generation,
     origin: input.origin,
     parentIds: input.parentIds,
@@ -116,8 +121,9 @@ export function addMember(draft: GameState, rng: Rng, input: NewMember): Member 
     lastChildDay: null,
     traits: [],
     appearance: input.appearance,
-    avatarSeed: input.avatarSeed ?? rollAvatarSeed(rng),
+    avatarSeed,
     education: input.education ?? newEducation(),
+    aptitude: input.aptitude ?? baseAptitude(avatarSeed, id),
   }
   draft.members[id] = member
   return member

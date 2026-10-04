@@ -111,9 +111,11 @@ Como no Brasil, as matrículas são em janeiro. Quem começa a creche (no ano em
 particular cobra mensalidade e soma pontos na nota, que é a aptidão de cada um mais esses pontos; o
 instituto federal é gratuito, pede nota 550 na prova e forma técnico. Quem está na escola ou no
 médio pode ter professor particular, por R$ 800 por mês, que soma 5 pontos na nota por ano, em
-proporção ao tempo (`src/engine/tutor.ts`). A aptidão é sorteada no nascimento, de 400 a 700, mais
-perto de 550. As regras ficam em `src/engine/enrollment.ts` e `src/engine/school.ts`, e os valores
-em `BALANCE.school`.
+proporção ao tempo (`src/engine/tutor.ts`). Quem funda a família ou entra nela casando tem aptidão
+de 400 a 700, mais perto de 550, e a da pessoa sugerida como par aparece antes do casamento. Os
+filhos herdam: a aptidão fica perto da média dos pais, puxada um pouco para 550, com até 60 pontos
+para mais ou para menos (`inheritAptitude`, com os valores em `BALANCE.aptitude`). As regras ficam
+em `src/engine/enrollment.ts` e `src/engine/school.ts`, e os valores em `BALANCE.school`.
 
 No janeiro em que termina o médio, a pessoa faz o ENEM (a nota da escola, para mais ou para menos
 até 50 pontos) e o jogador escolhe o caminho. A universidade federal é gratuita e cada curso tem

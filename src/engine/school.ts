@@ -75,19 +75,49 @@ export function higherFormation(
 }
 
 /**
- * Aptidão para os estudos, de 400 a 700. Sai da semente do avatar, então não
- * consome o sorteio do jogo e é a mesma em qualquer aparelho.
+ * Aptidão de quem chega à família de fora, de 400 a 700. Sai de uma semente
+ * (a do avatar mais um identificador), então não consome o sorteio do jogo e é
+ * a mesma em qualquer aparelho.
  */
-export function aptitudeOf(member: Pick<Member, 'id' | 'avatarSeed'>): number {
+export function baseAptitude(seed: string, id: string): number {
   const { min, spread } = BALANCE.aptitude
-  const first = hashString(`${member.avatarSeed}:${member.id}:aptidao`) % (spread + 1)
-  const second = hashString(`${member.id}:${member.avatarSeed}:aptidao`) % (spread + 1)
+  const first = hashString(`${seed}:${id}:aptidao`) % (spread + 1)
+  const second = hashString(`${id}:${seed}:aptidao`) % (spread + 1)
   return min + first + second
 }
 
+/** Aptidão de quem aparece como par, antes de ganhar um lugar na família. */
+export function suitorAptitude(avatarSeed: string): number {
+  return baseAptitude(avatarSeed, 'pretendente')
+}
+
+/**
+ * Aptidão de um filho: a média dos pais puxa a partir do meio da faixa, e um
+ * sorteio próprio, da semente do filho, soma ou tira um pouco. Pais com
+ * aptidão alta tendem a ter filhos com aptidão alta.
+ */
+export function inheritAptitude(
+  first: Pick<Member, 'aptitude'>,
+  second: Pick<Member, 'aptitude'>,
+  child: Pick<Member, 'id' | 'avatarSeed'>,
+): number {
+  const { min, spread, heritability, noise } = BALANCE.aptitude
+  const middle = min + spread
+  const parents = (first.aptitude + second.aptitude) / 2
+  const up = hashString(`${child.avatarSeed}:${child.id}:heranca`) % (noise + 1)
+  const down = hashString(`${child.id}:${child.avatarSeed}:heranca`) % (noise + 1)
+  const value = middle + heritability * (parents - middle) + up - down
+  return Math.min(min + 2 * spread, Math.max(min, Math.round(value)))
+}
+
+/** Aptidão para os estudos, de 400 a 700, guardada em cada pessoa. */
+export function aptitudeOf(member: Pick<Member, 'aptitude'>): number {
+  return member.aptitude
+}
+
 /** Nota de quem estuda: a aptidão mais os pontos que as escolas somaram. */
-export function schoolScore(member: Pick<Member, 'id' | 'avatarSeed' | 'education'>): number {
-  return aptitudeOf(member) + member.education.points
+export function schoolScore(member: Pick<Member, 'aptitude' | 'education'>): number {
+  return member.aptitude + member.education.points
 }
 
 /** Quem trabalha meio período porque cuida em casa de um filho na idade da creche. */

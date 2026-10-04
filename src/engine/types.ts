@@ -197,6 +197,8 @@ export type Member = {
   /** Traços de personalidade. Ficam para depois do v1. */
   traits: string[]
   education: Education
+  /** Aptidão para os estudos, de 400 a 700: de nascença para quem vem de fora, herdada para os filhos. */
+  aptitude: number
   appearance: Appearance
   /** Semente para detalhes do avatar que não são herdados, como a cor da roupa. */
   avatarSeed: string
@@ -210,6 +212,8 @@ export type Suitor = {
   lifespan: number
   formation: Formation
   career: CareerState
+  /** Aptidão para os estudos, que os filhos do casal vão herdar em parte. */
+  aptitude: number
   appearance: Appearance
   avatarSeed: string
 }

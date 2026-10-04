@@ -155,6 +155,14 @@ export function MemberSheet({ game, member }: { game: GameState; member: Member 
             <span className="tabular">{member.education.enem} pontos</span>
           </Fact>
         ) : null}
+        <Fact label="Aptidão">
+          <span className="tabular">{aptitudeOf(member)}</span>
+          <span className="text-ink-soft block text-[13px] font-normal">
+            {parents.length === 2
+              ? `Média dos pais: ${Math.round(mean(parents.map(aptitudeOf)))}`
+              : 'De nascença'}
+          </span>
+        </Fact>
         <Fact label="Nasceu em">
           {formatMonthYear(calendarDate(game.startDate, member.birthDay))}
         </Fact>
@@ -412,6 +420,8 @@ function MemberActions({
     </div>
   )
 }
+
+const mean = (values: number[]) => values.reduce((sum, value) => sum + value, 0) / values.length
 
 function Fact({ label, children }: { label: string; children: React.ReactNode }) {
   return (

@@ -20,6 +20,7 @@ import {
 } from './promotions'
 import { buyProperty as applyPurchase, checkBuyProperty } from './properties'
 import { createRng } from './rng'
+import { inheritAptitude } from './school'
 import { canHaveTutor, setTutor as applyTutor } from './tutor'
 import type { GameEvent, GameState, MemberId } from './types'
 
@@ -152,6 +153,7 @@ function haveChild(state: GameState, parentId: MemberId): ActionResult {
     origin: 'born',
     appearance: inheritAppearance(rng, parent.appearance, partner.appearance, gender),
   })
+  child.aptitude = inheritAptitude(parent, partner, child)
   parent.lastChildDay = day
   partner.lastChildDay = day
   draft.money -= check.cost

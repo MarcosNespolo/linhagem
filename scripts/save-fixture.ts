@@ -6,8 +6,8 @@
  * que já existe nunca é sobrescrito, porque representa os saves reais daquela
  * versão.
  *
- * O exemplo passa pelas ações principais do jogo: dois filhos que fizeram a
- * escola com as matrículas sugeridas. O mais velho faz Direito numa faculdade
+ * O exemplo passa pelas ações principais do jogo: dois filhos, com a aptidão
+ * herdada dos pais, que fizeram a escola com as matrículas sugeridas. O mais velho faz Direito numa faculdade
  * particular e casou. O mais novo teve professor particular no médio, acabou e
  * estuda para concurso, com o resultado da primeira prova aberto. A fundadora
  * pagou o curso e chegou ao 4º nível da carreira, e o fundador tem o curso

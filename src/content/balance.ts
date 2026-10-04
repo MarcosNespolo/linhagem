@@ -132,11 +132,14 @@ export const BALANCE = {
   },
 
   /**
-   * Aptidão para os estudos, tirada da semente do avatar: mínimo mais dois
-   * valores de 0 a `spread`. Com 400 e 150, fica entre 400 e 700, mais perto de
-   * 550. A nota de quem estuda é a aptidão mais os pontos que as escolas somam.
+   * Aptidão para os estudos. Quem chega à família de fora (fundadores e quem
+   * casa) tem mínimo mais dois valores de 0 a `spread`: com 400 e 150, fica
+   * entre 400 e 700, mais perto de 550. Os filhos herdam: a média dos pais puxa
+   * a aptidão com o peso `heritability`, a partir de 550, e um sorteio próprio
+   * soma até `noise` para cima ou para baixo. A nota de quem estuda é a aptidão
+   * mais os pontos que as escolas somam.
    */
-  aptitude: { min: 400, spread: 150 },
+  aptitude: { min: 400, spread: 150, heritability: 0.7, noise: 60 },
 
   school: {
     /** Dia do calendário (MM-DD) das matrículas: as escolhas de escola do ano abrem juntas. */

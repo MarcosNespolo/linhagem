@@ -2,6 +2,7 @@ import { readdirSync, readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import {
   advance,
+  baseAptitude,
   CURRENT_SCHEMA_VERSION,
   deserialize,
   migrate,
@@ -106,11 +107,12 @@ describe('save', () => {
     expect(state.clock).toEqual(v2.clock)
     expect(state.choices).toEqual([])
     for (const [id, member] of Object.entries(state.members)) {
-      const { education, concurso, career, ...rest } = member
+      const { education, concurso, career, aptitude, ...rest } = member
       const { career: before, ...restBefore } = v2.members[id]
       expect(rest).toEqual(restBefore)
       expect(education.formation).toEqual({ level: 'medio' })
       expect(concurso).toBeNull()
+      expect(aptitude).toBe(baseAptitude(member.avatarSeed, id))
       // A carreira fica no mesmo nível, com o tempo contando a partir da migração.
       expect(career).toEqual(
         before && { id: before.id, level: before.level, levelSince: v2.clock.day },

@@ -3,7 +3,6 @@ import { BALANCE } from '@/content/balance'
 import {
   advance,
   applyAction,
-  aptitudeOf,
   daysToMs,
   msToTicks,
   newGame,
@@ -135,19 +134,9 @@ export function marryMember(state: GameState, memberId: string, suitorIndex = 0)
   return expectOk(applyAction(searched, { type: 'marry', memberId, suitorIndex })).state
 }
 
-/** Troca a semente do avatar do membro para dar a ele uma aptidão dentro da faixa pedida. */
-export function withAptitude(
-  state: GameState,
-  memberId: string,
-  min: number,
-  max: number,
-): GameState {
-  for (let i = 0; i < 10_000; i++) {
-    const avatarSeed = `teste${i}`
-    const aptitude = aptitudeOf({ id: memberId, avatarSeed })
-    if (aptitude >= min && aptitude <= max) return setMember(state, memberId, { avatarSeed })
-  }
-  throw new Error('Nenhuma semente com essa aptidão')
+/** Dá ao membro a aptidão pedida. */
+export function withAptitude(state: GameState, memberId: string, aptitude: number): GameState {
+  return setMember(state, memberId, { aptitude })
 }
 
 /** Milissegundos reais de `n` dias do jogo. */
