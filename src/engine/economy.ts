@@ -1,5 +1,5 @@
 import { BALANCE } from '../content/balance'
-import { careerLevel } from '../content/careers'
+import { careerLevel, PUBLIC_CAREER } from '../content/careers'
 import { ageOf, isAlive } from './members'
 import { halfTimeCaregivers, schoolFee } from './school'
 import type { GameState, Member, MemberId } from './types'
@@ -13,12 +13,16 @@ export function salaryPerMonth(member: Pick<Member, 'career'>): number {
 /**
  * Renda por mês: salário para quem trabalha, pensão para aposentados e zero
  * para quem ainda não tem emprego. Quem termina o médio e vai trabalhar recebe
- * desde janeiro, mesmo antes dos 18.
+ * desde janeiro, mesmo antes dos 18. A aposentadoria do serviço público paga
+ * uma fração maior do último salário.
  */
 export function memberIncome(member: Member, day: number): number {
   if (!isAlive(member) || !member.career) return 0
   const salary = salaryPerMonth(member)
-  return ageOf(member, day) >= BALANCE.retirementAge ? salary * BALANCE.pensionRatio : salary
+  if (ageOf(member, day) < BALANCE.retirementAge) return salary
+  const ratio =
+    member.career.id === PUBLIC_CAREER ? BALANCE.publicPensionRatio : BALANCE.pensionRatio
+  return salary * ratio
 }
 
 /**
@@ -35,12 +39,12 @@ export function incomeOf(
 }
 
 /**
- * Despesa por mês: crianças custam mais conforme crescem, e quem estuda em
- * escola particular paga a mensalidade.
+ * Despesa por mês: crianças custam mais conforme crescem, quem estuda em
+ * escola particular paga a mensalidade, e quem estuda para concurso, o cursinho.
  */
 export function memberExpense(member: Member, day: number): number {
   if (!isAlive(member)) return 0
-  const fee = schoolFee(member.education.school)
+  const fee = schoolFee(member.education.school) + (member.concurso ? BALANCE.concurso.fee : 0)
   const age = ageOf(member, day)
   if (age >= BALANCE.adultAge) return fee
   return BALANCE.children.expenseBase + BALANCE.children.expensePerYear * age + fee

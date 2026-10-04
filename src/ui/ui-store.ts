@@ -1,7 +1,11 @@
 import { create } from 'zustand'
 import type { MemberId } from '@/engine'
 
-export type Tab = 'family' | 'love' | 'studies' | 'history' | 'settings'
+/** Abas da barra de baixo, mais Ajustes, que abre pela engrenagem do topo. */
+export type Tab = 'family' | 'love' | 'studies' | 'work' | 'settings'
+
+/** O que a aba Família mostra: a árvore ou o histórico. */
+export type FamilyView = 'tree' | 'history'
 
 export type Sheet =
   | { kind: 'member'; memberId: MemberId }
@@ -12,6 +16,7 @@ export type Sheet =
 
 type UiStore = {
   tab: Tab
+  familyView: FamilyView
   sheet: Sheet | null
   /** Mostrar na árvore quem já faleceu e não deixou descendentes vivos. */
   showDeceased: boolean
@@ -21,6 +26,7 @@ type UiStore = {
    */
   hiddenChoices: string | null
   setTab: (tab: Tab) => void
+  setFamilyView: (view: FamilyView) => void
   openSheet: (sheet: Sheet) => void
   closeSheet: () => void
   setShowDeceased: (value: boolean) => void
@@ -54,10 +60,12 @@ function writePrefs(prefs: Prefs): void {
 /** Estado da interface: aba aberta, painel aberto e preferências de exibição. */
 export const useUiStore = create<UiStore>()((set) => ({
   tab: 'family',
+  familyView: 'tree',
   sheet: null,
   showDeceased: false,
   hiddenChoices: null,
   setTab: (tab) => set({ tab, sheet: null }),
+  setFamilyView: (familyView) => set({ familyView }),
   openSheet: (sheet) => set({ sheet }),
   closeSheet: () => set({ sheet: null }),
   setShowDeceased: (showDeceased) => {

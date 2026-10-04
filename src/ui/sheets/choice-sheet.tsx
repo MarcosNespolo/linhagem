@@ -1,12 +1,13 @@
 'use client'
 
-import { Briefcase, Check, GraduationCap, School } from 'lucide-react'
+import { BookOpen, Briefcase, Check, GraduationCap, Landmark, School } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { BALANCE } from '@/content/balance'
-import { careerLevel, getCareer } from '@/content/careers'
+import { careerLevel, PUBLIC_CAREER } from '@/content/careers'
 import { degree, DEGREES, techCourseName } from '@/content/schools'
 import {
   calendarDate,
+  highestCargo,
   homeCareCost,
   homeCaregiver,
   offerSalary,
@@ -15,6 +16,7 @@ import {
   stageFee,
   stagePoints,
   type Choice,
+  type ConcursoOption,
   type GameState,
   type Member,
   type PathOption,
@@ -23,13 +25,14 @@ import {
 import { useGameStore } from '@/game/store'
 import { formatMoney, formatRate } from '@/lib/format'
 import { PersonAvatar } from '../avatar/person-avatar'
-import { ageLabel, formationLabel, schoolName } from '../labels'
+import { ageLabel, careerLine, formationLabel, levelTitle, lowerFirst, schoolName } from '../labels'
 import { button, card } from '../styles'
 import { Sheet } from './sheet'
 
 type SchoolChoice = Extract<Choice, { type: 'school' }>
 type JobChoice = Extract<Choice, { type: 'firstJob' }>
 type PathChoice = Extract<Choice, { type: 'afterSchool' }>
+type ConcursoChoice = Extract<Choice, { type: 'concurso' }>
 
 /** Uma escolha por tipo e pessoa: trabalhar depois do médio abre a do emprego para a mesma pessoa. */
 const keyOf = (choice: Choice) => `${choice.type}:${choice.memberId}`
@@ -70,6 +73,8 @@ export function ChoiceSheet({ game, onHide }: { game: GameState; onHide: () => v
               return <PathChoiceCard key={key} {...common} choice={choice} />
             case 'firstJob':
               return <JobChoiceCard key={key} {...common} choice={choice} />
+            case 'concurso':
+              return <ConcursoChoiceCard key={key} {...common} choice={choice} />
           }
         })}
       </div>
@@ -81,14 +86,15 @@ export function ChoiceSheet({ game, onHide }: { game: GameState; onHide: () => v
 }
 
 function sheetTitle(game: GameState): string {
-  const jobs = game.choices.filter((choice) => choice.type === 'firstJob').length
-  if (game.choices.every((choice) => choice.type === 'afterSchool')) {
-    return 'Depois do ensino médio'
-  }
-  if (jobs === 0) {
+  const { choices } = game
+  const count = (type: Choice['type']) => choices.filter((choice) => choice.type === type).length
+  const jobs = count('firstJob')
+  if (count('afterSchool') === choices.length) return 'Depois do ensino médio'
+  if (count('concurso') === choices.length) return 'Resultado do concurso'
+  if (count('school') + count('afterSchool') === choices.length) {
     return `Matrículas de ${calendarDate(game.startDate, game.clock.day).slice(0, 4)}`
   }
-  if (jobs < game.choices.length) return 'Hora de escolher'
+  if (jobs < choices.length) return 'Hora de escolher'
   return jobs === 1 ? 'Primeiro emprego' : 'Primeiros empregos'
 }
 
@@ -120,14 +126,101 @@ function JobChoiceCard({
           key={offer.careerId}
           active={index === selected}
           icon={<Briefcase size={17} />}
-          title={careerLevel(offer.careerId, 0).title[member.gender]}
-          detail={`${getCareer(offer.careerId).name}${index === choice.suggested ? ' · sugestão' : ''}`}
+          title={levelTitle(member, offer.careerId, offer.level)}
+          detail={`${careerLine(offer.careerId, offer.level)}${index === choice.suggested ? ' · sugestão' : ''}`}
           value={formatRate(offerSalary(offer))}
+          onSelect={() => onSelect(index)}
+        />
+      ))}
+      {choice.concurso ? (
+        <OptionButton
+          active={selected === choice.offers.length}
+          icon={<BookOpen size={17} />}
+          title="Estudar para concurso"
+          detail={concursoDetail(member)}
+          value={formatRate(-BALANCE.concurso.fee)}
+          expense
+          onSelect={() => onSelect(choice.offers.length)}
+        />
+      ) : null}
+    </ChoiceCard>
+  )
+}
+
+/** Como funciona o concurso para a pessoa: duração, provas e o corte do cargo mais alto. */
+function concursoDetail(member: Member): string {
+  const level = highestCargo(member)
+  const cargo = levelTitle(member, PUBLIC_CAREER, level)
+  const { cutoffs, maxExams } = BALANCE.concurso
+  const salary = formatMoney(careerLevel(PUBLIC_CAREER, level).salaryPerMonth)
+  return `Até 1 ano, sem salário, com ${maxExams} provas. ${cargo} ganha ${salary}/mês e pede nota ${cutoffs[level]}`
+}
+
+/** Resultado do concurso: tomar posse, continuar estudando ou procurar outro emprego. */
+function ConcursoChoiceCard({
+  game,
+  choice,
+  selected,
+  onSelect,
+}: {
+  game: GameState
+  choice: ConcursoChoice
+  selected: number
+  onSelect: (option: number) => void
+}) {
+  const member = game.members[choice.memberId]
+  if (!member) return null
+  return (
+    <ChoiceCard
+      game={game}
+      member={member}
+      heading={`${member.firstName} passou no concurso`}
+      question={`Nota ${choice.score} na prova. O que vem agora?`}
+      label={`Concurso de ${member.firstName}`}
+    >
+      {choice.options.map((option, index) => (
+        <OptionButton
+          key={option.kind}
+          active={index === selected}
+          icon={option.kind === 'posse' ? <Landmark size={17} /> : <Briefcase size={17} />}
+          {...describeConcursoOption(member, option, index === choice.suggested)}
           onSelect={() => onSelect(index)}
         />
       ))}
     </ChoiceCard>
   )
+}
+
+function describeConcursoOption(
+  member: Member,
+  option: ConcursoOption,
+  suggested: boolean,
+): { title: string; detail: string; value: string; expense?: boolean } {
+  const suggestion = suggested ? ' · sugestão' : ''
+  switch (option.kind) {
+    case 'posse':
+      return {
+        title: `Tomar posse como ${lowerFirst(levelTitle(member, PUBLIC_CAREER, option.level))}`,
+        detail: `${careerLine(PUBLIC_CAREER, option.level)}, promoção só com o tempo${suggestion}`,
+        value: formatRate(careerLevel(PUBLIC_CAREER, option.level).salaryPerMonth),
+      }
+    case 'estudar': {
+      const level = highestCargo(member)
+      const cargo = lowerFirst(levelTitle(member, PUBLIC_CAREER, level))
+      return {
+        title: `Continuar estudando para ${cargo}`,
+        detail: `Pede nota ${BALANCE.concurso.cutoffs[level]} nas próximas provas${suggestion}`,
+        value: formatRate(-BALANCE.concurso.fee),
+        expense: true,
+      }
+    }
+    case 'privada':
+      return {
+        title: 'Procurar outro emprego',
+        detail: `Escolher entre ${BALANCE.jobs.offersPerChoice} vagas fora do serviço público${suggestion}`,
+        value: 'Salário',
+      }
+  }
 }
 
 const QUESTIONS = {

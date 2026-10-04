@@ -273,8 +273,8 @@ function catchUp(
       },
     }
   }
-  // Aposentadoria, emprego e matrículas (que o jogador acabou de escolher) ficam só no
-  // histórico, para os avisos não cobrirem a tela.
+  // Aposentadoria, emprego, promoções e matrículas (que o jogador acabou de escolher) ficam
+  // só no histórico, para os avisos não cobrirem a tela.
   const worthShowing = events.filter((event) => !QUIET_EVENTS.has(event.type))
   if (worthShowing.length === 0) return {}
   const added = worthShowing.map((event) => ({ id: nextToastId++, event }))
@@ -283,6 +283,8 @@ function catchUp(
 
 const QUIET_EVENTS = new Set<GameEvent['type']>([
   'firstJob',
+  'promoted',
+  'concursoStarted',
   'retired',
   'schoolStarted',
   'schoolChanged',

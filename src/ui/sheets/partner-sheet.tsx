@@ -7,7 +7,7 @@ import { weddingCost, type GameState, type Member } from '@/engine'
 import { useGameStore } from '@/game/store'
 import { formatAge, formatMoney, formatRate } from '@/lib/format'
 import { PersonAvatar } from '../avatar/person-avatar'
-import { byGender } from '../labels'
+import { byGender, formationLabel } from '../labels'
 import { button, card } from '../styles'
 import { useUiStore } from '../ui-store'
 import { Sheet } from './sheet'
@@ -49,7 +49,10 @@ export function PartnerSheet({ game, member }: { game: GameState; member: Member
                 <p className="truncate text-[16px] font-extrabold">
                   {suitor.firstName}, {formatAge(age)}
                 </p>
-                <p className="text-ink-soft truncate text-[14px]">{level.title[suitor.gender]}</p>
+                <p className="truncate text-[14px] font-semibold">{level.title[suitor.gender]}</p>
+                <p className="text-ink-soft truncate text-[13px]">
+                  {formationLabel(suitor, suitor.formation)}
+                </p>
                 <p className="tabular text-income text-[13px] font-bold">
                   {formatRate(level.salaryPerMonth)}
                 </p>

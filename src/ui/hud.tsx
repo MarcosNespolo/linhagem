@@ -1,33 +1,32 @@
 'use client'
 
-import { Pause, Pencil, Play } from 'lucide-react'
+import { Pause, Play, Settings } from 'lucide-react'
 import { calendarDate, type GameState } from '@/engine'
 import { useGameStore } from '@/game/store'
 import { formatAmount, formatMonthYear, formatRate } from '@/lib/format'
 import { useUiStore } from './ui-store'
 
-/** Barra do topo: nome da família, data, dinheiro, renda por mês e pausa. */
+/** Barra do topo: nome da família, data, dinheiro, renda por mês, pausa e Ajustes. */
 export function Hud({ game, net }: { game: GameState; net: number }) {
   const dispatch = useGameStore((store) => store.dispatch)
   const openSheet = useUiStore((store) => store.openSheet)
   const showChoices = useUiStore((store) => store.showChoices)
+  const tab = useUiStore((store) => store.tab)
+  const setTab = useUiStore((store) => store.setTab)
   const paused = game.clock.paused
   const waiting = waitingText(game)
 
   return (
     <header className="border-line bg-surface z-20 shrink-0 border-b px-4 pt-[max(env(safe-area-inset-top),0.75rem)] pb-3">
-      <div className="mx-auto flex max-w-3xl items-center gap-3">
+      <div className="mx-auto flex max-w-3xl items-center gap-2.5">
         <button
           type="button"
           onClick={() => openSheet({ kind: 'rename' })}
           className="min-w-0 flex-1 text-left"
           aria-label={`Família ${game.familyName}. Mudar o nome`}
         >
-          <span className="flex items-center gap-1.5">
-            <span className="truncate text-[19px] leading-6 font-extrabold">
-              Família {game.familyName}
-            </span>
-            <Pencil size={14} className="text-ink-soft shrink-0" aria-hidden="true" />
+          <span className="block truncate text-[19px] leading-6 font-extrabold">
+            Família {game.familyName}
           </span>
           <span className="text-ink-soft block text-[14px] first-letter:uppercase">
             {formatMonthYear(calendarDate(game.startDate, game.clock.day))}
@@ -58,6 +57,17 @@ export function Hud({ game, net }: { game: GameState; net: number }) {
             <Pause size={20} fill="currentColor" />
           )}
         </button>
+        <button
+          type="button"
+          onClick={() => setTab(tab === 'settings' ? 'family' : 'settings')}
+          aria-label="Ajustes"
+          aria-current={tab === 'settings' ? 'page' : undefined}
+          className={`-mr-1 grid size-9 shrink-0 place-items-center rounded-full transition active:scale-95 ${
+            tab === 'settings' ? 'bg-leaf-soft text-leaf-strong' : 'text-ink-soft'
+          }`}
+        >
+          <Settings size={21} />
+        </button>
       </div>
       {waiting ? (
         <div className="bg-gold-soft text-gold mx-auto mt-2 flex max-w-3xl items-center gap-3 rounded-xl py-1 pr-1 pl-3 text-[13px] font-bold">
@@ -85,7 +95,9 @@ function waitingText(game: GameState): string | null {
   const [first] = choices
   if (!first) return null
   if (choices.length > 1) {
-    const allSchool = choices.every((choice) => choice.type !== 'firstJob')
+    const allSchool = choices.every(
+      (choice) => choice.type === 'school' || choice.type === 'afterSchool',
+    )
     return `Tempo parado: ${choices.length} ${allSchool ? 'matrículas' : 'escolhas'} esperando você.`
   }
   const name = game.members[first.memberId]?.firstName ?? 'alguém'
@@ -96,5 +108,7 @@ function waitingText(game: GameState): string | null {
       return `Tempo parado: falta decidir o que ${name} faz depois do médio.`
     case 'firstJob':
       return `Tempo parado: falta escolher o primeiro emprego de ${name}.`
+    case 'concurso':
+      return `Tempo parado: saiu o resultado do concurso de ${name}.`
   }
 }

@@ -1,5 +1,5 @@
 import { BALANCE } from '@/content/balance'
-import { careerLevel } from '@/content/careers'
+import { careerLevel, getCareer, PUBLIC_CAREER, type CareerId } from '@/content/careers'
 import {
   degree,
   isHigherStage,
@@ -14,8 +14,11 @@ import {
   ageOf,
   calendarDate,
   childCooldownDaysLeft,
+  courseFor,
   daysToSeconds,
   isAlive,
+  needsCourse,
+  promotionDay,
   type ChildCheck,
   type Enrollment,
   type Formation,
@@ -23,7 +26,7 @@ import {
   type GameState,
   type Member,
 } from '@/engine'
-import { formatAge, formatDuration, formatMoney } from '@/lib/format'
+import { formatAge, formatDuration, formatGameSpan, formatMoney } from '@/lib/format'
 
 /** Escolhe a palavra conforme o gênero do membro. */
 export function byGender(member: Pick<Member, 'gender'>, female: string, male: string): string {
@@ -31,13 +34,57 @@ export function byGender(member: Pick<Member, 'gender'>, female: string, male: s
 }
 
 /** Primeira letra minúscula, para usar um cargo no meio da frase. */
-function lowerFirst(text: string): string {
+export function lowerFirst(text: string): string {
   return text.charAt(0).toLowerCase() + text.slice(1)
 }
 
 export function careerTitle(member: Pick<Member, 'career' | 'gender'>): string | null {
   if (!member.career) return null
   return careerLevel(member.career.id, member.career.level).title[member.gender]
+}
+
+/** Título do cargo de um nível da carreira, na forma do gênero da pessoa. */
+export function levelTitle(
+  member: Pick<Member, 'gender'> | undefined,
+  careerId: CareerId,
+  level: number,
+): string {
+  return careerLevel(careerId, level).title[member?.gender ?? 'f']
+}
+
+/** Nome do curso pago para subir ao nível, para o meio da frase: curso de gestão para o 4º, MBA para o 5º. */
+export function courseName(level: number): string {
+  return level >= 4 ? 'MBA' : 'curso de gestão'
+}
+
+/** Primeira letra maiúscula, para começar uma linha. */
+export function upperFirst(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1)
+}
+
+/** Nível em texto: "1º nível", "4º nível". */
+export function levelLabel(level: number): string {
+  return `${level + 1}º nível`
+}
+
+/** Carreira e nível: "Comércio · 3º nível". */
+export function careerLine(careerId: CareerId, level: number): string {
+  return `${getCareer(careerId).name} · ${levelLabel(level)}`
+}
+
+/**
+ * Situação da próxima promoção de quem trabalha: quando vem, se o curso já
+ * está disponível, ou se chegou ao topo. Null para quem não trabalha mais.
+ */
+export function promotionStatus(member: Member, day: number): string | null {
+  const career = member.career
+  if (!career || !isAlive(member) || ageOf(member, day) >= BALANCE.retirementAge) return null
+  const due = promotionDay(career)
+  if (due === null) return 'Topo da carreira'
+  const course = courseFor(member, day)
+  if (course) return `Curso disponível: ${formatMoney(course.cost)}`
+  const wait = formatGameSpan(Math.max(1, due - day), BALANCE.daysPerYear)
+  return needsCourse(career) ? `Curso em ${wait}` : `Promoção em ${wait}`
 }
 
 /** O que a pessoa é ou faz hoje: "Bebê", "Estudante de Direito", "Enfermeira", "Aposentado". */
@@ -50,6 +97,7 @@ export function roleLabel(member: Member, day: number): string {
   }
   if (school?.stage === 'tecnico') return 'Estudante de curso técnico'
   if (school?.stage === 'cursinho') return 'No cursinho'
+  if (member.concurso) return 'Estudando para concurso'
   if (age >= BALANCE.retirementAge) return byGender(member, 'Aposentada', 'Aposentado')
   const title = careerTitle(member)
   if (title) return title
@@ -97,8 +145,21 @@ export function describeEvent(state: GameState, event: GameEvent): string {
     case 'becameAdult':
       return `${name} fez ${BALANCE.adultAge} anos`
     case 'firstJob': {
-      const title = careerLevel(event.careerId, 0).title[member?.gender ?? 'f']
-      return `${name} começou a trabalhar como ${lowerFirst(title)}`
+      const title = lowerFirst(levelTitle(member, event.careerId, event.level ?? 0))
+      return event.careerId === PUBLIC_CAREER
+        ? `${name} tomou posse como ${title}`
+        : `${name} começou a trabalhar como ${title}`
+    }
+    case 'promoted': {
+      const title = lowerFirst(levelTitle(member, event.careerId, event.level))
+      return `${name} ${member ? byGender(member, 'foi promovida', 'foi promovido') : 'subiu'} a ${title}`
+    }
+    case 'concursoStarted':
+      return `${name} começou a estudar para concurso`
+    case 'concurso': {
+      if (event.level === null) return `${name} não passou no concurso: nota ${event.score}`
+      const title = lowerFirst(levelTitle(member, PUBLIC_CAREER, event.level))
+      return `${name} passou no concurso para ${title}, com nota ${event.score}`
     }
     case 'married': {
       const partner = state.members[event.partnerId]

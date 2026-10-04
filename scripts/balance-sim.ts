@@ -3,11 +3,12 @@
  * família, para ajustar src/content/balance.ts olhando números em vez de
  * jogar por horas.
  *
- * Estratégia: quem faz 18 anos fica com a vaga sugerida (a de maior salário),
- * quem é adulto casa assim que dá (com a pessoa de maior salário entre as
- * sugeridas) e todo casal tem filho sempre que pode, até o limite de filhos
- * por casal. As escolhas são respondidas na hora, então o relógio quase não
- * fica parado.
+ * Estratégia: as escolhas ficam com a sugestão (a escola, o caminho depois do
+ * médio e a vaga de maior salário), a família paga os cursos de promoção que
+ * cabem no dinheiro, quem é adulto casa assim que dá (com a pessoa de maior
+ * salário entre as sugeridas) e todo casal tem filho sempre que pode, até o
+ * limite de filhos por casal. As escolhas são respondidas na hora, então o
+ * relógio quase não fica parado.
  *
  * Uso: npm run sim -- --minutos 120 --seed 7 --filhos 4
  */
@@ -55,6 +56,7 @@ let state: GameState = newGame({ seed, now: 0, startDate: '2026-01-01' })
 let births = 0
 let weddings = 0
 let deaths = 0
+let courses = 0
 const rows: Record<string, string | number>[] = []
 
 const snapshot = (elapsedMs: number) => {
@@ -68,6 +70,7 @@ const snapshot = (elapsedMs: number) => {
     casamentos: weddings,
     nascimentos: births,
     mortes: deaths,
+    cursos: courses,
     'próx. casamento': formatMoney(weddingCost(state)),
   })
 }
@@ -97,16 +100,20 @@ for (let elapsed = STEP_MS; elapsed <= minutes * 60_000; elapsed += STEP_MS) {
     if (!tryAct({ type: 'choose', picks: suggestedPicks(state) })) break
   }
 
+  const paid = applyAction(state, { type: 'payAllCourses' })
+  if (paid.ok) {
+    state = paid.state
+    courses += paid.events.length
+  }
+
   for (const member of livingMembers(state)) {
     if (!checkSeekPartner(state, member.id).ok || state.money < weddingCost(state)) continue
     if (!tryAct({ type: 'findSuitors', memberId: member.id })) continue
     const suitors = state.suitors[member.id] ?? []
+    const salary = (index: number) =>
+      careerLevel(suitors[index].career.id, suitors[index].career.level).salaryPerMonth
     const best = suitors.reduce(
-      (bestIndex, suitor, index) =>
-        careerLevel(suitor.career.id, 0).salaryPerMonth >
-        careerLevel(suitors[bestIndex].career.id, 0).salaryPerMonth
-          ? index
-          : bestIndex,
+      (bestIndex, _suitor, index) => (salary(index) > salary(bestIndex) ? index : bestIndex),
       0,
     )
     if (tryAct({ type: 'marry', memberId: member.id, suitorIndex: best })) weddings += 1

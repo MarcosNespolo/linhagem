@@ -6,7 +6,7 @@ import { ageInYears, lastDayOfYear } from './time'
 import type { GameState } from './types'
 
 /** Versão atual do formato do save. Sobe a cada migração nova. */
-export const CURRENT_SCHEMA_VERSION = 5
+export const CURRENT_SCHEMA_VERSION = 6
 
 export type SaveErrorCode = 'corrupt' | 'futureVersion' | 'missingMigration'
 
@@ -124,6 +124,63 @@ const toVersion5: Migration = (save) => {
 }
 
 /**
+ * Versão 5 para 6: carreiras com promoção e concurso público. O tempo no nível
+ * passa a contar do dia da migração, no lugar da experiência, que nunca foi
+ * usada. Ninguém está estudando para concurso. Quem já era sugerido como par
+ * fica com ensino médio, e as vagas abertas guardam o nível de entrada, o
+ * primeiro, e ganham a opção do concurso para quem terminou o médio.
+ */
+const toVersion6: Migration = (save) => {
+  const clock = isRecord(save.clock) ? save.clock : {}
+  const day = typeof clock.day === 'number' ? clock.day : 0
+  const members = isRecord(save.members) ? save.members : {}
+  const upgraded: RawSave = {}
+  for (const [id, member] of Object.entries(members)) {
+    upgraded[id] = isRecord(member)
+      ? { ...member, career: careerSince(member.career, day), concurso: null }
+      : member
+  }
+
+  const suitors: RawSave = {}
+  for (const [id, list] of Object.entries(isRecord(save.suitors) ? save.suitors : {})) {
+    suitors[id] = Array.isArray(list)
+      ? list.map((suitor) =>
+          isRecord(suitor)
+            ? { ...suitor, formation: { level: 'medio' }, career: careerSince(suitor.career, day) }
+            : suitor,
+        )
+      : list
+  }
+
+  const choices = Array.isArray(save.choices) ? save.choices : []
+  return {
+    ...save,
+    members: upgraded,
+    suitors,
+    choices: choices.map((choice) => {
+      if (!isRecord(choice) || choice.type !== 'firstJob' || !Array.isArray(choice.offers)) {
+        return choice
+      }
+      const member = upgraded[String(choice.memberId)]
+      const education = isRecord(member) && isRecord(member.education) ? member.education : {}
+      return {
+        ...choice,
+        offers: choice.offers.map((offer) => (isRecord(offer) ? { ...offer, level: 0 } : offer)),
+        concurso: isRecord(education.formation),
+      }
+    }),
+  }
+}
+
+/** Carreira da versão 6: o nível conta a partir de `day`, sem o campo de experiência. */
+function careerSince(career: unknown, day: number): unknown {
+  if (!isRecord(career)) return career
+  const upgraded: RawSave = { ...career, levelSince: day }
+  delete upgraded.xp
+  return upgraded
+}
+
+/**
  * Migrações, indexadas pela versão de origem. São sempre aditivas: criam
  * campos novos com valores padrão e nunca apagam dados do jogador; uma troca
  * de unidade, como a do dinheiro na versão 3, converte o valor sem perder
@@ -136,6 +193,7 @@ export const MIGRATIONS: Readonly<Record<number, Migration>> = {
   2: toVersion3,
   3: toVersion4,
   4: toVersion5,
+  5: toVersion6,
 }
 
 /** Valida um save lido de JSON e o leva até a versão atual. */

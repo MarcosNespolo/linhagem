@@ -8,9 +8,10 @@
  *
  * O exemplo passa pelas ações principais do jogo: dois filhos que fizeram a
  * escola com as matrículas sugeridas. O mais velho faz Direito numa faculdade
- * particular, casou e tem um filho na creche; o mais novo acabou o médio, com
- * a escolha do que fazer depois aberta, e o mais velho tem pessoas sugeridas
- * como par para o irmão conhecer depois.
+ * particular, casou e tem um filho na creche. O mais novo acabou o médio e
+ * estuda para concurso, com o resultado da primeira prova aberto. A fundadora
+ * pagou o curso e chegou ao 4º nível da carreira, e o fundador tem o curso
+ * dele para pagar.
  */
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { BALANCE } from '../src/content/balance'
@@ -87,16 +88,30 @@ state = play(state, year)
 state = act(state, { type: 'findSuitors', memberId: 'm3' })
 state = act(state, { type: 'marry', memberId: 'm3', suitorIndex: 0 })
 state = act(state, { type: 'haveChild', parentId: 'm3' })
-// No janeiro em que o mais novo faz 18, a escolha do que fazer depois fica aberta.
+// No janeiro em que o mais novo faz 18, ele vai trabalhar e escolhe estudar para concurso.
 state = play(state, 2 * year, 'afterSchool')
-const others = state.choices.filter((choice) => choice.type !== 'afterSchool')
-if (others.length > 0) {
-  const picks = others.map((choice) => ({ memberId: choice.memberId, option: choice.suggested }))
-  state = act(state, { type: 'choose', picks })
-}
-state = advance(state, daysToMs(100)).state
-if (state.choices.length !== 1 || state.choices[0].type !== 'afterSchool') {
-  throw new Error('O exemplo devia terminar com a escolha depois do médio aberta')
+state = act(state, {
+  type: 'choose',
+  picks: state.choices.map((choice) => ({
+    memberId: choice.memberId,
+    option:
+      choice.type === 'afterSchool'
+        ? choice.options.findIndex((option) => option.path === 'trabalho')
+        : choice.suggested,
+  })),
+})
+const job = state.choices.find((choice) => choice.type === 'firstJob')
+if (job?.type !== 'firstJob' || !job.concurso) throw new Error('O exemplo devia abrir o emprego')
+state = act(state, {
+  type: 'choose',
+  picks: [{ memberId: job.memberId, option: job.offers.length }],
+})
+// A fundadora paga o curso e sobe para o 4º nível; o do fundador fica para depois.
+state = act(state, { type: 'payCourse', memberId: 'm1' })
+// Até a primeira prova, que abre o resultado do concurso.
+state = advance(state, year).state
+if (state.choices.length !== 1 || state.choices[0].type !== 'concurso') {
+  throw new Error('O exemplo devia terminar com o resultado do concurso aberto')
 }
 
 mkdirSync('tests/fixtures', { recursive: true })

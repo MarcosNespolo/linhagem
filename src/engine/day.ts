@@ -1,7 +1,9 @@
 import { BALANCE } from '../content/balance'
-import { openFirstJobChoice } from './jobs'
+import { takeExams } from './concurso'
 import { incomeOf } from './economy'
 import { isEnrollmentDay, processEnrollment } from './enrollment'
+import { openFirstJobChoice } from './jobs'
+import { promoteByTime } from './promotions'
 import type { Rng } from './rng'
 import { halfTimeCaregivers } from './school'
 import { calendarDate } from './time'
@@ -9,10 +11,11 @@ import type { GameEvent, GameState } from './types'
 
 /**
  * Processa a virada para o dia atual do relógio: aniversários, maioridade,
- * aposentadoria, morte, as matrículas de janeiro e o 13º salário. As escolhas
- * abertas aqui (matrículas, depois do médio, primeiro emprego) param o relógio.
- * Altera o rascunho e devolve true quando algo pode ter mudado as taxas de
- * renda e despesa.
+ * aposentadoria, morte, as matrículas de janeiro, as promoções, as provas de
+ * concurso e o 13º salário. As escolhas abertas aqui (matrículas, depois do
+ * médio, primeiro emprego, resultado do concurso) param o relógio. Altera o
+ * rascunho e devolve true quando algo pode ter mudado as taxas de renda e
+ * despesa.
  */
 export function processNewDay(draft: GameState, rng: Rng, events: GameEvent[]): boolean {
   const day = draft.clock.day
@@ -37,7 +40,8 @@ export function processNewDay(draft: GameState, rng: Rng, events: GameEvent[]): 
       // Quem terminou a escola já escolheu o caminho em janeiro. Fica a reserva para quem
       // chega aos 18 sem estudar, sem emprego e sem escolha aberta.
       const waiting = draft.choices.some((choice) => choice.memberId === member.id)
-      if (!member.career && !member.education.school && !waiting) {
+      const studying = member.education.school !== null || member.concurso !== null
+      if (!member.career && !studying && !waiting) {
         openFirstJobChoice(draft, rng, member)
       }
     }
@@ -50,6 +54,8 @@ export function processNewDay(draft: GameState, rng: Rng, events: GameEvent[]): 
     processEnrollment(draft, rng, events)
     changed = true
   }
+  if (promoteByTime(draft, events)) changed = true
+  if (takeExams(draft, rng, events)) changed = true
   payThirteenth(draft, events)
   return changed
 }

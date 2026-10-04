@@ -9,6 +9,12 @@ import { refuse, type ActionError, type Refusal } from './errors'
 import { appendLog } from './log'
 import { checkMarry, checkSeekPartner, joinFamily, rollSuitors } from './marriage'
 import { addMember, ageOf, childrenOf, familySizeFactor, isAlive } from './members'
+import {
+  affordableCourses,
+  availableCourses,
+  courseFor,
+  payCourse as applyCourse,
+} from './promotions'
 import { createRng } from './rng'
 import type { GameEvent, GameState, MemberId } from './types'
 
@@ -25,6 +31,10 @@ export type Action =
   | { type: 'choose'; picks: ChoicePick[] }
   /** Troca a rede da escola ou do ensino médio na próxima matrícula. A mesma rede desfaz o pedido. */
   | { type: 'changeSchool'; memberId: MemberId; network: Network }
+  /** Paga o curso de quem está pronto para o 4º ou o 5º nível, que sobe na hora. */
+  | { type: 'payCourse'; memberId: MemberId }
+  /** Paga os cursos disponíveis, do mais barato ao mais caro, enquanto houver dinheiro. */
+  | { type: 'payAllCourses' }
 
 export type ActionResult = { ok: true; state: GameState; events: GameEvent[] } | Refusal
 
@@ -50,6 +60,10 @@ export function applyAction(state: GameState, action: Action): ActionResult {
       return choose(state, action.picks)
     case 'changeSchool':
       return changeSchool(state, action.memberId, action.network)
+    case 'payCourse':
+      return payCourse(state, action.memberId)
+    case 'payAllCourses':
+      return payAllCourses(state)
   }
 }
 
@@ -175,6 +189,30 @@ function changeSchool(state: GameState, memberId: MemberId, network: Network): A
   if (network === school.network) delete school.next
   else school.next = network
   return done(draft)
+}
+
+function payCourse(state: GameState, memberId: MemberId): ActionResult {
+  const member = state.members[memberId]
+  if (!member) return refuse('memberNotFound')
+  const course = courseFor(member, state.clock.day)
+  if (!course) return refuse('noCourse')
+  if (state.money < course.cost) return refuse('notEnoughMoney')
+
+  const draft = draftOf(state)
+  const events = [applyCourse(draft, course)]
+  appendLog(draft, events)
+  return done(draft, events)
+}
+
+function payAllCourses(state: GameState): ActionResult {
+  if (availableCourses(state).length === 0) return refuse('noCourse')
+  const courses = affordableCourses(state)
+  if (courses.length === 0) return refuse('notEnoughMoney')
+
+  const draft = draftOf(state)
+  const events = courses.map((course) => applyCourse(draft, course))
+  appendLog(draft, events)
+  return done(draft, events)
 }
 
 function done(state: GameState, events: GameEvent[] = []): ActionResult {

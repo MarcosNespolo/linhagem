@@ -15,8 +15,17 @@ export {
 } from './actions'
 export { advance, advanceTo, isWaiting, type AdvanceResult } from './advance'
 export { inheritAppearance, rollAppearance } from './appearance'
-export { suggestedPicks, type ChoicePick } from './choices'
+export { optionCount, suggestedPicks, type ChoicePick } from './choices'
 export { rollEnem } from './college'
+export {
+  concursoBase,
+  expectedConcursoScore,
+  highestCargo,
+  isExamDay,
+  monthsStudied,
+  nextExamDay,
+  passedLevel,
+} from './concurso'
 export { FAMILY_NAME_MAX_LENGTH } from './constants'
 export {
   familyRates,
@@ -33,7 +42,14 @@ export {
   isEnrollmentDay,
   retiredGrandparents,
 } from './enrollment'
-export { bestOffer, formationCareer, offerSalary } from './jobs'
+export {
+  areaOffer,
+  bestOffer,
+  canStudyForConcurso,
+  formationCareer,
+  offerSalary,
+  rollJobOffers,
+} from './jobs'
 export { isMemberEvent, LOG_LIMIT } from './log'
 export { checkMarry, checkSeekPartner, weddingCost, type MarriageCheck } from './marriage'
 export { ageOf, childrenOf, isAdult, isAlive, isRetired, livingMembers, partnerOf } from './members'
@@ -47,6 +63,15 @@ export {
   type SaveErrorCode,
 } from './migrations'
 export { newGame, type NewGameOptions } from './new-game'
+export {
+  affordableCourses,
+  availableCourses,
+  courseCost,
+  courseFor,
+  needsCourse,
+  promotionDay,
+  type CourseOffer,
+} from './promotions'
 export { createRng, hashString, pickWeighted, type Rng } from './rng'
 export { deserialize, serialize } from './save'
 export {

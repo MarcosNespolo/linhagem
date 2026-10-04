@@ -1,27 +1,29 @@
 'use client'
 
-import { Heart, School, ScrollText, Settings, TreeDeciduous, type LucideIcon } from 'lucide-react'
+import { Briefcase, Heart, School, TreeDeciduous, type LucideIcon } from 'lucide-react'
 import { useUiStore, type Tab } from './ui-store'
 
-const TABS: { id: Tab; label: string; icon: LucideIcon }[] = [
+const TABS: { id: Tab; label: string; icon: LucideIcon; badgeLabel?: string }[] = [
   { id: 'family', label: 'Família', icon: TreeDeciduous },
-  { id: 'love', label: 'Amor', icon: Heart },
+  { id: 'love', label: 'Amor', icon: Heart, badgeLabel: 'ações disponíveis' },
   { id: 'studies', label: 'Estudos', icon: School },
-  { id: 'history', label: 'Histórico', icon: ScrollText },
-  { id: 'settings', label: 'Ajustes', icon: Settings },
+  { id: 'work', label: 'Trabalho', icon: Briefcase, badgeLabel: 'cursos cabem no dinheiro' },
 ]
 
-/** Navegação entre as abas. A aba Amor mostra quantas ações dá para fazer agora. */
-export function BottomNav({ loveBadge }: { loveBadge: number }) {
+/**
+ * Navegação entre as abas. A aba Amor mostra quantas ações dá para fazer agora,
+ * e a aba Trabalho, quantos cursos de promoção cabem no dinheiro.
+ */
+export function BottomNav({ badges }: { badges: Partial<Record<Tab, number>> }) {
   const tab = useUiStore((store) => store.tab)
   const setTab = useUiStore((store) => store.setTab)
 
   return (
     <nav className="border-line bg-surface z-20 shrink-0 border-t pb-[env(safe-area-inset-bottom)]">
-      <ul className="mx-auto grid max-w-md grid-cols-5">
-        {TABS.map(({ id, label, icon: Icon }) => {
+      <ul className="mx-auto grid max-w-md grid-cols-4">
+        {TABS.map(({ id, label, icon: Icon, badgeLabel }) => {
           const active = tab === id
-          const badge = id === 'love' && loveBadge > 0 ? loveBadge : 0
+          const badge = badges[id] ?? 0
           return (
             <li key={id}>
               <button
@@ -45,7 +47,11 @@ export function BottomNav({ loveBadge }: { loveBadge: number }) {
                   ) : null}
                 </span>
                 {label}
-                {badge > 0 ? <span className="sr-only">, {badge} ações disponíveis</span> : null}
+                {badge > 0 && badgeLabel ? (
+                  <span className="sr-only">
+                    , {badge} {badgeLabel}
+                  </span>
+                ) : null}
               </button>
             </li>
           )

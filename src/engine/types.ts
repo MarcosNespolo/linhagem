@@ -11,8 +11,18 @@ export type CareerState = {
   id: CareerId
   /** Índice do nível atual na lista de níveis da carreira. */
   level: number
-  /** Experiência no nível atual. Ainda não usada; as promoções entram na etapa 4.4. */
-  xp: number
+  /** Dia do jogo em que a pessoa chegou ao nível atual. Conta o tempo até a promoção. */
+  levelSince: number
+}
+
+/** Quem estuda para concurso: não trabalha, paga o cursinho e faz uma prova a cada três meses. */
+export type ConcursoStudy = {
+  /** Dia do jogo em que começou a estudar. A nota sobe com os meses desde então. */
+  since: number
+  /** Provas já feitas nesta tentativa. */
+  exams: number
+  /** Nota da última prova, ou null antes da primeira. */
+  lastScore: number | null
 }
 
 /** Matrícula de quem está na creche, na escola, no cursinho, no técnico ou na faculdade. */
@@ -49,8 +59,20 @@ export type Education = {
   enem: number | null
 }
 
-/** Vaga oferecida na escolha do primeiro emprego: o primeiro nível de uma carreira. */
-export type JobOffer = { careerId: CareerId }
+/**
+ * Vaga oferecida na escolha do primeiro emprego. Quem tem formação acima da que
+ * a carreira pede, na mesma área, entra um nível acima.
+ */
+export type JobOffer = { careerId: CareerId; level: number }
+
+/** Opção quando sai o resultado do concurso. */
+export type ConcursoOption =
+  /** Tomar posse no serviço público, no nível do cargo: técnico (0) ou analista (1). */
+  | { kind: 'posse'; level: number }
+  /** Continuar estudando para o cargo de nível superior. */
+  | { kind: 'estudar' }
+  /** Desistir do cargo e escolher uma vaga fora do serviço público. */
+  | { kind: 'privada' }
 
 /** Opção na matrícula de uma etapa nova. */
 export type SchoolOption = {
@@ -74,13 +96,28 @@ export type PathOption =
  */
 export type Choice =
   | {
-      /** Primeiro emprego, aos 18 anos. */
+      /** Primeiro emprego, ao sair dos estudos. */
       type: 'firstJob'
       memberId: MemberId
       /** Dia do jogo em que a escolha abriu. */
       day: number
       offers: JobOffer[]
+      /**
+       * Se dá para estudar para concurso em vez de trabalhar. A opção vem depois
+       * das vagas, com o índice `offers.length`.
+       */
+      concurso: boolean
       /** Índice da vaga sugerida: a de maior salário. */
+      suggested: number
+    }
+  | {
+      /** Resultado do concurso de quem passou: tomar posse, continuar estudando ou desistir. */
+      type: 'concurso'
+      memberId: MemberId
+      day: number
+      /** Nota da prova. */
+      score: number
+      options: ConcursoOption[]
       suggested: number
     }
   | {
@@ -146,6 +183,8 @@ export type Member = {
   /** Dia do jogo em que casou, ou null. */
   marriedDay: number | null
   career: CareerState | null
+  /** Estudo para concurso, ou null para quem não está estudando. */
+  concurso: ConcursoStudy | null
   /** Dia do jogo em que teve o último filho, para o intervalo mínimo entre filhos. */
   lastChildDay: number | null
   /** Traços de personalidade. Ficam para depois do v1. */
@@ -162,6 +201,7 @@ export type Suitor = {
   gender: Gender
   birthDay: number
   lifespan: number
+  formation: Formation
   career: CareerState
   appearance: Appearance
   avatarSeed: string
@@ -210,7 +250,25 @@ export type GameState = {
 export type MemberEvent =
   | { type: 'born'; day: number; memberId: MemberId }
   | { type: 'becameAdult'; day: number; memberId: MemberId }
-  | { type: 'firstJob'; day: number; memberId: MemberId; careerId: CareerId }
+  | {
+      type: 'firstJob'
+      day: number
+      memberId: MemberId
+      careerId: CareerId
+      /** Nível de entrada. Sem valor, o primeiro, como nos saves antigos. */
+      level?: number
+    }
+  | { type: 'promoted'; day: number; memberId: MemberId; careerId: CareerId; level: number }
+  | { type: 'concursoStarted'; day: number; memberId: MemberId }
+  | {
+      /** Resultado final de uma tentativa: aprovado num nível, ou reprovado depois da última prova. */
+      type: 'concurso'
+      day: number
+      memberId: MemberId
+      score: number
+      /** Nível do cargo em que passou, ou null para quem não passou. */
+      level: number | null
+    }
   | { type: 'married'; day: number; memberId: MemberId; partnerId: MemberId }
   | { type: 'retired'; day: number; memberId: MemberId }
   | { type: 'died'; day: number; memberId: MemberId; age: number }
