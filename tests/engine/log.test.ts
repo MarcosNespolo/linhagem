@@ -10,8 +10,8 @@ describe('histórico', () => {
 
   it('guarda nascimentos, casamentos e o que acontece com o tempo, em ordem', () => {
     const { state, childId } = withAdultChild(3)
-    const types = state.log.map((event) => event.type)
-    expect(types).toEqual([
+    const own = state.log.filter((event) => event.memberId === childId)
+    expect(own.map((event) => event.type)).toEqual([
       'born',
       'schoolStarted',
       'schoolStarted',
@@ -21,7 +21,10 @@ describe('histórico', () => {
       'firstJob',
       'becameAdult',
     ])
-    expect(state.log.every((event) => event.memberId === childId)).toBe(true)
+    // Enquanto o filho cresce, os fundadores sobem de nível com o tempo.
+    const others = state.log.filter((event) => event.memberId !== childId)
+    expect(others.length).toBeGreaterThan(0)
+    expect(others.every((event) => event.type === 'promoted')).toBe(true)
 
     const searched = expectOk(applyAction(state, { type: 'findSuitors', memberId: childId })).state
     const married = expectOk(

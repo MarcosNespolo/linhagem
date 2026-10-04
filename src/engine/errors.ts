@@ -15,6 +15,7 @@ export type ActionError =
   | 'optionUnavailable'
   | 'notStudying'
   | 'invalidSchool'
+  | 'noCourse'
 
 export type Refusal = { ok: false; error: ActionError }
 

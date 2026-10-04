@@ -1,6 +1,8 @@
 'use client'
 
-import { Baby, Briefcase, Heart, School } from 'lucide-react'
+import { Baby, BookOpen, Briefcase, GraduationCap, Heart, Landmark, School } from 'lucide-react'
+import { BALANCE } from '@/content/balance'
+import { careerLevel } from '@/content/careers'
 import { isHigherStage, techCourseName, type Network } from '@/content/schools'
 import {
   ageThisYear,
@@ -9,13 +11,17 @@ import {
   checkSeekPartner,
   childCost,
   childrenOf,
+  courseFor,
   incomeOf,
+  isRetired,
   memberExpense,
+  nextExamDay,
   partnerOf,
   schoolFee,
   schoolScore,
   weddingCost,
   type Choice,
+  type CourseOffer,
   type Enrollment,
   type GameState,
   type Member,
@@ -27,8 +33,14 @@ import { seekPartner, showMember } from '../flows'
 import {
   ageLabel,
   byGender,
+  careerLine,
+  careerTitle,
   childStatus,
+  courseName,
   formationLabel,
+  levelTitle,
+  lowerFirst,
+  promotionStatus,
   relationLine,
   roleLabel,
   schoolName,
@@ -50,6 +62,10 @@ export function MemberSheet({ game, member }: { game: GameState; member: Member 
   const school = member.education.school
   const formation = member.education.formation
   const choice = game.choices.find((open) => open.memberId === member.id)
+  const career = member.career
+  const working = alive && career !== null && !isRetired(member, day)
+  const promotion = working ? promotionStatus(member, day) : null
+  const course = alive ? courseFor(member, day) : null
 
   return (
     <Sheet title={member.firstName} hideTitle onClose={closeSheet}>
@@ -99,6 +115,24 @@ export function MemberSheet({ game, member }: { game: GameState; member: Member 
             ) : null}
           </>
         ) : null}
+        {alive && member.concurso ? (
+          <Fact label="Estuda">
+            Para concurso
+            <span className="text-ink-soft block text-[13px] font-normal">
+              Prova em {formatMonthYear(calendarDate(game.startDate, nextExamDay(game)), 'short')} ·{' '}
+              {formatMoney(BALANCE.concurso.fee)}/mês
+            </span>
+          </Fact>
+        ) : null}
+        {career ? (
+          <Fact label={working ? 'Trabalho' : 'Trabalhou como'}>
+            {careerTitle(member)}
+            <span className="text-ink-soft block text-[13px] font-normal">
+              {careerLine(career.id, career.level)}
+            </span>
+          </Fact>
+        ) : null}
+        {promotion ? <Fact label="Próximo nível">{promotion}</Fact> : null}
         {formation && (!school || isHigherStage(school.stage)) ? (
           <Fact label="Formação">{formationLabel(member, formation)}</Fact>
         ) : null}
@@ -142,26 +176,84 @@ export function MemberSheet({ game, member }: { game: GameState; member: Member 
       </dl>
 
       {alive && choice ? <OpenChoice member={member} choice={choice} /> : null}
+      {course && !choice ? <PayCourse game={game} member={member} course={course} /> : null}
       {alive && school && !choice ? <SchoolChange member={member} school={school} /> : null}
       {alive ? <MemberActions game={game} member={member} partner={partner} /> : null}
     </Sheet>
   )
 }
 
+/** O que cada escolha aberta pede, para o botão e o aviso do painel da pessoa. */
+const OPEN_CHOICES = {
+  school: {
+    icon: <School size={18} />,
+    action: 'Fazer a matrícula',
+    note: (name: string) => `O tempo parou até a matrícula de ${name}.`,
+  },
+  afterSchool: {
+    icon: <GraduationCap size={18} />,
+    action: 'Escolher o que vem depois do médio',
+    note: (name: string) => `O tempo parou até ${name} escolher o caminho.`,
+  },
+  firstJob: {
+    icon: <Briefcase size={18} />,
+    action: 'Escolher o primeiro emprego',
+    note: (name: string) => `O tempo parou até ${name} ter um emprego.`,
+  },
+  concurso: {
+    icon: <Landmark size={18} />,
+    action: 'Ver o resultado do concurso',
+    note: (name: string) => `O tempo parou até ${name} decidir sobre o cargo.`,
+  },
+} satisfies Record<Choice['type'], unknown>
+
 /** A pessoa tem uma escolha esperando, e o relógio também. */
 function OpenChoice({ member, choice }: { member: Member; choice: Choice }) {
   const showChoices = useUiStore((store) => store.showChoices)
-  const school = choice.type === 'school'
+  const { icon, action, note } = OPEN_CHOICES[choice.type]
   return (
     <div className="mt-5">
       <button type="button" className={`${button.primary} w-full`} onClick={showChoices}>
-        {school ? <School size={18} /> : <Briefcase size={18} />}
-        {school ? 'Fazer a matrícula' : 'Escolher o primeiro emprego'}
+        {icon}
+        {action}
       </button>
-      <p className="text-ink-soft mt-2 text-center text-sm">
-        {school
-          ? `O tempo parou até a matrícula de ${member.firstName}.`
-          : `O tempo parou até ${member.firstName} ter um emprego.`}
+      <p className="text-ink-soft mt-2 text-center text-sm">{note(member.firstName)}</p>
+    </div>
+  )
+}
+
+/** Curso pago que sobe a pessoa para o 4º ou o 5º nível na hora. */
+function PayCourse({
+  game,
+  member,
+  course,
+}: {
+  game: GameState
+  member: Member
+  course: CourseOffer
+}) {
+  const dispatch = useGameStore((store) => store.dispatch)
+  const career = member.career
+  if (!career) return null
+  const next = levelTitle(member, career.id, course.level)
+  const raise =
+    careerLevel(career.id, course.level).salaryPerMonth -
+    careerLevel(career.id, career.level).salaryPerMonth
+  const missing = course.cost - game.money
+  return (
+    <div className="mt-5">
+      <button
+        type="button"
+        className={`${button.primary} w-full`}
+        disabled={missing > 0}
+        onClick={() => dispatch({ type: 'payCourse', memberId: member.id })}
+      >
+        <BookOpen size={18} />
+        Pagar o {courseName(course.level)} · {formatMoney(course.cost)}
+      </button>
+      <p className="tabular text-ink-soft mt-2 text-center text-sm">
+        {missing > 0 ? `Faltam ${formatMoney(missing)}. ` : ''}
+        {member.firstName} vira {lowerFirst(next)} na hora e ganha {formatRate(raise)} a mais.
       </p>
     </div>
   )

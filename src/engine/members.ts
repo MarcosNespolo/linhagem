@@ -1,5 +1,4 @@
 import { BALANCE } from '../content/balance'
-import { CAREER_IDS } from '../content/careers'
 import { FEMALE_NAMES, MALE_NAMES } from '../content/names'
 import type { Rng } from './rng'
 import { newEducation } from './school'
@@ -61,10 +60,6 @@ export function rollLifespan(rng: Rng): number {
   return min + rng.int(0, spread) + rng.int(0, spread)
 }
 
-export function rollStarterCareer(rng: Rng): CareerState {
-  return { id: rng.pick(CAREER_IDS), level: 0, xp: 0 }
-}
-
 export function rollAvatarSeed(rng: Rng): string {
   return rng.int(0, 0x7fffffff).toString(36)
 }
@@ -117,6 +112,7 @@ export function addMember(draft: GameState, rng: Rng, input: NewMember): Member 
     partnerId: null,
     marriedDay: null,
     career: input.career ?? null,
+    concurso: null,
     lastChildDay: null,
     traits: [],
     appearance: input.appearance,

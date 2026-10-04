@@ -31,8 +31,8 @@ export type TechCourseId = 'informatica' | 'enfermagem' | 'edificacoes' | 'agrop
 export type TechCourse = {
   id: TechCourseId
   name: string
-  /** Carreira da área, quando ela já existe no jogo. */
-  careerId?: CareerId
+  /** Carreira da área, onde a vaga do curso aparece na escolha de emprego. */
+  careerId: CareerId
 }
 
 /** Cursos técnicos do instituto federal, integrados ao médio ou depois dele. */
@@ -40,7 +40,7 @@ export const TECH_COURSES: readonly TechCourse[] = [
   { id: 'informatica', name: 'Informática', careerId: 'tecnologia' },
   { id: 'enfermagem', name: 'Enfermagem', careerId: 'saude' },
   { id: 'edificacoes', name: 'Edificações', careerId: 'construcao' },
-  { id: 'agropecuaria', name: 'Agropecuária' },
+  { id: 'agropecuaria', name: 'Agropecuária', careerId: 'agro' },
 ]
 
 export function techCourse(id: TechCourseId): TechCourse {
@@ -65,15 +65,29 @@ export type Degree = {
   cutoff: number
   /** Mensalidade na faculdade particular, em reais por mês. */
   fee: number
-  /** Carreira da área, quando ela já existe no jogo. As outras entram na etapa 4.4. */
-  careerId?: CareerId
+  /** Carreira da área, onde a vaga do curso aparece na escolha de emprego. */
+  careerId: CareerId
 }
 
 /** Cursos de faculdade, do mais disputado ao menos disputado. */
 export const DEGREES: readonly Degree[] = [
-  { id: 'medicina', name: 'Medicina', years: 6, cutoff: 780, fee: 10_000 },
-  { id: 'direito', name: 'Direito', years: 5, cutoff: 720, fee: 1_500 },
-  { id: 'engenharia', name: 'Engenharia', years: 5, cutoff: 700, fee: 1_800 },
+  {
+    id: 'medicina',
+    name: 'Medicina',
+    years: 6,
+    cutoff: 780,
+    fee: 10_000,
+    careerId: 'medicina',
+  },
+  { id: 'direito', name: 'Direito', years: 5, cutoff: 720, fee: 1_500, careerId: 'direito' },
+  {
+    id: 'engenharia',
+    name: 'Engenharia',
+    years: 5,
+    cutoff: 700,
+    fee: 1_800,
+    careerId: 'engenharia',
+  },
   {
     id: 'computacao',
     name: 'Computação',

@@ -2,14 +2,17 @@
 
 import {
   Baby,
+  BookOpen,
   Briefcase,
   Cake,
   FileText,
   GraduationCap,
   Heart,
+  Landmark,
   Leaf,
   School,
   Sun,
+  TrendingUp,
 } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { calendarDate, LOG_LIMIT, type GameState, type MemberEvent } from '@/engine'
@@ -21,6 +24,9 @@ const ICONS: Record<MemberEvent['type'], ReactNode> = {
   born: <Baby size={16} />,
   becameAdult: <Cake size={16} />,
   firstJob: <Briefcase size={16} />,
+  promoted: <TrendingUp size={16} />,
+  concursoStarted: <BookOpen size={16} />,
+  concurso: <Landmark size={16} />,
   married: <Heart size={15} fill="currentColor" />,
   retired: <Sun size={16} />,
   died: <Leaf size={16} />,
@@ -34,6 +40,9 @@ const TONES: Record<MemberEvent['type'], string> = {
   born: 'bg-leaf-soft text-leaf-strong',
   becameAdult: 'bg-gold-soft text-gold',
   firstJob: 'bg-gold-soft text-gold',
+  promoted: 'bg-gold-soft text-gold',
+  concursoStarted: 'bg-leaf-soft text-leaf-strong',
+  concurso: 'bg-gold-soft text-gold',
   married: 'bg-rose-soft text-rose',
   retired: 'bg-gold-soft text-gold',
   died: 'bg-line text-ink-soft',

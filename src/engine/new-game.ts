@@ -2,7 +2,8 @@ import { BALANCE } from '../content/balance'
 import { SURNAMES } from '../content/names'
 import { rollAppearance } from './appearance'
 import { FAMILY_NAME_MAX_LENGTH } from './constants'
-import { addMember, rollStarterCareer } from './members'
+import { rollFounderCareer } from './jobs'
+import { addMember } from './members'
 import { CURRENT_SCHEMA_VERSION } from './migrations'
 import { createRng, type Rng } from './rng'
 import { newEducation } from './school'
@@ -61,7 +62,7 @@ function addFounder(draft: GameState, rng: Rng, gender: Gender): Member {
     parentIds: [],
     origin: 'founder',
     appearance,
-    career: rollStarterCareer(rng),
+    career: rollFounderCareer(rng, 0),
     education: newEducation({ level: 'medio' }),
   })
 }

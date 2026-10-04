@@ -180,9 +180,10 @@ describe('advance', () => {
     const result = expectOk(
       applyAction(state, { type: 'choose', picks: [{ memberId: childId, option }] }),
     )
-    const careerId = choice.offers[option].careerId
-    const firstJob = { type: 'firstJob', day: state.clock.day, memberId: childId, careerId }
-    expect(result.state.members[childId].career).toEqual({ id: careerId, level: 0, xp: 0 })
+    const { careerId, level } = choice.offers[option]
+    const day = state.clock.day
+    const firstJob = { type: 'firstJob', day, memberId: childId, careerId, level }
+    expect(result.state.members[childId].career).toEqual({ id: careerId, level, levelSince: day })
     expect(result.state.choices).toEqual([])
     expect(result.events).toEqual([firstJob])
     expect(result.state.log.at(-1)).toEqual(firstJob)

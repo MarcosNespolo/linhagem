@@ -22,9 +22,11 @@ export const BALANCE = {
 
   /** Idade em que um membro vira adulto e consegue o primeiro emprego. */
   adultAge: 18,
-  /** Idade de aposentadoria. A partir dela, a renda é uma fração do salário. */
+  /** Idade de aposentadoria. A partir dela, a renda é uma fração do último salário. */
   retirementAge: 65,
   pensionRatio: 0.5,
+  /** No serviço público, a aposentadoria paga uma fração maior do último salário. */
+  publicPensionRatio: 0.7,
   /**
    * Dia do calendário (MM-DD) em que cai o 13º salário: quem trabalha recebe
    * um salário a mais, e quem é aposentado, uma pensão a mais.
@@ -66,11 +68,57 @@ export const BALANCE = {
     maxAgeGapYears: 5,
     /** Quantas pessoas aparecem a cada busca por par. */
     suitorsPerSearch: 3,
+    /**
+     * Formação de quem é sugerido como par: chance de ter curso técnico e de ter
+     * faculdade. O resto tem ensino médio.
+     */
+    suitorTechnicalChance: 0.2,
+    suitorDegreeChance: 0.2,
+    /** Chance de quem é sugerido como par ser servidor público. */
+    suitorPublicChance: 0.1,
   },
 
   jobs: {
     /** Quantas vagas aparecem na escolha do primeiro emprego. */
     offersPerChoice: 3,
+  },
+
+  careers: {
+    /**
+     * Anos no nível para subir ao seguinte: do 1º para o 2º, do 2º para o 3º, do
+     * 3º para o 4º e do 4º para o 5º.
+     */
+    yearsToPromote: [3, 5, 8, 12],
+    /**
+     * Primeiro nível (índice) que pede um curso pago: o 4º. Até o 3º, a pessoa
+     * sobe sozinha com o tempo. O serviço público sobe sempre só com o tempo.
+     */
+    courseLevel: 3,
+    /** O curso custa tantos meses do aumento, e se paga no mesmo tempo. */
+    courseMonths: 24,
+  },
+
+  /**
+   * Concurso público: quem estuda não trabalha, paga o cursinho e faz uma prova
+   * a cada três meses, por até um ano. A nota parte da nota do ENEM e sobe com
+   * os meses de estudo.
+   */
+  concurso: {
+    /** Mensalidade do cursinho para concurso. */
+    fee: 500,
+    /** Dias do calendário (MM-DD) em que sai o resultado de cada prova. */
+    examDates: ['03-15', '06-15', '09-15', '12-15'],
+    /** Provas por tentativa: com quatro por ano, é um ano de estudo. */
+    maxExams: 4,
+    /** Pontos que cada mês de estudo soma à nota de partida. */
+    pointsPerMonth: 10,
+    /** A nota de cada prova varia até tantos pontos para cima ou para baixo. */
+    spread: 40,
+    /**
+     * Nota de corte por nível de entrada no serviço público: técnico, de nível
+     * médio, e analista, de nível superior.
+     */
+    cutoffs: [620, 720],
   },
 
   /**

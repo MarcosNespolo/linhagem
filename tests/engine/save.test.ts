@@ -106,9 +106,15 @@ describe('save', () => {
     expect(state.clock).toEqual(v2.clock)
     expect(state.choices).toEqual([])
     for (const [id, member] of Object.entries(state.members)) {
-      const { education, ...rest } = member
-      expect(rest).toEqual(v2.members[id])
+      const { education, concurso, career, ...rest } = member
+      const { career: before, ...restBefore } = v2.members[id]
+      expect(rest).toEqual(restBefore)
       expect(education.formation).toEqual({ level: 'medio' })
+      expect(concurso).toBeNull()
+      // A carreira fica no mesmo nível, com o tempo contando a partir da migração.
+      expect(career).toEqual(
+        before && { id: before.id, level: before.level, levelSince: v2.clock.day },
+      )
     }
   })
 })

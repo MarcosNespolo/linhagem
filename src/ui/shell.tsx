@@ -1,6 +1,6 @@
 'use client'
 
-import { familyRates, livingMembers, type GameState } from '@/engine'
+import { affordableCourses, familyRates, livingMembers, type GameState } from '@/engine'
 import { useGameStore } from '@/game/store'
 import { BottomNav } from './bottom-nav'
 import { showMember } from './flows'
@@ -19,14 +19,16 @@ import { HistoryTab } from './tabs/history-tab'
 import { LoveTab } from './tabs/love-tab'
 import { SettingsTab } from './tabs/settings-tab'
 import { StudiesTab } from './tabs/studies-tab'
+import { WorkTab } from './tabs/work-tab'
 import { Toasts } from './toasts'
 import { FamilyTree } from './tree/family-tree'
 import { Hud } from './hud'
-import { useUiStore, type Sheet } from './ui-store'
+import { useUiStore, type FamilyView, type Sheet } from './ui-store'
 
 /** Tela do jogo: HUD em cima, a aba escolhida no meio e a navegação embaixo. */
 export function Shell({ game }: { game: GameState }) {
   const tab = useUiStore((store) => store.tab)
+  const familyView = useUiStore((store) => store.familyView)
   const sheet = useUiStore((store) => store.sheet)
   const showDeceased = useUiStore((store) => store.showDeceased)
   const hiddenChoices = useUiStore((store) => store.hiddenChoices)
@@ -46,30 +48,39 @@ export function Shell({ game }: { game: GameState }) {
       <NoticeBanner />
       <main className="relative min-h-0 flex-1 overflow-hidden">
         {tab === 'family' ? (
-          ended ? (
-            <FamilyEnded game={game} />
-          ) : (
-            <>
-              <FamilyTree
-                game={game}
-                showDeceased={showDeceased}
-                actions={nodeActions(actions, game.money)}
-                selectedId={selectedId}
-                onSelect={showMember}
-              />
-              <FamilyHint game={game} actions={actions} />
-            </>
-          )
+          <div className="flex h-full flex-col">
+            <FamilyViewSwitch />
+            <div className="relative min-h-0 flex-1">
+              {familyView === 'history' ? (
+                <div className="h-full overflow-y-auto overscroll-contain">
+                  <HistoryTab game={game} />
+                </div>
+              ) : ended ? (
+                <FamilyEnded game={game} />
+              ) : (
+                <>
+                  <FamilyTree
+                    game={game}
+                    showDeceased={showDeceased}
+                    actions={nodeActions(actions, game.money)}
+                    selectedId={selectedId}
+                    onSelect={showMember}
+                  />
+                  <FamilyHint game={game} actions={actions} />
+                </>
+              )}
+            </div>
+          </div>
         ) : (
           <div className="h-full overflow-y-auto overscroll-contain">
             {tab === 'love' ? <LoveTab game={game} actions={actions} /> : null}
             {tab === 'studies' ? <StudiesTab game={game} /> : null}
-            {tab === 'history' ? <HistoryTab game={game} /> : null}
+            {tab === 'work' ? <WorkTab game={game} /> : null}
             {tab === 'settings' ? <SettingsTab game={game} /> : null}
           </div>
         )}
       </main>
-      <BottomNav loveBadge={actions.ready} />
+      <BottomNav badges={{ love: actions.ready, work: affordableCourses(game).length }} />
       <Toasts game={game} />
       {cloud.conflict && !cloud.conflictHidden ? (
         <ConflictSheet game={game} conflict={cloud.conflict} />
@@ -101,6 +112,37 @@ function SheetHost({ game, sheet }: { game: GameState; sheet: Sheet }) {
     case 'cloudLogin':
       return <CloudLoginSheet />
   }
+}
+
+const FAMILY_VIEWS: { id: FamilyView; label: string }[] = [
+  { id: 'tree', label: 'Árvore' },
+  { id: 'history', label: 'Histórico' },
+]
+
+/** Seletor no alto da aba Família: a árvore ou o histórico. */
+function FamilyViewSwitch() {
+  const view = useUiStore((store) => store.familyView)
+  const setView = useUiStore((store) => store.setFamilyView)
+  return (
+    <div className="border-line bg-surface shrink-0 border-b px-4 py-2">
+      <div role="tablist" className="bg-canvas mx-auto flex max-w-xs rounded-full p-1">
+        {FAMILY_VIEWS.map(({ id, label }) => (
+          <button
+            key={id}
+            type="button"
+            role="tab"
+            aria-selected={view === id}
+            onClick={() => setView(id)}
+            className={`flex-1 rounded-full py-1.5 text-[14px] font-bold transition ${
+              view === id ? 'bg-surface text-leaf-strong shadow-sm' : 'text-ink-soft'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
 }
 
 function NoticeBanner() {

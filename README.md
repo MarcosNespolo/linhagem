@@ -17,13 +17,15 @@ Jogue em [linhagem.vercel.app](https://linhagem.vercel.app).
 - Fazer o ENEM no fim do médio e escolher o que vem depois: universidade federal (quando a nota
   alcança o corte do curso), faculdade particular, curso técnico, cursinho ou trabalhar
 - Ver na aba Estudos quem estuda, onde, a mensalidade e a nota ou o ENEM de cada um
-- Escolher o primeiro emprego entre três vagas, ao sair dos estudos, com a vaga da área de quem se
-  formou num curso que já tem carreira no jogo; o tempo para até a escolha
-- Casar quem fez 18 anos, escolhendo entre pessoas sugeridas; o cônjuge entra na família e
-  trabalha
+- Escolher o primeiro emprego entre três vagas das carreiras que a formação abre, ou estudar para
+  concurso público; o tempo para até a escolha
+- Acompanhar na aba Trabalho as carreiras, os níveis e as promoções, e pagar os cursos que levam
+  ao 4º e ao 5º nível
+- Casar quem fez 18 anos, escolhendo entre pessoas sugeridas, cada uma com formação e emprego; o
+  cônjuge entra na família e trabalha
 - Acompanhar o dinheiro em reais, com salários e despesas por mês e o 13º salário em dezembro
 - Ver a família numa árvore com zoom e arrasto, com quem já morreu esmaecido
-- Acompanhar o histórico de nascimentos, casamentos, aposentadorias e mortes
+- Ver o histórico na aba Família: nascimentos, casamentos, estudos, empregos, promoções e mortes
 - Voltar ao jogo e ver o resumo do que aconteceu enquanto esteve fora
 - Entrar com e-mail, sem senha, para guardar a família na nuvem e continuar em outro aparelho
 
@@ -90,8 +92,8 @@ sincroniza com a nuvem.
 O jogo passa a 1 ano por minuto, ou 1 mês a cada 5 segundos (`BALANCE.secondsPerGameMonth` em
 `src/content/balance.ts`): um filho vira adulto em 18 minutos. Salários e despesas são em reais
 por mês do jogo e o dinheiro entra aos poucos, a cada instante. Os eventos (aniversários,
-maioridade, aposentadoria, morte e o 13º salário, em 20 de dezembro) acontecem na virada de cada
-dia do jogo.
+maioridade, aposentadoria, morte, promoções, provas de concurso e o 13º salário, em 20 de
+dezembro) acontecem na virada de cada dia do jogo.
 
 Quando alguém precisa de uma escolha, como a matrícula ou o primeiro emprego, o relógio para até o
 jogador decidir. As escolhas abertas ficam no save (`choices`), e a sugestão de cada uma já vem
@@ -112,6 +114,32 @@ escolha do primeiro emprego. Quem estuda não tem salário. Na formatura, també
 formação fica registrada e abre a escolha do emprego. Os cursos ficam em `src/content/schools.ts`,
 as regras em `src/engine/college.ts` e os valores em `BALANCE.college`. Quem chega aos 18 sem
 estudar nem trabalhar, como quem veio de um save antigo, escolhe o emprego no aniversário.
+
+## Carreiras e concurso
+
+São 12 carreiras, com 5 níveis cada (`src/content/careers.ts`). Cada uma pede uma formação, e as
+que pedem mais pagam mais: cinco pedem só o ensino médio, Saúde e Tecnologia pedem o curso técnico
+da área, Educação, Engenharia, Direito e Medicina pedem a faculdade, e o serviço público pede
+aprovação em concurso. Na escolha de emprego aparecem três vagas: a da área da formação, sempre,
+e carreiras de ensino médio. Quem tem formação acima da que a carreira pede, na mesma área, entra
+um nível acima, como quem se formou em Enfermagem, que começa como enfermeiro.
+
+A promoção vem com o tempo no nível: 3 anos no 1º, 5 no 2º, 8 no 3º e 12 no 4º. Até o 3º nível, a
+pessoa sobe sozinha; para o 4º e o 5º, a família paga um curso que custa 24 meses do aumento, na
+aba Trabalho, onde também dá para pagar todos de uma vez, do mais barato ao mais caro. As regras
+ficam em `src/engine/promotions.ts`, e os valores em `BALANCE.careers`.
+
+Quem tem ensino médio pode trocar a primeira vaga por estudar para concurso: até um ano sem
+salário, com cursinho de R$ 500 por mês e uma prova a cada três meses. A nota parte do ENEM, sobe
+10 pontos por mês de estudo e varia até 40 para cima ou para baixo. Com 620, a pessoa passa para
+técnico; com faculdade e 720, para analista. Quando sai a aprovação, o jogador escolhe tomar posse,
+continuar estudando para o cargo de nível superior ou procurar outro emprego. No serviço público,
+a promoção vem só com o tempo, e a aposentadoria paga 70% do último salário, em vez de 50%. As
+regras ficam em `src/engine/concurso.ts`, e os valores em `BALANCE.concurso`.
+
+O casal fundador começa no 1º nível de uma carreira de ensino médio. Quem é sugerido como par chega
+com formação e emprego sorteados, já com as promoções dos anos de trabalho
+(`src/engine/jobs.ts`).
 
 Com o jogo fechado ou a aba escondida, o relógio não anda. Ao voltar, o tempo fora é simulado de
 uma vez, com limite de 5 anos do jogo (`BALANCE.offlineCapYears`), e para na primeira escolha que

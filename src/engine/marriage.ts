@@ -1,6 +1,7 @@
 import { BALANCE } from '../content/balance'
 import { rollAppearance } from './appearance'
 import { refuse, type Refusal } from './errors'
+import { rollSuitorBackground } from './jobs'
 import {
   addMember,
   ageOf,
@@ -9,7 +10,6 @@ import {
   rollAvatarSeed,
   rollFirstName,
   rollLifespan,
-  rollStarterCareer,
 } from './members'
 import type { Rng } from './rng'
 import { newEducation } from './school'
@@ -65,7 +65,10 @@ export function rollSuitors(state: GameState, rng: Rng, member: Member): Suitor[
   return suitors
 }
 
-/** Pessoa de outro gênero, adulta, com idade até `maxAgeGapYears` de diferença. */
+/**
+ * Pessoa de outro gênero, adulta, com idade até `maxAgeGapYears` de diferença,
+ * com formação e emprego sorteados.
+ */
 function rollSuitor(
   state: GameState,
   rng: Rng,
@@ -82,12 +85,15 @@ function rollSuitor(
   const ageDays = rng.int(youngest, oldest)
   const firstName = rollFirstName(state, rng, gender, taken)
   const lifespan = Math.max(rollLifespan(rng), Math.floor(ageDays / daysPerYear) + 2)
+  const birthDay = day - ageDays
+  const { formation, career } = rollSuitorBackground(rng, birthDay, day)
   return {
     firstName,
     gender,
-    birthDay: day - ageDays,
+    birthDay,
     lifespan,
-    career: rollStarterCareer(rng),
+    formation,
+    career,
     appearance: rollAppearance(rng, gender),
     avatarSeed: rollAvatarSeed(rng),
   }
@@ -106,7 +112,7 @@ export function joinFamily(draft: GameState, rng: Rng, member: Member, suitor: S
     career: suitor.career,
     lifespan: suitor.lifespan,
     avatarSeed: suitor.avatarSeed,
-    education: newEducation({ level: 'medio' }),
+    education: newEducation(suitor.formation),
   })
   const day = draft.clock.day
   member.partnerId = spouse.id
