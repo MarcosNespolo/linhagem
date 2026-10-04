@@ -1,5 +1,5 @@
 import type { CareerId } from '../content/careers'
-import type { Network, SchoolStage, TechCourseId } from '../content/schools'
+import type { DegreeId, Network, SchoolStage, Stage, TechCourseId } from '../content/schools'
 
 export type MemberId = string
 export type Gender = 'f' | 'm'
@@ -15,29 +15,38 @@ export type CareerState = {
   xp: number
 }
 
-/** Matrícula de quem está na creche ou na escola. */
+/** Matrícula de quem está na creche, na escola, no cursinho, no técnico ou na faculdade. */
 export type Enrollment = {
-  stage: SchoolStage
+  stage: Stage
   network: Network
-  /** Curso técnico integrado, no instituto federal. */
+  /** Curso técnico: integrado ao médio no instituto federal, ou o técnico depois do médio. */
   course?: TechCourseId
+  /** Curso da faculdade. */
+  degree?: DegreeId
+  /** Anos que faltam, contando o atual, no cursinho, no técnico e na faculdade. */
+  yearsLeft?: number
   /** Quem trabalha meio período para cuidar da criança em casa. */
   caregiverId?: MemberId
   /** Troca de rede pedida para a próxima matrícula, dentro da mesma etapa. */
   next?: Network
 }
 
-/** Maior formação concluída. A faculdade entra na etapa 4.3. */
-export type Formation = { level: 'medio' } | { level: 'tecnico'; course: TechCourseId }
+/** Maior formação concluída: ensino médio, técnico ou faculdade. */
+export type Formation =
+  | { level: 'medio' }
+  | { level: 'tecnico'; course: TechCourseId }
+  | { level: 'superior'; degree: DegreeId }
 
 export type Education = {
-  /** Matrícula atual, ou null fora da creche e da escola. */
+  /** Matrícula atual, ou null fora dos estudos. */
   school: Enrollment | null
-  /** Pontos que as escolas somaram à nota, ano a ano. */
+  /** Pontos que as escolas e o cursinho somaram à nota. */
   points: number
   /** Rede de cada etapa já concluída, para sugerir a mesma aos irmãos mais novos. */
-  past: Partial<Record<SchoolStage, Network>>
+  past: Partial<Record<Stage, Network>>
   formation: Formation | null
+  /** Nota do último ENEM, ou null para quem não fez. */
+  enem: number | null
 }
 
 /** Vaga oferecida na escolha do primeiro emprego: o primeiro nível de uma carreira. */
@@ -51,6 +60,13 @@ export type SchoolOption = {
   /** Saiu vaga, passou na prova: dá para escolher. */
   available: boolean
 }
+
+/** Caminho depois do ensino médio, na escolha de janeiro. */
+export type PathOption =
+  | { path: 'faculdade'; network: 'federal' | 'particular'; degree: DegreeId; available: boolean }
+  | { path: 'tecnico'; network: 'federal' | 'particular'; course: TechCourseId; available: boolean }
+  | { path: 'cursinho'; available: boolean }
+  | { path: 'trabalho'; available: boolean }
 
 /**
  * Escolha que espera o jogador. Enquanto houver alguma aberta, o relógio não
@@ -75,6 +91,16 @@ export type Choice =
       stage: SchoolStage
       options: SchoolOption[]
       /** Índice da opção sugerida: a do instituto federal, a dos irmãos ou a mais barata. */
+      suggested: number
+    }
+  | {
+      /** O que fazer depois do ensino médio, em janeiro, com a nota do ENEM. */
+      type: 'afterSchool'
+      memberId: MemberId
+      day: number
+      enem: number
+      options: PathOption[]
+      /** Índice do caminho sugerido: a federal que a nota alcança, o técnico federal ou trabalhar. */
       suggested: number
     }
 
@@ -192,10 +218,12 @@ export type MemberEvent =
       type: 'schoolStarted'
       day: number
       memberId: MemberId
-      stage: SchoolStage
+      stage: Stage
       network: Network
       course?: TechCourseId
+      degree?: DegreeId
     }
+  | { type: 'enem'; day: number; memberId: MemberId; score: number }
   | { type: 'schoolChanged'; day: number; memberId: MemberId; network: Network }
   | { type: 'schoolFinished'; day: number; memberId: MemberId; formation: Formation }
 

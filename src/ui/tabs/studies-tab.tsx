@@ -1,6 +1,6 @@
 'use client'
 
-import { techCourseName, type SchoolStage } from '@/content/schools'
+import { isHigherStage, techCourseName, type Stage } from '@/content/schools'
 import {
   ageOf,
   ageThisYear,
@@ -13,10 +13,13 @@ import {
 import { formatAge, formatMoney } from '@/lib/format'
 import { PersonAvatar } from '../avatar/person-avatar'
 import { showMember } from '../flows'
-import { gradeLabel, schoolName } from '../labels'
+import { schoolName, schoolYearLabel } from '../labels'
 import { card } from '../styles'
 
-const SECTIONS: { stage: SchoolStage; title: string }[] = [
+const SECTIONS: { stage: Stage; title: string }[] = [
+  { stage: 'faculdade', title: 'Faculdade' },
+  { stage: 'tecnico', title: 'Curso técnico' },
+  { stage: 'cursinho', title: 'Cursinho' },
   { stage: 'medio', title: 'Ensino médio' },
   { stage: 'escola', title: 'Escola' },
   { stage: 'creche', title: 'Creche' },
@@ -53,7 +56,8 @@ export function StudiesTab({ game }: { game: GameState }) {
           Mensalidades: {fees > 0 ? `${formatMoney(fees)} por mês` : 'nenhuma'}
         </p>
         <p className="text-ink-soft mt-2 text-[13px]">
-          As matrículas são todo janeiro. Toque em alguém para trocar de escola no ano seguinte.
+          As matrículas são todo janeiro, e as formaturas também. Toque em alguém da escola para
+          trocar de rede no ano seguinte.
         </p>
       </section>
 
@@ -80,10 +84,13 @@ function StudentRow({ game, member }: { game: GameState; member: Member }) {
   if (!school) return null
   const day = game.clock.day
   const fee = schoolFee(school)
-  const grade = gradeLabel(school.stage, ageThisYear(member, game.startDate, day))
-  const place = school.course
-    ? `${schoolName(school.stage, school.network)} · ${techCourseName(school.course)}`
-    : schoolName(school.stage, school.network)
+  const grade = schoolYearLabel(school, ageThisYear(member, game.startDate, day))
+  const higher = isHigherStage(school.stage)
+  // No técnico e na faculdade, o curso já está no ano ("3º ano de Direito").
+  const place =
+    school.course && !higher
+      ? `${schoolName(school.stage, school.network)} · ${techCourseName(school.course)}`
+      : schoolName(school.stage, school.network)
 
   return (
     <li>
@@ -106,7 +113,11 @@ function StudentRow({ game, member }: { game: GameState; member: Member }) {
           >
             {fee > 0 ? `${formatMoney(fee)}/mês` : 'Gratuita'}
           </span>
-          {school.stage !== 'creche' ? (
+          {higher && member.education.enem !== null ? (
+            <span className="tabular text-ink-soft block text-[13px]">
+              ENEM {member.education.enem}
+            </span>
+          ) : school.stage !== 'creche' && !higher ? (
             <span className="tabular text-ink-soft block text-[13px]">
               Nota {Math.floor(schoolScore(member))}
             </span>

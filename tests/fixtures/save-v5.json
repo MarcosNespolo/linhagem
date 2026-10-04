@@ -1,0 +1,511 @@
+{
+  "schemaVersion": 5,
+  "seed": 20261003,
+  "rngState": 1268779743,
+  "familyName": "Exemplo",
+  "startDate": "2026-10-03",
+  "clock": {
+    "day": 7760,
+    "tickOfDay": 0,
+    "paused": false
+  },
+  "lastSimulatedAt": 1760000000000,
+  "money": 18272922.315066554,
+  "nextMemberId": 7,
+  "suitors": {},
+  "choices": [
+    {
+      "type": "afterSchool",
+      "memberId": "m4",
+      "day": 7760,
+      "enem": 654,
+      "options": [
+        {
+          "path": "faculdade",
+          "network": "federal",
+          "degree": "medicina",
+          "available": false
+        },
+        {
+          "path": "faculdade",
+          "network": "federal",
+          "degree": "direito",
+          "available": false
+        },
+        {
+          "path": "faculdade",
+          "network": "federal",
+          "degree": "engenharia",
+          "available": false
+        },
+        {
+          "path": "faculdade",
+          "network": "federal",
+          "degree": "computacao",
+          "available": false
+        },
+        {
+          "path": "faculdade",
+          "network": "federal",
+          "degree": "enfermagem",
+          "available": true
+        },
+        {
+          "path": "faculdade",
+          "network": "federal",
+          "degree": "licenciatura",
+          "available": true
+        },
+        {
+          "path": "faculdade",
+          "network": "particular",
+          "degree": "medicina",
+          "available": true
+        },
+        {
+          "path": "faculdade",
+          "network": "particular",
+          "degree": "direito",
+          "available": true
+        },
+        {
+          "path": "faculdade",
+          "network": "particular",
+          "degree": "engenharia",
+          "available": true
+        },
+        {
+          "path": "faculdade",
+          "network": "particular",
+          "degree": "computacao",
+          "available": true
+        },
+        {
+          "path": "faculdade",
+          "network": "particular",
+          "degree": "enfermagem",
+          "available": true
+        },
+        {
+          "path": "faculdade",
+          "network": "particular",
+          "degree": "licenciatura",
+          "available": true
+        },
+        {
+          "path": "tecnico",
+          "network": "federal",
+          "course": "informatica",
+          "available": true
+        },
+        {
+          "path": "tecnico",
+          "network": "federal",
+          "course": "enfermagem",
+          "available": true
+        },
+        {
+          "path": "tecnico",
+          "network": "federal",
+          "course": "edificacoes",
+          "available": true
+        },
+        {
+          "path": "tecnico",
+          "network": "federal",
+          "course": "agropecuaria",
+          "available": true
+        },
+        {
+          "path": "cursinho",
+          "available": true
+        },
+        {
+          "path": "trabalho",
+          "available": true
+        }
+      ],
+      "suggested": 4
+    }
+  ],
+  "log": [
+    {
+      "type": "born",
+      "day": 730,
+      "memberId": "m3"
+    },
+    {
+      "type": "schoolStarted",
+      "day": 821,
+      "memberId": "m3",
+      "stage": "creche",
+      "network": "casa"
+    },
+    {
+      "type": "born",
+      "day": 1460,
+      "memberId": "m4"
+    },
+    {
+      "type": "schoolStarted",
+      "day": 1551,
+      "memberId": "m4",
+      "stage": "creche",
+      "network": "casa"
+    },
+    {
+      "type": "schoolStarted",
+      "day": 1916,
+      "memberId": "m3",
+      "stage": "escola",
+      "network": "publica"
+    },
+    {
+      "type": "schoolStarted",
+      "day": 2647,
+      "memberId": "m4",
+      "stage": "escola",
+      "network": "publica"
+    },
+    {
+      "type": "schoolStarted",
+      "day": 5934,
+      "memberId": "m3",
+      "stage": "medio",
+      "network": "publica"
+    },
+    {
+      "type": "schoolStarted",
+      "day": 6665,
+      "memberId": "m4",
+      "stage": "medio",
+      "network": "federal",
+      "course": "informatica"
+    },
+    {
+      "type": "schoolFinished",
+      "day": 7030,
+      "memberId": "m3",
+      "formation": {
+        "level": "medio"
+      }
+    },
+    {
+      "type": "enem",
+      "day": 7030,
+      "memberId": "m3",
+      "score": 437
+    },
+    {
+      "type": "schoolStarted",
+      "day": 7030,
+      "memberId": "m3",
+      "stage": "faculdade",
+      "network": "particular",
+      "degree": "direito"
+    },
+    {
+      "type": "becameAdult",
+      "day": 7300,
+      "memberId": "m3"
+    },
+    {
+      "type": "married",
+      "day": 7395,
+      "memberId": "m3",
+      "partnerId": "m5"
+    },
+    {
+      "type": "born",
+      "day": 7395,
+      "memberId": "m6"
+    },
+    {
+      "type": "schoolFinished",
+      "day": 7760,
+      "memberId": "m4",
+      "formation": {
+        "level": "tecnico",
+        "course": "informatica"
+      }
+    },
+    {
+      "type": "enem",
+      "day": 7760,
+      "memberId": "m4",
+      "score": 654
+    },
+    {
+      "type": "schoolStarted",
+      "day": 7760,
+      "memberId": "m6",
+      "stage": "creche",
+      "network": "publica"
+    }
+  ],
+  "stats": {
+    "simulatedMs": 1275616.095890411,
+    "totalEarned": 868602.8219177854,
+    "totalSpent": 595680.5068493163
+  },
+  "members": {
+    "m1": {
+      "id": "m1",
+      "firstName": "Vitória",
+      "gender": "f",
+      "birthDay": -9728,
+      "deathDay": null,
+      "lifespan": 85,
+      "generation": 0,
+      "origin": "founder",
+      "parentIds": [],
+      "partnerId": "m2",
+      "marriedDay": 0,
+      "career": {
+        "id": "gastronomia",
+        "level": 0,
+        "xp": 0
+      },
+      "lastChildDay": 1460,
+      "traits": [],
+      "appearance": {
+        "skin": 5,
+        "hair": 1,
+        "eyes": 1,
+        "curl": 1,
+        "style": 640,
+        "freckles": false,
+        "glassesFrom": 25,
+        "beard": false,
+        "balding": false
+      },
+      "avatarSeed": "ahs7q2",
+      "education": {
+        "school": null,
+        "points": 0,
+        "past": {},
+        "formation": {
+          "level": "medio"
+        },
+        "enem": null
+      }
+    },
+    "m2": {
+      "id": "m2",
+      "firstName": "Samuel",
+      "gender": "m",
+      "birthDay": -8228,
+      "deathDay": null,
+      "lifespan": 76,
+      "generation": 0,
+      "origin": "founder",
+      "parentIds": [],
+      "partnerId": "m1",
+      "marriedDay": 0,
+      "career": {
+        "id": "gastronomia",
+        "level": 0,
+        "xp": 0
+      },
+      "lastChildDay": 1460,
+      "traits": [],
+      "appearance": {
+        "skin": 3,
+        "hair": 1,
+        "eyes": 0,
+        "curl": 1,
+        "style": 162,
+        "freckles": true,
+        "glassesFrom": null,
+        "beard": true,
+        "balding": false
+      },
+      "avatarSeed": "ogju5p",
+      "education": {
+        "school": null,
+        "points": 0,
+        "past": {},
+        "formation": {
+          "level": "medio"
+        },
+        "enem": null
+      }
+    },
+    "m3": {
+      "id": "m3",
+      "firstName": "Melissa",
+      "gender": "f",
+      "birthDay": 730,
+      "deathDay": null,
+      "lifespan": 77,
+      "generation": 1,
+      "origin": "born",
+      "parentIds": [
+        "m1",
+        "m2"
+      ],
+      "partnerId": "m5",
+      "marriedDay": 7395,
+      "career": null,
+      "lastChildDay": 7395,
+      "traits": [],
+      "appearance": {
+        "skin": 3,
+        "hair": 1,
+        "eyes": 0,
+        "curl": 1,
+        "style": 560,
+        "freckles": true,
+        "glassesFrom": null,
+        "beard": false,
+        "balding": false
+      },
+      "avatarSeed": "dm3id9",
+      "education": {
+        "school": {
+          "stage": "faculdade",
+          "network": "particular",
+          "degree": "direito",
+          "yearsLeft": 3
+        },
+        "points": 0,
+        "past": {
+          "creche": "casa",
+          "escola": "publica",
+          "medio": "publica"
+        },
+        "formation": {
+          "level": "medio"
+        },
+        "enem": 437
+      }
+    },
+    "m4": {
+      "id": "m4",
+      "firstName": "Júlia",
+      "gender": "f",
+      "birthDay": 1460,
+      "deathDay": null,
+      "lifespan": 87,
+      "generation": 1,
+      "origin": "born",
+      "parentIds": [
+        "m1",
+        "m2"
+      ],
+      "partnerId": null,
+      "marriedDay": null,
+      "career": null,
+      "lastChildDay": null,
+      "traits": [],
+      "appearance": {
+        "skin": 3,
+        "hair": 1,
+        "eyes": 1,
+        "curl": 1,
+        "style": 159,
+        "freckles": true,
+        "glassesFrom": 19,
+        "beard": false,
+        "balding": false
+      },
+      "avatarSeed": "s6j1dz",
+      "education": {
+        "school": null,
+        "points": 60,
+        "past": {
+          "creche": "casa",
+          "escola": "publica",
+          "medio": "federal"
+        },
+        "formation": {
+          "level": "tecnico",
+          "course": "informatica"
+        },
+        "enem": 654
+      }
+    },
+    "m5": {
+      "id": "m5",
+      "firstName": "Ravi",
+      "gender": "m",
+      "birthDay": -127,
+      "deathDay": null,
+      "lifespan": 91,
+      "generation": 1,
+      "origin": "married",
+      "parentIds": [],
+      "partnerId": "m3",
+      "marriedDay": 7395,
+      "career": {
+        "id": "comercio",
+        "level": 0,
+        "xp": 0
+      },
+      "lastChildDay": 7395,
+      "traits": [],
+      "appearance": {
+        "skin": 1,
+        "hair": 1,
+        "eyes": 3,
+        "curl": 2,
+        "style": 108,
+        "freckles": true,
+        "glassesFrom": null,
+        "beard": true,
+        "balding": true
+      },
+      "avatarSeed": "7bynll",
+      "education": {
+        "school": null,
+        "points": 0,
+        "past": {},
+        "formation": {
+          "level": "medio"
+        },
+        "enem": null
+      }
+    },
+    "m6": {
+      "id": "m6",
+      "firstName": "Marina",
+      "gender": "f",
+      "birthDay": 7395,
+      "deathDay": null,
+      "lifespan": 86,
+      "generation": 2,
+      "origin": "born",
+      "parentIds": [
+        "m3",
+        "m5"
+      ],
+      "partnerId": null,
+      "marriedDay": null,
+      "career": null,
+      "lastChildDay": null,
+      "traits": [],
+      "appearance": {
+        "skin": 1,
+        "hair": 1,
+        "eyes": 0,
+        "curl": 2,
+        "style": 155,
+        "freckles": false,
+        "glassesFrom": null,
+        "beard": false,
+        "balding": false
+      },
+      "avatarSeed": "jg9413",
+      "education": {
+        "school": {
+          "stage": "creche",
+          "network": "publica"
+        },
+        "points": 6.666666666666667,
+        "past": {},
+        "formation": null,
+        "enem": null
+      }
+    }
+  }
+}

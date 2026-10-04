@@ -15,7 +15,8 @@ export {
 } from './actions'
 export { advance, advanceTo, isWaiting, type AdvanceResult } from './advance'
 export { inheritAppearance, rollAppearance } from './appearance'
-export { bestOffer, offerSalary, suggestedPicks, type ChoicePick } from './choices'
+export { suggestedPicks, type ChoicePick } from './choices'
+export { rollEnem } from './college'
 export { FAMILY_NAME_MAX_LENGTH } from './constants'
 export {
   familyRates,
@@ -32,6 +33,7 @@ export {
   isEnrollmentDay,
   retiredGrandparents,
 } from './enrollment'
+export { bestOffer, formationCareer, offerSalary } from './jobs'
 export { isMemberEvent, LOG_LIMIT } from './log'
 export { checkMarry, checkSeekPartner, weddingCost, type MarriageCheck } from './marriage'
 export { ageOf, childrenOf, isAdult, isAlive, isRetired, livingMembers, partnerOf } from './members'

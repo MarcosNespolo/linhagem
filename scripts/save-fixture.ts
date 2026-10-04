@@ -7,9 +7,10 @@
  * versão.
  *
  * O exemplo passa pelas ações principais do jogo: dois filhos que fizeram a
- * escola com as matrículas sugeridas, um deles com emprego e casado, com um
- * filho na creche, e o outro recém-chegado aos 18, com a escolha do primeiro
- * emprego aberta e pessoas sugeridas como par esperando resposta.
+ * escola com as matrículas sugeridas. O mais velho faz Direito numa faculdade
+ * particular, casou e tem um filho na creche; o mais novo acabou o médio, com
+ * a escolha do que fazer depois aberta, e o mais velho tem pessoas sugeridas
+ * como par para o irmão conhecer depois.
  */
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { BALANCE } from '../src/content/balance'
@@ -71,18 +72,32 @@ state = play(state, 2 * year)
 state = act(state, { type: 'haveChild', parentId: 'm1' })
 state = play(state, 2 * year)
 state = act(state, { type: 'haveChild', parentId: 'm1' })
-// Os dois passam pela escola com as matrículas sugeridas. O relógio para nos 18
-// anos do primeiro, que fica com o emprego sugerido, casa e tem um filho.
-state = play(state, 19 * year, 'firstJob')
-state = act(state, { type: 'choose', picks: suggestedPicks(state) })
+// Os dois passam pela escola com as matrículas sugeridas. No janeiro em que o
+// mais velho faz 18, ele vai para Direito numa faculdade particular.
+state = play(state, 16 * year, 'afterSchool')
+const afterSchool = state.choices.find((choice) => choice.type === 'afterSchool')
+if (afterSchool?.type !== 'afterSchool') throw new Error('O exemplo devia parar depois do médio')
+const law = afterSchool.options.findIndex(
+  (option) =>
+    option.path === 'faculdade' && option.network === 'particular' && option.degree === 'direito',
+)
+state = act(state, { type: 'choose', picks: [{ memberId: afterSchool.memberId, option: law }] })
+// Já com 18, casa e tem um filho, que entra na creche.
+state = play(state, year)
 state = act(state, { type: 'findSuitors', memberId: 'm3' })
 state = act(state, { type: 'marry', memberId: 'm3', suitorIndex: 0 })
 state = act(state, { type: 'haveChild', parentId: 'm3' })
-// O neto entra na creche, e o relógio para de novo nos 18 anos do segundo filho.
-state = play(state, 3 * year, 'firstJob')
-state = act(state, { type: 'findSuitors', memberId: 'm4' })
+// No janeiro em que o mais novo faz 18, a escolha do que fazer depois fica aberta.
+state = play(state, 2 * year, 'afterSchool')
+const others = state.choices.filter((choice) => choice.type !== 'afterSchool')
+if (others.length > 0) {
+  const picks = others.map((choice) => ({ memberId: choice.memberId, option: choice.suggested }))
+  state = act(state, { type: 'choose', picks })
+}
 state = advance(state, daysToMs(100)).state
-if (state.choices.length !== 1) throw new Error('O exemplo devia terminar com uma escolha aberta')
+if (state.choices.length !== 1 || state.choices[0].type !== 'afterSchool') {
+  throw new Error('O exemplo devia terminar com a escolha depois do médio aberta')
+}
 
 mkdirSync('tests/fixtures', { recursive: true })
 writeFileSync(path, `${JSON.stringify(state, null, 2)}\n`)

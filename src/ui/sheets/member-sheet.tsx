@@ -1,7 +1,7 @@
 'use client'
 
 import { Baby, Briefcase, Heart, School } from 'lucide-react'
-import { techCourseName, type Network } from '@/content/schools'
+import { isHigherStage, techCourseName, type Network } from '@/content/schools'
 import {
   ageThisYear,
   calendarDate,
@@ -29,11 +29,11 @@ import {
   byGender,
   childStatus,
   formationLabel,
-  gradeLabel,
   relationLine,
   roleLabel,
   schoolName,
   schoolNameInSentence,
+  schoolYearLabel,
 } from '../labels'
 import { button } from '../styles'
 import { useUiStore } from '../ui-store'
@@ -88,19 +88,24 @@ export function MemberSheet({ game, member }: { game: GameState; member: Member 
               {schoolName(school.stage, school.network)}
               {school.course ? ` · ${techCourseName(school.course)}` : ''}
               <span className="text-ink-soft block text-[13px] font-normal">
-                {gradeLabel(school.stage, ageThisYear(member, game.startDate, day))}
+                {schoolYearLabel(school, ageThisYear(member, game.startDate, day))}
                 {schoolFee(school) > 0 ? ` · ${formatMoney(schoolFee(school))}/mês` : ' · gratuita'}
               </span>
             </Fact>
-            {school.stage !== 'creche' ? (
+            {school.stage !== 'creche' && !isHigherStage(school.stage) ? (
               <Fact label="Nota">
                 <span className="tabular">{Math.floor(schoolScore(member))}</span>
               </Fact>
             ) : null}
           </>
         ) : null}
-        {formation && !school ? (
+        {formation && (!school || isHigherStage(school.stage)) ? (
           <Fact label="Formação">{formationLabel(member, formation)}</Fact>
+        ) : null}
+        {member.education.enem !== null ? (
+          <Fact label="ENEM">
+            <span className="tabular">{member.education.enem} pontos</span>
+          </Fact>
         ) : null}
         <Fact label="Nasceu em">
           {formatMonthYear(calendarDate(game.startDate, member.birthDay))}
@@ -165,7 +170,9 @@ function OpenChoice({ member, choice }: { member: Member; choice: Choice }) {
 /** Troca entre escola pública e colégio particular, que vale na matrícula seguinte. */
 function SchoolChange({ member, school }: { member: Member; school: Enrollment }) {
   const dispatch = useGameStore((store) => store.dispatch)
-  if (school.stage === 'creche' || school.network === 'federal') return null
+  if (school.stage === 'creche' || isHigherStage(school.stage) || school.network === 'federal') {
+    return null
+  }
   const other = school.network === 'particular' ? 'publica' : 'particular'
   const change = (network: Network) =>
     dispatch({ type: 'changeSchool', memberId: member.id, network })

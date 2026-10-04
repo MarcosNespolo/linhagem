@@ -17,8 +17,9 @@ describe('histórico', () => {
       'schoolStarted',
       'schoolStarted',
       'schoolFinished',
-      'becameAdult',
+      'enem',
       'firstJob',
+      'becameAdult',
     ])
     expect(state.log.every((event) => event.memberId === childId)).toBe(true)
 

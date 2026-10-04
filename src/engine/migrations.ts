@@ -6,7 +6,7 @@ import { ageInYears, lastDayOfYear } from './time'
 import type { GameState } from './types'
 
 /** Versão atual do formato do save. Sobe a cada migração nova. */
-export const CURRENT_SCHEMA_VERSION = 4
+export const CURRENT_SCHEMA_VERSION = 5
 
 export type SaveErrorCode = 'corrupt' | 'futureVersion' | 'missingMigration'
 
@@ -110,6 +110,19 @@ const toVersion4: Migration = (save) => {
   return { ...save, members: upgraded }
 }
 
+/** Versão 4 para 5: entra a nota do ENEM, vazia para todos até o próximo ENEM. */
+const toVersion5: Migration = (save) => {
+  const members = isRecord(save.members) ? save.members : {}
+  const upgraded: RawSave = {}
+  for (const [id, member] of Object.entries(members)) {
+    upgraded[id] =
+      isRecord(member) && isRecord(member.education)
+        ? { ...member, education: { ...member.education, enem: null } }
+        : member
+  }
+  return { ...save, members: upgraded }
+}
+
 /**
  * Migrações, indexadas pela versão de origem. São sempre aditivas: criam
  * campos novos com valores padrão e nunca apagam dados do jogador; uma troca
@@ -122,6 +135,7 @@ export const MIGRATIONS: Readonly<Record<number, Migration>> = {
   1: toVersion2,
   2: toVersion3,
   3: toVersion4,
+  4: toVersion5,
 }
 
 /** Valida um save lido de JSON e o leva até a versão atual. */

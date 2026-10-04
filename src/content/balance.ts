@@ -117,4 +117,16 @@ export const BALANCE = {
       },
     },
   },
+
+  /** Depois do ensino médio: ENEM, faculdade, curso técnico e cursinho. */
+  college: {
+    /** O ENEM é a nota da escola mais um sorteio de até tantos pontos para cima ou para baixo. */
+    enemSpread: 50,
+    /** Nota mínima no ENEM para o curso técnico do instituto federal. */
+    federalTechCutoff: 550,
+    /** Curso técnico depois do médio: duração em anos e mensalidade na escola particular. */
+    technical: { years: 2, fee: 600 },
+    /** Cursinho: um ano, com mensalidade, e pontos que somam na nota do ENEM seguinte. */
+    prep: { years: 1, fee: 800, points: 30 },
+  },
 } as const

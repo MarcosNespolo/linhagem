@@ -1,51 +1,11 @@
-import { BALANCE } from '../content/balance'
-import { CAREER_IDS, careerLevel } from '../content/careers'
+import { applyPathPick } from './college'
 import { applySchoolPick } from './enrollment'
 import { refuse, type Refusal } from './errors'
 import type { Rng } from './rng'
-import type { GameEvent, GameState, JobOffer, Member, MemberId } from './types'
+import type { GameEvent, GameState, MemberId } from './types'
 
 /** Resposta a uma escolha aberta: de quem é e o índice da opção escolhida. */
 export type ChoicePick = { memberId: MemberId; option: number }
-
-/** Sorteia vagas de carreiras diferentes para o primeiro emprego. */
-export function rollJobOffers(rng: Rng): JobOffer[] {
-  const pool = [...CAREER_IDS]
-  const offers: JobOffer[] = []
-  const count = Math.min(BALANCE.jobs.offersPerChoice, pool.length)
-  for (let i = 0; i < count; i++) {
-    const index = rng.int(0, pool.length - 1)
-    offers.push({ careerId: pool[index] })
-    pool.splice(index, 1)
-  }
-  return offers
-}
-
-/** Salário por mês de uma vaga, que é sempre o primeiro nível da carreira. */
-export function offerSalary(offer: JobOffer): number {
-  return careerLevel(offer.careerId, 0).salaryPerMonth
-}
-
-/** Índice da vaga de maior salário. No empate, fica a primeira. */
-export function bestOffer(offers: readonly JobOffer[]): number {
-  let best = 0
-  offers.forEach((offer, index) => {
-    if (offerSalary(offer) > offerSalary(offers[best])) best = index
-  })
-  return best
-}
-
-/** Abre no rascunho a escolha do primeiro emprego. O relógio para até o jogador escolher. */
-export function openFirstJobChoice(draft: GameState, rng: Rng, member: Member): void {
-  const offers = rollJobOffers(rng)
-  draft.choices.push({
-    type: 'firstJob',
-    memberId: member.id,
-    day: draft.clock.day,
-    offers,
-    suggested: bestOffer(offers),
-  })
-}
 
 /** A sugestão de cada escolha aberta, pronta para confirmar de uma vez. */
 export function suggestedPicks(state: GameState): ChoicePick[] {
@@ -64,7 +24,7 @@ export function checkPicks(state: GameState, picks: readonly ChoicePick[]): { ok
     if (!choice || answered.has(pick.memberId)) return refuse('choiceNotFound')
     const options = choice.type === 'firstJob' ? choice.offers : choice.options
     if (!Number.isInteger(pick.option) || !options[pick.option]) return refuse('optionNotFound')
-    if (choice.type === 'school' && !choice.options[pick.option].available) {
+    if (choice.type !== 'firstJob' && !choice.options[pick.option].available) {
       return refuse('optionUnavailable')
     }
     answered.add(pick.memberId)
@@ -72,19 +32,29 @@ export function checkPicks(state: GameState, picks: readonly ChoicePick[]): { ok
   return { ok: true }
 }
 
-/** Aplica no rascunho respostas já conferidas e devolve os acontecimentos. */
-export function applyPicks(draft: GameState, picks: readonly ChoicePick[]): GameEvent[] {
+/**
+ * Aplica no rascunho respostas já conferidas e devolve os acontecimentos. Uma
+ * resposta pode abrir outra escolha, como trabalhar abre a do primeiro emprego.
+ */
+export function applyPicks(draft: GameState, rng: Rng, picks: readonly ChoicePick[]): GameEvent[] {
   const events: GameEvent[] = []
   for (const pick of picks) {
     const index = draft.choices.findIndex((open) => open.memberId === pick.memberId)
     const [choice] = draft.choices.splice(index, 1)
-    if (choice.type === 'school') {
-      events.push(applySchoolPick(draft, choice, pick.option))
-      continue
+    switch (choice.type) {
+      case 'school':
+        events.push(applySchoolPick(draft, choice, pick.option))
+        break
+      case 'afterSchool':
+        events.push(...applyPathPick(draft, rng, choice, pick.option))
+        break
+      case 'firstJob': {
+        const { careerId } = choice.offers[pick.option]
+        draft.members[pick.memberId].career = { id: careerId, level: 0, xp: 0 }
+        events.push({ type: 'firstJob', day: draft.clock.day, memberId: pick.memberId, careerId })
+        break
+      }
     }
-    const { careerId } = choice.offers[pick.option]
-    draft.members[pick.memberId].career = { id: careerId, level: 0, xp: 0 }
-    events.push({ type: 'firstJob', day: draft.clock.day, memberId: pick.memberId, careerId })
   }
   return events
 }

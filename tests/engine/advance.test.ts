@@ -8,6 +8,7 @@ import {
   bestOffer,
   calendarDate,
   familyRates,
+  isEnrollmentDay,
   isWaiting,
   memberExpense,
   memberIncome,
@@ -15,7 +16,6 @@ import {
   newGame,
   OFFLINE_CAP_MS,
   salaryPerMonth,
-  suggestedPicks,
   TICKS_PER_DAY,
   ticksToMonths,
   type Choice,
@@ -34,6 +34,7 @@ import {
   setMember,
   withChild,
   withMoney,
+  workPolicy,
   years,
 } from '../helpers'
 
@@ -45,13 +46,14 @@ function jobChoice(state: GameState): Extract<Choice, { type: 'firstJob' }> {
 }
 
 /**
- * Partida parada no dia em que o primeiro filho do casal fundador faz 18 anos,
- * depois de passar pela escola com as sugestões.
+ * Partida parada na escolha do primeiro emprego do primeiro filho do casal
+ * fundador, que passou pela escola com as sugestões e foi trabalhar depois do
+ * médio.
  */
 function atFirstJobChoice(seed: number): { state: GameState; childId: string } {
   const born = withChild(makeGame(seed))
   const childId = lastMember(born).id
-  return { state: play(born, years(BALANCE.adultAge + 1), 'firstJob'), childId }
+  return { state: play(born, years(BALANCE.adultAge + 1), 'firstJob', workPolicy), childId }
 }
 
 describe('advance', () => {
@@ -141,27 +143,28 @@ describe('advance', () => {
     expect(run()).toEqual(run())
   })
 
-  it('aos 18, a criança para de custar e o relógio para na escolha do primeiro emprego', () => {
+  it('quem chega aos 18 sem estudar nem trabalhar ganha a escolha do primeiro emprego', () => {
     const start = withChild(makeGame(4))
     const child = lastMember(start)
-    expect(memberExpense(child, start.clock.day)).toBeGreaterThan(0)
+    const teen = setMember(start, child.id, {
+      birthDay: start.clock.day - BALANCE.adultAge * BALANCE.daysPerYear + 1,
+      education: { ...child.education, formation: { level: 'medio' } },
+    })
+    expect(memberExpense(teen.members[child.id], teen.clock.day)).toBeGreaterThan(0)
 
-    const state = play(start, years(BALANCE.adultAge + 1), 'firstJob')
-    const birthday = child.birthDay + BALANCE.adultAge * BALANCE.daysPerYear
-    expect(state.clock).toEqual({ day: birthday, tickOfDay: 0, paused: false })
-    expectClose(state.stats.simulatedMs, years(BALANCE.adultAge), 1e-6)
-
+    const { state, events } = advance(teen, days(2))
+    expect(state.clock).toEqual({ day: 1, tickOfDay: 0, paused: false })
     const grown = state.members[child.id]
     expect(ageOf(grown, state.clock.day)).toBe(BALANCE.adultAge)
-    expect(state.log).toContainEqual({ type: 'becameAdult', day: birthday, memberId: child.id })
-    expect(state.log.some((event) => event.type === 'firstJob')).toBe(false)
+    expect(events).toContainEqual({ type: 'becameAdult', day: 1, memberId: child.id })
+    expect(events.some((event) => event.type === 'firstJob')).toBe(false)
     expect(grown.career).toBeNull()
-    expect(memberExpense(grown, birthday)).toBe(0)
-    expect(memberIncome(grown, birthday)).toBe(0)
+    expect(memberExpense(grown, 1)).toBe(0)
+    expect(memberIncome(grown, 1)).toBe(0)
 
     const choice = jobChoice(state)
     expect(state.choices).toHaveLength(1)
-    expect(choice).toMatchObject({ type: 'firstJob', memberId: child.id, day: birthday })
+    expect(choice).toMatchObject({ type: 'firstJob', memberId: child.id, day: 1 })
     expect(new Set(choice.offers.map((offer) => offer.careerId)).size).toBe(
       BALANCE.jobs.offersPerChoice,
     )
@@ -293,20 +296,20 @@ describe('advanceTo', () => {
 
   it('com o jogo fechado, para na primeira escolha e espera por ela', () => {
     const born = withChild(makeGame(12))
-    const birthday = lastMember(born).birthDay + BALANCE.adultAge * BALANCE.daysPerYear
-    const teen = play(born, years(BALANCE.adultAge - 1), 'firstJob')
+    const teen = play(born, years(BALANCE.adultAge - 1))
     const { state } = advanceTo(teen, teen.lastSimulatedAt + years(3))
-    expect(state.clock.day).toBe(birthday)
-    expect(state.choices).toHaveLength(1)
+    expect(isEnrollmentDay(state)).toBe(true)
+    expect(state.choices.map((choice) => choice.type)).toEqual(['afterSchool'])
 
     // Uma hora depois, nada andou: só a âncora de tempo.
     const later = state.lastSimulatedAt + 3_600_000
     const waited = advanceTo(state, later).state
     expect(waited).toEqual({ ...state, lastSimulatedAt: later })
 
-    // Depois da escolha, o relógio volta a andar a partir dali.
-    const chosen = expectOk(applyAction(waited, { type: 'choose', picks: suggestedPicks(waited) }))
-    const resumed = advanceTo(chosen.state, later + 1_000).state
+    // Depois das escolhas, o relógio volta a andar a partir dali.
+    let chosen = waited
+    while (chosen.choices.length > 0) chosen = chooseSuggested(chosen)
+    const resumed = advanceTo(chosen, later + 1_000).state
     expect(resumed.stats.simulatedMs).toBe(state.stats.simulatedMs + 1_000)
   })
 

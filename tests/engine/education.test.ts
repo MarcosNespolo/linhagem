@@ -3,8 +3,8 @@ import { BALANCE } from '@/content/balance'
 import type { Network, SchoolStage } from '@/content/schools'
 import {
   advance,
+  ageOf,
   applyAction,
-  aptitudeOf,
   calendarDate,
   deserialize,
   familyRates,
@@ -18,7 +18,6 @@ import {
   yearlyPoints,
   type Choice,
   type GameState,
-  type Member,
 } from '@/engine'
 import {
   chooseSuggested,
@@ -32,6 +31,7 @@ import {
   play,
   setMember,
   withAdultChild,
+  withAptitude,
   withChild,
   withMoney,
   years,
@@ -66,19 +66,6 @@ function enroll(state: GameState, choice: SchoolChoice, network: Network): GameS
   if (option < 0) throw new Error(`A rede ${network} não está disponível`)
   const picks = [{ memberId: choice.memberId, option }]
   return expectOk(applyAction(state, { type: 'choose', picks })).state
-}
-
-/** Semente de avatar que dá ao membro uma aptidão dentro da faixa pedida. */
-function seedWithAptitude(id: string, min: number, max: number): string {
-  for (let i = 0; i < 10_000; i++) {
-    const aptitude = aptitudeOf({ id, avatarSeed: `teste${i}` })
-    if (aptitude >= min && aptitude <= max) return `teste${i}`
-  }
-  throw new Error('Nenhuma semente com essa aptidão')
-}
-
-function withAptitude(state: GameState, member: Member, min: number, max: number): GameState {
-  return setMember(state, member.id, { avatarSeed: seedWithAptitude(member.id, min, max) })
 }
 
 describe('matrículas', () => {
@@ -215,14 +202,14 @@ describe('matrículas', () => {
   it('o instituto federal aprova quem chega à nota de corte e vira a sugestão', () => {
     const born = withChild(makeGame(8))
     const child = lastMember(born)
-    const strong = withAptitude(born, child, 650, 700)
+    const strong = withAptitude(born, child.id, 650, 700)
     const { choice } = untilEnrollment(strong, child.id, 'medio')
     const federal = choice.options.filter((option) => option.network === 'federal')
     expect(federal).toHaveLength(BALANCE.school.federalCourses)
     expect(federal.every((option) => option.available && option.course)).toBe(true)
     expect(choice.options[choice.suggested].network).toBe('federal')
 
-    const weak = withAptitude(born, child, 400, 450)
+    const weak = withAptitude(born, child.id, 400, 450)
     const failed = untilEnrollment(weak, child.id, 'medio')
     expect(schoolScore(failed.state.members[child.id])).toBeLessThan(BALANCE.school.federalCutoff)
     expect(failed.choice.options.filter((option) => option.network === 'federal')).toEqual([
@@ -238,11 +225,11 @@ describe('matrículas', () => {
   it('no ano em que faz 18, termina o médio com a formação e para de pagar mensalidade', () => {
     const born = withChild(makeGame(9))
     const child = lastMember(born)
-    const strong = withAptitude(born, child, 650, 700)
+    const strong = withAptitude(born, child.id, 650, 700)
     const { state: waiting, choice } = untilEnrollment(strong, child.id, 'medio')
     const federal = choice.options.find((option) => option.network === 'federal')
     let state = enroll(waiting, choice, 'federal')
-    state = play(state, years(4), 'firstJob')
+    state = play(state, years(4), 'afterSchool')
 
     const grown = state.members[child.id]
     expect(grown.education.school).toBeNull()
@@ -251,7 +238,10 @@ describe('matrículas', () => {
     expect(state.log).toContainEqual(
       expect.objectContaining({ type: 'schoolFinished', memberId: child.id }),
     )
-    expect(memberExpense(grown, state.clock.day)).toBe(0)
+    const age = ageOf(grown, state.clock.day)
+    expect(memberExpense(grown, state.clock.day)).toBe(
+      BALANCE.children.expenseBase + BALANCE.children.expensePerYear * age,
+    )
   })
 
   it('trocar de rede vale na matrícula seguinte', () => {
@@ -310,7 +300,7 @@ describe('matrículas', () => {
       const started = events.flatMap((event) =>
         event.type === 'schoolStarted' ? [event.stage] : [],
       )
-      expect(started).toEqual(['creche', 'escola', 'medio'])
+      expect(started.slice(0, 3)).toEqual(['creche', 'escola', 'medio'])
       expect(events.some((event) => event.type === 'schoolFinished')).toBe(true)
       expect(state.members[childId].education.formation).not.toBeNull()
     }
@@ -334,6 +324,7 @@ describe('matrículas', () => {
       points: 0,
       past: {},
       formation: null,
+      enem: null,
     })
     expect(migrated.members[first.id].education.formation).toEqual({ level: 'medio' })
   })

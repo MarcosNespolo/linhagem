@@ -1,5 +1,5 @@
 import { BALANCE } from '../content/balance'
-import type { Network, SchoolStage } from '../content/schools'
+import { degree, type Network, type SchoolStage } from '../content/schools'
 import { hashString } from './rng'
 import type { Education, Enrollment, GameState, Member, MemberId } from './types'
 
@@ -45,14 +45,33 @@ export function yearlyPoints(stage: SchoolStage, network: Network): number {
   return stagePoints(stage, network) / stageYears(stage)
 }
 
-/** Mensalidade da matrícula, ou zero fora da escola. */
+/** Mensalidade da matrícula, ou zero fora dos estudos e nas redes gratuitas. */
 export function schoolFee(school: Enrollment | null): number {
-  return school ? stageFee(school.stage, school.network) : 0
+  if (!school) return 0
+  switch (school.stage) {
+    case 'faculdade':
+      return school.network === 'particular' && school.degree ? degree(school.degree).fee : 0
+    case 'tecnico':
+      return school.network === 'particular' ? BALANCE.college.technical.fee : 0
+    case 'cursinho':
+      return BALANCE.college.prep.fee
+    default:
+      return stageFee(school.stage, school.network)
+  }
 }
 
 /** Vida escolar de quem nasce ou chega à família sem ter estudado no jogo. */
 export function newEducation(formation: Education['formation'] = null): Education {
-  return { school: null, points: 0, past: {}, formation }
+  return { school: null, points: 0, past: {}, formation, enem: null }
+}
+
+/** A formação mais alta entre duas: faculdade, depois técnico, depois ensino médio. */
+export function higherFormation(
+  current: Education['formation'],
+  next: NonNullable<Education['formation']>,
+): NonNullable<Education['formation']> {
+  const rank = { medio: 0, tecnico: 1, superior: 2 }
+  return current && rank[current.level] > rank[next.level] ? current : next
 }
 
 /**

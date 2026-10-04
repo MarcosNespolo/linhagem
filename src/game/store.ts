@@ -286,6 +286,7 @@ const QUIET_EVENTS = new Set<GameEvent['type']>([
   'retired',
   'schoolStarted',
   'schoolChanged',
+  'enem',
 ])
 
 /** Semente aleatória para uma partida nova. */

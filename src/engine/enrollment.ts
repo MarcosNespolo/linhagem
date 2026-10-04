@@ -1,5 +1,12 @@
 import { BALANCE } from '../content/balance'
-import { TECH_COURSES, type Network, type SchoolStage, type TechCourseId } from '../content/schools'
+import {
+  isHigherStage,
+  TECH_COURSES,
+  type Network,
+  type SchoolStage,
+  type TechCourseId,
+} from '../content/schools'
+import { advanceHigherEducation, openAfterSchoolChoice } from './college'
 import { memberIncome } from './economy'
 import { refuse, type Refusal } from './errors'
 import { isAlive } from './members'
@@ -31,28 +38,39 @@ export function ageThisYear(member: Member, startDate: string, day: number): num
 /**
  * Matrículas do ano, no dia das matrículas. Quem continua na mesma etapa soma
  * os pontos do ano (e muda de rede, se o jogador pediu); quem termina o ensino
- * médio ganha a formação; quem começa uma etapa nova ganha uma escolha aberta,
- * e o relógio para até o jogador responder. Altera o rascunho.
+ * médio ganha a formação e faz o ENEM; quem começa uma etapa nova ganha uma
+ * escolha aberta, e o relógio para até o jogador responder. Cursinho, técnico e
+ * faculdade andam um ano. Altera o rascunho.
  */
 export function processEnrollment(draft: GameState, rng: Rng, events: GameEvent[]): void {
   const day = draft.clock.day
   for (const member of Object.values(draft.members)) {
     if (member.deathDay !== null) continue
-    const stage = stageForAge(ageThisYear(member, draft.startDate, day))
     const school = member.education.school
+    if (school && isHigherStage(school.stage)) {
+      advanceHigherEducation(draft, rng, member, school, events)
+      continue
+    }
+    const stage = stageForAge(ageThisYear(member, draft.startDate, day))
     if (!stage) {
-      if (school) finishSchool(member, school, day, events)
+      if (school) finishSchool(draft, rng, member, school, events)
       continue
     }
     if (school?.stage === stage) {
-      continueSchool(member, school, day, events)
+      continueSchool(member, school, stage, day, events)
       continue
     }
     openSchoolChoice(draft, rng, member, stage)
   }
 }
 
-function finishSchool(member: Member, school: Enrollment, day: number, events: GameEvent[]): void {
+function finishSchool(
+  draft: GameState,
+  rng: Rng,
+  member: Member,
+  school: Enrollment,
+  events: GameEvent[],
+): void {
   member.education.school = null
   member.education.past[school.stage] = school.network
   if (school.stage !== 'medio') return
@@ -61,17 +79,24 @@ function finishSchool(member: Member, school: Enrollment, day: number, events: G
       ? { level: 'tecnico' as const, course: school.course }
       : { level: 'medio' as const }
   member.education.formation = formation
-  events.push({ type: 'schoolFinished', day, memberId: member.id, formation })
+  events.push({ type: 'schoolFinished', day: draft.clock.day, memberId: member.id, formation })
+  openAfterSchoolChoice(draft, rng, member, events)
 }
 
-function continueSchool(member: Member, school: Enrollment, day: number, events: GameEvent[]) {
+function continueSchool(
+  member: Member,
+  school: Enrollment,
+  stage: SchoolStage,
+  day: number,
+  events: GameEvent[],
+) {
   if (school.next && school.next !== school.network) {
     school.network = school.next
     delete school.course
     events.push({ type: 'schoolChanged', day, memberId: member.id, network: school.network })
   }
   delete school.next
-  member.education.points += yearlyPoints(school.stage, school.network)
+  member.education.points += yearlyPoints(stage, school.network)
 }
 
 function openSchoolChoice(draft: GameState, rng: Rng, member: Member, stage: SchoolStage): void {

@@ -10,13 +10,15 @@ export function salaryPerMonth(member: Pick<Member, 'career'>): number {
   return careerLevel(member.career.id, member.career.level).salaryPerMonth
 }
 
-/** Renda por mês: salário para adultos, pensão para aposentados, zero para crianças. */
+/**
+ * Renda por mês: salário para quem trabalha, pensão para aposentados e zero
+ * para quem ainda não tem emprego. Quem termina o médio e vai trabalhar recebe
+ * desde janeiro, mesmo antes dos 18.
+ */
 export function memberIncome(member: Member, day: number): number {
-  if (!isAlive(member)) return 0
-  const age = ageOf(member, day)
-  if (age < BALANCE.adultAge) return 0
+  if (!isAlive(member) || !member.career) return 0
   const salary = salaryPerMonth(member)
-  return age >= BALANCE.retirementAge ? salary * BALANCE.pensionRatio : salary
+  return ageOf(member, day) >= BALANCE.retirementAge ? salary * BALANCE.pensionRatio : salary
 }
 
 /**

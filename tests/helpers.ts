@@ -3,6 +3,7 @@ import { BALANCE } from '@/content/balance'
 import {
   advance,
   applyAction,
+  aptitudeOf,
   daysToMs,
   msToTicks,
   newGame,
@@ -11,6 +12,7 @@ import {
   TICKS_PER_MS,
   type ActionResult,
   type Choice,
+  type ChoicePick,
   type GameState,
   type Member,
 } from '@/engine'
@@ -62,20 +64,42 @@ export function chooseSuggested(state: GameState): GameState {
   return expectOk(applyAction(state, { type: 'choose', picks: suggestedPicks(state) })).state
 }
 
+/** Como o jogador responde as escolhas abertas. */
+export type Policy = (state: GameState) => ChoicePick[]
+
+/** Depois do médio, vai trabalhar; nas outras escolhas, fica com a sugestão. */
+export const workPolicy: Policy = (state) =>
+  state.choices.map((choice) => ({
+    memberId: choice.memberId,
+    option:
+      choice.type === 'afterSchool'
+        ? choice.options.findIndex((option) => option.path === 'trabalho')
+        : choice.suggested,
+  }))
+
 /**
- * Avança `ms` como um jogador que confirma cada escolha com a sugestão e segue
- * jogando. Com `stopAt`, para na primeira escolha desse tipo e a deixa aberta.
+ * Avança `ms` como um jogador que responde cada escolha (com a sugestão, ou
+ * com `answer`) e segue jogando. Com `stopAt`, para na primeira escolha desse
+ * tipo e a deixa aberta.
  */
-export function play(state: GameState, ms: number, stopAt?: Choice['type']): GameState {
+export function play(
+  state: GameState,
+  ms: number,
+  stopAt?: Choice['type'],
+  answer: Policy = suggestedPicks,
+): GameState {
   let current = state
   let left = ms
   while (msToTicks(left) > 0) {
     const before = clockMs(current)
     current = advance(current, left).state
     left -= clockMs(current) - before
-    if (current.choices.length === 0) break
-    if (current.choices.some((choice) => choice.type === stopAt)) break
-    current = chooseSuggested(current)
+    // Uma resposta pode abrir outra escolha (trabalhar abre a do emprego); responde até acabar.
+    while (current.choices.length > 0) {
+      if (current.choices.some((choice) => choice.type === stopAt)) return current
+      const picks = answer(current)
+      current = expectOk(applyAction(current, { type: 'choose', picks })).state
+    }
   }
   return current
 }
@@ -87,13 +111,13 @@ function clockMs(state: GameState): number {
 
 /**
  * Partida com um filho do casal fundador já adulto, que passou pela escola com
- * as sugestões, tem o primeiro emprego sugerido e dinheiro de sobra. Devolve o
- * id do filho.
+ * as sugestões, foi trabalhar depois do médio na vaga sugerida e tem dinheiro
+ * de sobra. Devolve o id do filho.
  */
 export function withAdultChild(seed = 1): { state: GameState; childId: string } {
   const born = withChild(makeGame(seed))
   const childId = lastMember(born).id
-  const grown = chooseSuggested(play(born, years(BALANCE.adultAge)))
+  const grown = play(born, years(BALANCE.adultAge), undefined, workPolicy)
   return { state: withMoney(grown, 1_000_000), childId }
 }
 
@@ -101,6 +125,21 @@ export function withAdultChild(seed = 1): { state: GameState; childId: string } 
 export function marryMember(state: GameState, memberId: string, suitorIndex = 0): GameState {
   const searched = expectOk(applyAction(state, { type: 'findSuitors', memberId })).state
   return expectOk(applyAction(searched, { type: 'marry', memberId, suitorIndex })).state
+}
+
+/** Troca a semente do avatar do membro para dar a ele uma aptidão dentro da faixa pedida. */
+export function withAptitude(
+  state: GameState,
+  memberId: string,
+  min: number,
+  max: number,
+): GameState {
+  for (let i = 0; i < 10_000; i++) {
+    const avatarSeed = `teste${i}`
+    const aptitude = aptitudeOf({ id: memberId, avatarSeed })
+    if (aptitude >= min && aptitude <= max) return setMember(state, memberId, { avatarSeed })
+  }
+  throw new Error('Nenhuma semente com essa aptidão')
 }
 
 /** Milissegundos reais de `n` dias do jogo. */

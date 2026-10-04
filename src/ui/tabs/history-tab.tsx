@@ -1,6 +1,16 @@
 'use client'
 
-import { Baby, Briefcase, Cake, GraduationCap, Heart, Leaf, School, Sun } from 'lucide-react'
+import {
+  Baby,
+  Briefcase,
+  Cake,
+  FileText,
+  GraduationCap,
+  Heart,
+  Leaf,
+  School,
+  Sun,
+} from 'lucide-react'
 import type { ReactNode } from 'react'
 import { calendarDate, LOG_LIMIT, type GameState, type MemberEvent } from '@/engine'
 import { formatShortMonth } from '@/lib/format'
@@ -17,6 +27,7 @@ const ICONS: Record<MemberEvent['type'], ReactNode> = {
   schoolStarted: <School size={16} />,
   schoolChanged: <School size={16} />,
   schoolFinished: <GraduationCap size={17} />,
+  enem: <FileText size={16} />,
 }
 
 const TONES: Record<MemberEvent['type'], string> = {
@@ -29,6 +40,7 @@ const TONES: Record<MemberEvent['type'], string> = {
   schoolStarted: 'bg-leaf-soft text-leaf-strong',
   schoolChanged: 'bg-leaf-soft text-leaf-strong',
   schoolFinished: 'bg-gold-soft text-gold',
+  enem: 'bg-leaf-soft text-leaf-strong',
 }
 
 /** Aba Histórico: os acontecimentos da família, do mais recente para o mais antigo. */

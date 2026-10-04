@@ -85,11 +85,16 @@ function waitingText(game: GameState): string | null {
   const [first] = choices
   if (!first) return null
   if (choices.length > 1) {
-    const allSchool = choices.every((choice) => choice.type === 'school')
+    const allSchool = choices.every((choice) => choice.type !== 'firstJob')
     return `Tempo parado: ${choices.length} ${allSchool ? 'matrículas' : 'escolhas'} esperando você.`
   }
   const name = game.members[first.memberId]?.firstName ?? 'alguém'
-  return first.type === 'school'
-    ? `Tempo parado: falta a matrícula de ${name}.`
-    : `Tempo parado: falta escolher o primeiro emprego de ${name}.`
+  switch (first.type) {
+    case 'school':
+      return `Tempo parado: falta a matrícula de ${name}.`
+    case 'afterSchool':
+      return `Tempo parado: falta decidir o que ${name} faz depois do médio.`
+    case 'firstJob':
+      return `Tempo parado: falta escolher o primeiro emprego de ${name}.`
+  }
 }

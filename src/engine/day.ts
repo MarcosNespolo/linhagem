@@ -1,5 +1,5 @@
 import { BALANCE } from '../content/balance'
-import { openFirstJobChoice } from './choices'
+import { openFirstJobChoice } from './jobs'
 import { incomeOf } from './economy'
 import { isEnrollmentDay, processEnrollment } from './enrollment'
 import type { Rng } from './rng'
@@ -9,10 +9,10 @@ import type { GameEvent, GameState } from './types'
 
 /**
  * Processa a virada para o dia atual do relógio: aniversários, maioridade,
- * aposentadoria, morte, as matrículas de janeiro e o 13º salário. Quem faz 18
- * anos sem emprego ganha a escolha do primeiro emprego, e quem começa uma etapa
- * da escola, a da matrícula; as duas param o relógio. Altera o rascunho e
- * devolve true quando algo pode ter mudado as taxas de renda e despesa.
+ * aposentadoria, morte, as matrículas de janeiro e o 13º salário. As escolhas
+ * abertas aqui (matrículas, depois do médio, primeiro emprego) param o relógio.
+ * Altera o rascunho e devolve true quando algo pode ter mudado as taxas de
+ * renda e despesa.
  */
 export function processNewDay(draft: GameState, rng: Rng, events: GameEvent[]): boolean {
   const day = draft.clock.day
@@ -34,7 +34,12 @@ export function processNewDay(draft: GameState, rng: Rng, events: GameEvent[]): 
     }
     if (age === BALANCE.adultAge) {
       events.push({ type: 'becameAdult', day, memberId: member.id })
-      if (!member.career) openFirstJobChoice(draft, rng, member)
+      // Quem terminou a escola já escolheu o caminho em janeiro. Fica a reserva para quem
+      // chega aos 18 sem estudar, sem emprego e sem escolha aberta.
+      const waiting = draft.choices.some((choice) => choice.memberId === member.id)
+      if (!member.career && !member.education.school && !waiting) {
+        openFirstJobChoice(draft, rng, member)
+      }
     }
     if (age === BALANCE.retirementAge && member.career) {
       events.push({ type: 'retired', day, memberId: member.id })

@@ -158,7 +158,9 @@ function choose(state: GameState, picks: readonly ChoicePick[]): ActionResult {
   if (!check.ok) return check
 
   const draft = draftOf(state)
-  const events = applyPicks(draft, picks)
+  const rng = createRng(draft.rngState)
+  const events = applyPicks(draft, rng, picks)
+  draft.rngState = rng.state
   appendLog(draft, events)
   return done(draft, events)
 }
