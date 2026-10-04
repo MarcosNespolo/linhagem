@@ -124,7 +124,7 @@ export function describeEvent(state: GameState, event: GameEvent): string {
       }
       return `${name} terminou o ensino médio`
     case 'enem':
-      return `${name} fez o ENEM: ${event.score} pontos`
+      return `Saiu a nota do ENEM de ${name}: ${event.score} pontos`
   }
 }
 
