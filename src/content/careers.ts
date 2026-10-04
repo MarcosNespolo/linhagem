@@ -1,7 +1,8 @@
 export type CareerLevel = {
   /** Título do cargo para homens (m) e mulheres (f). */
   title: { m: string; f: string }
-  salaryPerSecond: number
+  /** Salário por mês do jogo, em reais. */
+  salaryPerMonth: number
 }
 
 export type Career = {
@@ -21,66 +22,66 @@ export const CAREERS = [
     id: 'comercio',
     name: 'Comércio',
     levels: [
-      { title: title('Atendente'), salaryPerSecond: 10 },
-      { title: title('Vendedor', 'Vendedora'), salaryPerSecond: 16 },
-      { title: title('Gerente de loja'), salaryPerSecond: 26 },
-      { title: title('Gerente regional'), salaryPerSecond: 42 },
-      { title: title('Diretor comercial', 'Diretora comercial'), salaryPerSecond: 68 },
+      { title: title('Atendente'), salaryPerMonth: 1800 },
+      { title: title('Vendedor', 'Vendedora'), salaryPerMonth: 2880 },
+      { title: title('Gerente de loja'), salaryPerMonth: 4680 },
+      { title: title('Gerente regional'), salaryPerMonth: 7560 },
+      { title: title('Diretor comercial', 'Diretora comercial'), salaryPerMonth: 12_240 },
     ],
   },
   {
     id: 'tecnologia',
     name: 'Tecnologia',
     levels: [
-      { title: title('Estagiário de TI', 'Estagiária de TI'), salaryPerSecond: 12 },
-      { title: title('Desenvolvedor', 'Desenvolvedora'), salaryPerSecond: 20 },
-      { title: title('Desenvolvedor sênior', 'Desenvolvedora sênior'), salaryPerSecond: 32 },
-      { title: title('Tech lead'), salaryPerSecond: 52 },
-      { title: title('CTO'), salaryPerSecond: 84 },
+      { title: title('Estagiário de TI', 'Estagiária de TI'), salaryPerMonth: 2160 },
+      { title: title('Desenvolvedor', 'Desenvolvedora'), salaryPerMonth: 3600 },
+      { title: title('Desenvolvedor sênior', 'Desenvolvedora sênior'), salaryPerMonth: 5760 },
+      { title: title('Tech lead'), salaryPerMonth: 9360 },
+      { title: title('CTO'), salaryPerMonth: 15_120 },
     ],
   },
   {
     id: 'saude',
     name: 'Saúde',
     levels: [
-      { title: title('Técnico de enfermagem', 'Técnica de enfermagem'), salaryPerSecond: 11 },
-      { title: title('Enfermeiro', 'Enfermeira'), salaryPerSecond: 18 },
-      { title: title('Enfermeiro-chefe', 'Enfermeira-chefe'), salaryPerSecond: 29 },
-      { title: title('Coordenador de saúde', 'Coordenadora de saúde'), salaryPerSecond: 46 },
-      { title: title('Diretor hospitalar', 'Diretora hospitalar'), salaryPerSecond: 75 },
+      { title: title('Técnico de enfermagem', 'Técnica de enfermagem'), salaryPerMonth: 1980 },
+      { title: title('Enfermeiro', 'Enfermeira'), salaryPerMonth: 3240 },
+      { title: title('Enfermeiro-chefe', 'Enfermeira-chefe'), salaryPerMonth: 5220 },
+      { title: title('Coordenador de saúde', 'Coordenadora de saúde'), salaryPerMonth: 8280 },
+      { title: title('Diretor hospitalar', 'Diretora hospitalar'), salaryPerMonth: 13_500 },
     ],
   },
   {
     id: 'educacao',
     name: 'Educação',
     levels: [
-      { title: title('Monitor', 'Monitora'), salaryPerSecond: 9 },
-      { title: title('Professor', 'Professora'), salaryPerSecond: 15 },
-      { title: title('Coordenador pedagógico', 'Coordenadora pedagógica'), salaryPerSecond: 24 },
-      { title: title('Diretor de escola', 'Diretora de escola'), salaryPerSecond: 38 },
-      { title: title('Secretário de educação', 'Secretária de educação'), salaryPerSecond: 60 },
+      { title: title('Monitor', 'Monitora'), salaryPerMonth: 1620 },
+      { title: title('Professor', 'Professora'), salaryPerMonth: 2700 },
+      { title: title('Coordenador pedagógico', 'Coordenadora pedagógica'), salaryPerMonth: 4320 },
+      { title: title('Diretor de escola', 'Diretora de escola'), salaryPerMonth: 6840 },
+      { title: title('Secretário de educação', 'Secretária de educação'), salaryPerMonth: 10_800 },
     ],
   },
   {
     id: 'construcao',
     name: 'Construção',
     levels: [
-      { title: title('Ajudante de obra'), salaryPerSecond: 10 },
-      { title: title('Eletricista'), salaryPerSecond: 16 },
-      { title: title('Mestre de obras', 'Mestra de obras'), salaryPerSecond: 27 },
-      { title: title('Engenheiro civil', 'Engenheira civil'), salaryPerSecond: 44 },
-      { title: title('Dono de construtora', 'Dona de construtora'), salaryPerSecond: 72 },
+      { title: title('Ajudante de obra'), salaryPerMonth: 1800 },
+      { title: title('Eletricista'), salaryPerMonth: 2880 },
+      { title: title('Mestre de obras', 'Mestra de obras'), salaryPerMonth: 4860 },
+      { title: title('Engenheiro civil', 'Engenheira civil'), salaryPerMonth: 7920 },
+      { title: title('Dono de construtora', 'Dona de construtora'), salaryPerMonth: 12_960 },
     ],
   },
   {
     id: 'gastronomia',
     name: 'Gastronomia',
     levels: [
-      { title: title('Auxiliar de cozinha'), salaryPerSecond: 9 },
-      { title: title('Cozinheiro', 'Cozinheira'), salaryPerSecond: 15 },
-      { title: title('Sous-chef'), salaryPerSecond: 25 },
-      { title: title('Chef'), salaryPerSecond: 40 },
-      { title: title('Dono de restaurante', 'Dona de restaurante'), salaryPerSecond: 66 },
+      { title: title('Auxiliar de cozinha'), salaryPerMonth: 1620 },
+      { title: title('Cozinheiro', 'Cozinheira'), salaryPerMonth: 2700 },
+      { title: title('Sous-chef'), salaryPerMonth: 4500 },
+      { title: title('Chef'), salaryPerMonth: 7200 },
+      { title: title('Dono de restaurante', 'Dona de restaurante'), salaryPerMonth: 11_880 },
     ],
   },
 ] as const satisfies readonly Career[]

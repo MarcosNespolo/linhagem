@@ -3,7 +3,7 @@ import { createRng, hashString } from './rng'
 import type { GameState } from './types'
 
 /** Versão atual do formato do save. Sobe a cada migração nova. */
-export const CURRENT_SCHEMA_VERSION = 2
+export const CURRENT_SCHEMA_VERSION = 3
 
 export type SaveErrorCode = 'corrupt' | 'futureVersion' | 'missingMigration'
 
@@ -47,13 +47,43 @@ const toVersion2: Migration = (save) => {
   return { ...save, members: upgraded, suitors: {}, log: [] }
 }
 
+/** Reais por dólar na versão 3: a conta que levou os salários de dólares por segundo a reais por mês. */
+export const REAIS_PER_DOLLAR = 180
+
+/**
+ * Versão 2 para 3: o dinheiro passa a ser em reais, com renda e despesa por
+ * mês do jogo. Saldo e totais mudam pela mesma conta dos salários, então a
+ * família continua podendo pagar o mesmo que antes. Entram também as escolhas
+ * que esperam o jogador, começando sem nenhuma. O relógio não muda: no ritmo
+ * novo, o dia tem as mesmas unidades.
+ */
+const toVersion3: Migration = (save) => {
+  const stats = isRecord(save.stats) ? save.stats : {}
+  return {
+    ...save,
+    money: inReais(save.money),
+    stats: {
+      ...stats,
+      totalEarned: inReais(stats.totalEarned),
+      totalSpent: inReais(stats.totalSpent),
+    },
+    choices: [],
+  }
+}
+
+function inReais(value: unknown): unknown {
+  return typeof value === 'number' ? value * REAIS_PER_DOLLAR : value
+}
+
 /**
  * Migrações, indexadas pela versão de origem. São sempre aditivas: criam
- * campos novos com valores padrão e nunca apagam dados do jogador. Antes de
- * subir a versão, rode `npm run fixture:save` para guardar um save de exemplo
- * da versão atual em tests/fixtures; os testes carregam todos eles.
+ * campos novos com valores padrão e nunca apagam dados do jogador; uma troca
+ * de unidade, como a do dinheiro na versão 3, converte o valor sem perder
+ * nada. Antes de subir a versão, rode `npm run fixture:save` para guardar um
+ * save de exemplo da versão atual em tests/fixtures; os testes carregam todos
+ * eles.
  */
-export const MIGRATIONS: Readonly<Record<number, Migration>> = { 1: toVersion2 }
+export const MIGRATIONS: Readonly<Record<number, Migration>> = { 1: toVersion2, 2: toVersion3 }
 
 /** Valida um save lido de JSON e o leva até a versão atual. */
 export function migrate(
@@ -99,6 +129,7 @@ function assertGameState(save: RawSave): asserts save is RawSave & GameState {
     Number.isFinite(save.money) &&
     typeof save.nextMemberId === 'number' &&
     isRecord(save.suitors) &&
+    Array.isArray(save.choices) &&
     Array.isArray(save.log) &&
     isRecord(clock) &&
     typeof clock.day === 'number' &&

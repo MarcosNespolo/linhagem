@@ -28,6 +28,8 @@ export type AwaySummary = {
   events: GameEvent[]
   /** O tempo fora passou do limite do progresso offline. */
   capped: boolean
+  /** O relógio parou numa escolha que espera o jogador. */
+  waiting: boolean
 }
 
 export type Toast = { id: number; event: GameEvent }
@@ -260,16 +262,19 @@ function catchUp(
 ): Partial<GameStore> {
   const simulatedMs = after.stats.simulatedMs - before.stats.simulatedMs
   if (simulatedMs >= AWAY_SUMMARY_MIN_MS) {
+    const waiting = after.choices.length > 0
     return {
       away: {
         days: after.clock.day - before.clock.day,
         earned: after.stats.totalEarned - before.stats.totalEarned,
         events,
-        capped: now - before.lastSimulatedAt > OFFLINE_CAP_MS,
+        capped: !waiting && now - before.lastSimulatedAt > OFFLINE_CAP_MS,
+        waiting,
       },
     }
   }
-  // Aposentadoria e primeiro emprego ficam só no histórico, para os avisos não cobrirem a tela.
+  // Aposentadoria e primeiro emprego (que o jogador acabou de escolher) ficam só no histórico,
+  // para os avisos não cobrirem a tela.
   const worthShowing = events.filter((event) => !QUIET_EVENTS.has(event.type))
   if (worthShowing.length === 0) return {}
   const added = worthShowing.map((event) => ({ id: nextToastId++, event }))

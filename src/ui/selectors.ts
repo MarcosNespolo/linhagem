@@ -81,3 +81,8 @@ export function nodeActions(actions: LoveActions, money: number): Map<MemberId, 
   }
   return map
 }
+
+/** Identifica o conjunto de escolhas abertas. Vazio quando não há nenhuma. */
+export function choicesKey(state: GameState): string {
+  return state.choices.map((choice) => `${choice.memberId}@${choice.day}`).join(',')
+}

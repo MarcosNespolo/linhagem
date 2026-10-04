@@ -35,7 +35,7 @@ export function roleLabel(member: Member, day: number): string {
   if (age < 13) return 'Criança'
   if (age < BALANCE.adultAge) return 'Adolescente'
   if (age >= BALANCE.retirementAge) return byGender(member, 'Aposentada', 'Aposentado')
-  return careerTitle(member) ?? 'Sem trabalho'
+  return careerTitle(member) ?? 'Procurando o primeiro emprego'
 }
 
 /** Idade em texto, com "Faleceu aos" para quem já morreu. */
@@ -68,17 +68,14 @@ export function generationLabel(generation: number): string {
 
 /** Frase curta sobre um acontecimento, para avisos e para o histórico. */
 export function describeEvent(state: GameState, event: GameEvent): string {
+  if (event.type === 'thirteenth') return `Chegou o 13º salário: ${formatMoney(event.amount)}`
   const member = state.members[event.memberId]
   const name = member?.firstName ?? 'Alguém'
   switch (event.type) {
     case 'born':
       return `${name} nasceu`
-    case 'becameAdult': {
-      const job = member ? firstJobTitle(member) : null
-      return job
-        ? `${name} fez ${BALANCE.adultAge} anos e começou a trabalhar como ${lowerFirst(job)}`
-        : `${name} fez ${BALANCE.adultAge} anos`
-    }
+    case 'becameAdult':
+      return `${name} fez ${BALANCE.adultAge} anos`
     case 'firstJob': {
       const title = careerLevel(event.careerId, 0).title[member?.gender ?? 'f']
       return `${name} começou a trabalhar como ${lowerFirst(title)}`
@@ -92,12 +89,6 @@ export function describeEvent(state: GameState, event: GameEvent): string {
     case 'died':
       return `${name} faleceu aos ${formatAge(event.age)}`
   }
-}
-
-/** Cargo do primeiro emprego, que é o nível inicial da carreira atual. */
-function firstJobTitle(member: Member): string | null {
-  if (!member.career) return null
-  return careerLevel(member.career.id, 0).title[member.gender]
 }
 
 /** Ano do calendário em que um acontecimento aconteceu. */

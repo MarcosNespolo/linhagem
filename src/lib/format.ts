@@ -1,15 +1,42 @@
-const SUFFIXES = ['', 'K', 'M', 'B', 'T', 'Qa', 'Qi', 'Sx', 'Sp', 'Oc', 'No', 'Dc'] as const
+/** Espaço que não quebra a linha, para "R$ 561 mil" nunca ficar dividido. */
+const NBSP = '\u00a0'
 
-/** Dinheiro no estilo dos idle games: $950, $26,3K, $1,23M. */
+/** Sufixos dos valores grandes, como o noticiário escreve: mil, mi, bi, tri. */
+const SUFFIXES = [
+  '',
+  'mil',
+  'mi',
+  'bi',
+  'tri',
+  'quatri',
+  'quinti',
+  'sexti',
+  'septi',
+  'octi',
+  'noni',
+  'deci',
+] as const
+
+/** Dinheiro em reais: R$ 950, R$ 9.999, R$ 26,3 mil, R$ 1,23 mi. */
 export function formatMoney(value: number): string {
   const sign = value < 0 ? '-' : ''
-  return `${sign}$${compact(Math.abs(value), 0)}`
+  return `${sign}R$${NBSP}${compact(Math.abs(value))}`
 }
 
-/** Taxa por segundo com sinal: +$153/s, -$3,5/s. */
-export function formatRate(perSecond: number): string {
-  const sign = perSecond < 0 ? '-' : '+'
-  return `${sign}$${compact(Math.abs(perSecond), 1)}/s`
+/** O valor sem o símbolo da moeda, para quem desenha o "R$" à parte: 18,4 mi. */
+export function formatAmount(value: number): string {
+  return `${value < 0 ? '-' : ''}${compact(Math.abs(value))}`
+}
+
+/** Renda ou despesa por mês do jogo, com sinal: +R$ 1.800/mês, -R$ 180/mês. */
+export function formatRate(perMonth: number): string {
+  return `${formatSignedMoney(perMonth)}/mês`
+}
+
+/** Valor com sinal e sem a unidade de tempo, para espaços curtos: +R$ 1.800, -R$ 180. */
+export function formatSignedMoney(value: number): string {
+  const sign = value < 0 ? '-' : '+'
+  return `${sign}R$${NBSP}${compact(Math.abs(value))}`
 }
 
 /** Data AAAA-MM-DD no formato brasileiro: 03/10/2026. */
@@ -75,16 +102,13 @@ export function formatGameSpan(days: number, daysPerYear: number): string {
 }
 
 /**
- * Número compacto com vírgula decimal. Abaixo de 100 usa até `smallDecimals`
- * casas; a partir de mil, três algarismos e um sufixo. Sempre trunca, para que
- * $999,9K nunca apareça como $1.000K.
+ * Número compacto com vírgula decimal. Abaixo de 10 mil, o valor inteiro com
+ * ponto de milhar; daí em diante, três algarismos e um sufixo, sem zeros no
+ * fim. Sempre trunca, para que R$ 999,9 mil nunca apareça como R$ 1.000 mil.
  */
-function compact(value: number, smallDecimals: number): string {
+function compact(value: number): string {
   if (!Number.isFinite(value)) return '∞'
-  if (value < 1000) {
-    const digits = value < 100 ? smallDecimals : 0
-    return decimal(truncate(value, digits), digits, true)
-  }
+  if (value < 10_000) return thousands(Math.floor(value + 1e-9))
   let scaled = value
   let index = 0
   while (scaled >= 1000 && index < SUFFIXES.length - 1) {
@@ -92,7 +116,12 @@ function compact(value: number, smallDecimals: number): string {
     index += 1
   }
   const digits = scaled >= 100 ? 0 : scaled >= 10 ? 1 : 2
-  return `${decimal(truncate(scaled, digits), digits, false)}${SUFFIXES[index]}`
+  return `${decimal(truncate(scaled, digits), digits)}${NBSP}${SUFFIXES[index]}`
+}
+
+/** Inteiro com ponto de milhar: 1.800. */
+function thousands(value: number): string {
+  return String(value).replace(/\B(?=(\d{3})+(?!\d))/g, '.')
 }
 
 function truncate(value: number, digits: number): number {
@@ -100,8 +129,9 @@ function truncate(value: number, digits: number): number {
   return Math.floor(value * factor + 1e-9) / factor
 }
 
-function decimal(value: number, digits: number, trimZeros: boolean): string {
+/** Número com até `digits` casas, vírgula decimal e sem zeros no fim: 26,3 e 1,2. */
+function decimal(value: number, digits: number): string {
   let text = value.toFixed(digits)
-  if (trimZeros && digits > 0) text = text.replace(/\.?0+$/, '')
+  if (digits > 0) text = text.replace(/\.?0+$/, '')
   return text.replace('.', ',')
 }

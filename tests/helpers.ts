@@ -5,6 +5,7 @@ import {
   applyAction,
   daysToMs,
   newGame,
+  suggestedPicks,
   type ActionResult,
   type GameState,
   type Member,
@@ -51,12 +52,21 @@ export function withChild(state: GameState): GameState {
   return expectOk(result).state
 }
 
-/** Partida com um filho do casal fundador já adulto e dinheiro de sobra. Devolve o id do filho. */
+/** Responde todas as escolhas abertas com a sugestão, como quem confirma o painel direto. */
+export function chooseSuggested(state: GameState): GameState {
+  if (state.choices.length === 0) return state
+  return expectOk(applyAction(state, { type: 'choose', picks: suggestedPicks(state) })).state
+}
+
+/**
+ * Partida com um filho do casal fundador já adulto, com o primeiro emprego
+ * sugerido e dinheiro de sobra. Devolve o id do filho.
+ */
 export function withAdultChild(seed = 1): { state: GameState; childId: string } {
   const born = withChild(makeGame(seed))
   const childId = lastMember(born).id
-  const state = withMoney(advance(born, years(BALANCE.adultAge)).state, 1_000_000)
-  return { state, childId }
+  const grown = chooseSuggested(advance(born, years(BALANCE.adultAge)).state)
+  return { state: withMoney(grown, 1_000_000), childId }
 }
 
 /** Procura par para o membro e casa com a pessoa de índice `suitorIndex`. */

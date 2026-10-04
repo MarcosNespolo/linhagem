@@ -42,7 +42,7 @@ export function SettingsTab({ game }: { game: GameState }) {
           </Row>
           <Row
             label="Tempo"
-            detail={`1 mês por segundo. Com o jogo fechado, passam até ${BALANCE.offlineCapYears} anos.`}
+            detail={`1 ano por minuto, parando nas escolhas. Com o jogo fechado, passam até ${BALANCE.offlineCapYears} anos.`}
           >
             <button
               type="button"

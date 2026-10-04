@@ -5,11 +5,12 @@ import {
   CURRENT_SCHEMA_VERSION,
   deserialize,
   migrate,
+  REAIS_PER_DOLLAR,
   SaveError,
   serialize,
   type GameState,
 } from '@/engine'
-import { makeGame, withChild, years } from '../helpers'
+import { chooseSuggested, makeGame, withChild, years } from '../helpers'
 
 const FIXTURES = new URL('../fixtures/', import.meta.url)
 const fixtureFiles = readdirSync(FIXTURES).filter((file) => /^save-v\d+\.json$/.test(file))
@@ -35,10 +36,17 @@ describe('save', () => {
   })
 
   it.each(fixtureFiles)('abre %s, migra e continua o jogo', (file) => {
-    const state = deserialize(readFileSync(new URL(file, FIXTURES), 'utf8'))
+    const state = chooseSuggested(deserialize(readFileSync(new URL(file, FIXTURES), 'utf8')))
     expect(state.schemaVersion).toBe(CURRENT_SCHEMA_VERSION)
     const { state: next } = advance(state, 3_600)
     expect(next.clock.day).toBeGreaterThan(state.clock.day)
+  })
+
+  it('o save de exemplo da versão atual tem uma escolha aberta, com o relógio parado', () => {
+    const json = readFileSync(new URL(`save-v${CURRENT_SCHEMA_VERSION}.json`, FIXTURES), 'utf8')
+    const state = deserialize(json)
+    expect(state.choices).toHaveLength(1)
+    expect(advance(state, 3_600).state).toBe(state)
   })
 
   it('recusa save de uma versão mais nova que o jogo', () => {
@@ -84,5 +92,19 @@ describe('save', () => {
       expect(member.appearance.skin).toBeGreaterThanOrEqual(0)
     }
     expect(deserialize(json)).toEqual(state)
+  })
+
+  it('a versão 2 passa o dinheiro para reais, com o mesmo poder de compra, e sem escolhas', () => {
+    const json = readFileSync(new URL('save-v2.json', FIXTURES), 'utf8')
+    const v2 = JSON.parse(json) as GameState
+    const state = deserialize(json)
+
+    expect(state.money).toBe(v2.money * REAIS_PER_DOLLAR)
+    expect(state.stats.totalEarned).toBe(v2.stats.totalEarned * REAIS_PER_DOLLAR)
+    expect(state.stats.totalSpent).toBe(v2.stats.totalSpent * REAIS_PER_DOLLAR)
+    expect(state.stats.simulatedMs).toBe(v2.stats.simulatedMs)
+    expect(state.clock).toEqual(v2.clock)
+    expect(state.choices).toEqual([])
+    expect(state.members).toEqual(v2.members)
   })
 })

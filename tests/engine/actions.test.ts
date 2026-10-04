@@ -9,7 +9,17 @@ import {
   FAMILY_NAME_MAX_LENGTH,
   type GameState,
 } from '@/engine'
-import { days, expectOk, founders, lastMember, makeGame, setMember, withMoney } from '../helpers'
+import {
+  days,
+  expectOk,
+  founders,
+  lastMember,
+  makeGame,
+  setMember,
+  withChild,
+  withMoney,
+  years,
+} from '../helpers'
 
 const haveChild = (state: GameState) =>
   applyAction(state, { type: 'haveChild', parentId: founders(state)[0].id })
@@ -153,5 +163,40 @@ describe('outras ações', () => {
     })
     const long = 'x'.repeat(FAMILY_NAME_MAX_LENGTH + 1)
     expect(applyAction(state, { type: 'renameFamily', name: long }).ok).toBe(false)
+  })
+})
+
+describe('escolher', () => {
+  it('recusa resposta sem escolha aberta', () => {
+    const state = makeGame()
+    const refused = { ok: false, error: 'choiceNotFound' }
+    expect(applyAction(state, { type: 'choose', picks: [] })).toEqual(refused)
+    const [first] = founders(state)
+    const pick = { memberId: first.id, option: 0 }
+    expect(applyAction(state, { type: 'choose', picks: [pick] })).toEqual(refused)
+  })
+
+  it('recusa opção que não existe e resposta repetida para a mesma pessoa', () => {
+    const born = withChild(makeGame(4))
+    const memberId = lastMember(born).id
+    const waiting = advance(born, years(BALANCE.adultAge + 1)).state
+    const choose = (...options: number[]) =>
+      applyAction(waiting, {
+        type: 'choose',
+        picks: options.map((option) => ({ memberId, option })),
+      })
+    expect(choose(9)).toEqual({ ok: false, error: 'optionNotFound' })
+    expect(choose(0.5)).toEqual({ ok: false, error: 'optionNotFound' })
+    expect(choose(0, 1)).toEqual({ ok: false, error: 'choiceNotFound' })
+    expect(choose(1).ok).toBe(true)
+  })
+
+  it('não altera o estado recebido', () => {
+    const born = withChild(makeGame(4))
+    const waiting = advance(born, years(BALANCE.adultAge + 1)).state
+    const copy = structuredClone(waiting)
+    const memberId = waiting.choices[0].memberId
+    expectOk(applyAction(waiting, { type: 'choose', picks: [{ memberId, option: 0 }] }))
+    expect(waiting).toEqual(copy)
   })
 })

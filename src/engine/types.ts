@@ -10,8 +10,26 @@ export type CareerState = {
   id: CareerId
   /** Índice do nível atual na lista de níveis da carreira. */
   level: number
-  /** Experiência no nível atual. Usada pelas promoções a partir da Fase 4. */
+  /** Experiência no nível atual. Ainda não usada; as promoções entram na etapa 4.4. */
   xp: number
+}
+
+/** Vaga oferecida na escolha do primeiro emprego: o primeiro nível de uma carreira. */
+export type JobOffer = { careerId: CareerId }
+
+/**
+ * Escolha que espera o jogador. Enquanto houver alguma aberta, o relógio não
+ * anda, nem com o jogo fechado.
+ */
+export type Choice = {
+  /** Primeiro emprego, aos 18 anos. */
+  type: 'firstJob'
+  memberId: MemberId
+  /** Dia do jogo em que a escolha abriu. */
+  day: number
+  offers: JobOffer[]
+  /** Índice da vaga sugerida: a de maior salário. */
+  suggested: number
 }
 
 /**
@@ -58,7 +76,7 @@ export type Member = {
   career: CareerState | null
   /** Dia do jogo em que teve o último filho, para o intervalo mínimo entre filhos. */
   lastChildDay: number | null
-  /** Traços de personalidade. Entram na Fase 4. */
+  /** Traços de personalidade. Ficam para depois do v1. */
   traits: string[]
   appearance: Appearance
   /** Semente para detalhes do avatar que não são herdados, como a cor da roupa. */
@@ -108,16 +126,24 @@ export type GameState = {
   nextMemberId: number
   /** Pessoas sugeridas como par, por membro solteiro que procurou. */
   suitors: Record<MemberId, Suitor[]>
+  /** Escolhas abertas, na ordem em que abriram. Com alguma aberta, o relógio para. */
+  choices: Choice[]
   /** Últimos acontecimentos da família, do mais antigo para o mais novo. */
-  log: GameEvent[]
+  log: MemberEvent[]
   stats: GameStats
 }
 
-/** Acontecimentos que a engine reporta para a interface mostrar. */
-export type GameEvent =
+/** Acontecimentos de uma pessoa da família, que ficam no histórico. */
+export type MemberEvent =
   | { type: 'born'; day: number; memberId: MemberId }
   | { type: 'becameAdult'; day: number; memberId: MemberId }
   | { type: 'firstJob'; day: number; memberId: MemberId; careerId: CareerId }
   | { type: 'married'; day: number; memberId: MemberId; partnerId: MemberId }
   | { type: 'retired'; day: number; memberId: MemberId }
   | { type: 'died'; day: number; memberId: MemberId; age: number }
+
+/**
+ * Acontecimentos que a engine reporta para a interface mostrar. O 13º salário
+ * vira aviso, mas não entra no histórico, para não repetir uma linha por ano.
+ */
+export type GameEvent = MemberEvent | { type: 'thirteenth'; day: number; amount: number }

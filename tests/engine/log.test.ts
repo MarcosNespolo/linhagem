@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { BALANCE } from '@/content/balance'
-import { advance, applyAction, LOG_LIMIT, type GameEvent } from '@/engine'
+import { advance, applyAction, isMemberEvent, LOG_LIMIT, type MemberEvent } from '@/engine'
 import { expectOk, founders, makeGame, withAdultChild, withMoney, years } from '../helpers'
 
 describe('histórico', () => {
@@ -21,17 +21,18 @@ describe('histórico', () => {
     expect(married.log.at(-1)?.type).toBe('married')
   })
 
-  it('o histórico do estado inclui os eventos devolvidos por advance', () => {
+  it('o histórico do estado inclui os eventos devolvidos por advance, menos o 13º', () => {
     const { state } = withAdultChild(3)
     const result = advance(state, years(BALANCE.retirementAge))
     const added = result.state.log.slice(state.log.length)
-    expect(added).toEqual(result.events.slice(-added.length))
+    expect(result.events.some((event) => event.type === 'thirteenth')).toBe(true)
+    expect(added).toEqual(result.events.filter(isMemberEvent).slice(-added.length))
   })
 
   it(`guarda no máximo ${LOG_LIMIT} acontecimentos, descartando os mais antigos`, () => {
     let state = withMoney(makeGame(4), 1e12)
     const [mother] = founders(state)
-    const filler: GameEvent[] = Array.from({ length: LOG_LIMIT }, (_, day) => ({
+    const filler: MemberEvent[] = Array.from({ length: LOG_LIMIT }, (_, day) => ({
       type: 'retired',
       day,
       memberId: mother.id,

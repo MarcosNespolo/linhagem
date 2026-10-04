@@ -1,6 +1,6 @@
 'use client'
 
-import { Baby, Heart } from 'lucide-react'
+import { Baby, Briefcase, Heart } from 'lucide-react'
 import {
   calendarDate,
   checkHaveChild,
@@ -97,8 +97,27 @@ export function MemberSheet({ game, member }: { game: GameState; member: Member 
         ) : null}
       </dl>
 
+      {alive && game.choices.some((choice) => choice.memberId === member.id) ? (
+        <ChooseJob member={member} />
+      ) : null}
       {alive ? <MemberActions game={game} member={member} partner={partner} /> : null}
     </Sheet>
+  )
+}
+
+/** Quem acabou de fazer 18 anos espera a escolha do primeiro emprego, e o relógio também. */
+function ChooseJob({ member }: { member: Member }) {
+  const showChoices = useUiStore((store) => store.showChoices)
+  return (
+    <div className="mt-5">
+      <button type="button" className={`${button.primary} w-full`} onClick={showChoices}>
+        <Briefcase size={18} />
+        Escolher o primeiro emprego
+      </button>
+      <p className="text-ink-soft mt-2 text-center text-sm">
+        O tempo parou até {member.firstName} ter um emprego.
+      </p>
+    </div>
   )
 }
 

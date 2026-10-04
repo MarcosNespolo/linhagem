@@ -1,8 +1,9 @@
 import { processNewDay } from './day'
+import { draftOf } from './draft'
 import { familyRates, type Rates } from './economy'
 import { appendLog } from './log'
 import { createRng } from './rng'
-import { msToTicks, OFFLINE_CAP_MS, TICKS_PER_DAY, ticksToSeconds } from './time'
+import { msToTicks, OFFLINE_CAP_MS, TICKS_PER_DAY, TICKS_PER_MS, ticksToMonths } from './time'
 import type { GameEvent, GameState } from './types'
 
 export type AdvanceResult = {
@@ -10,24 +11,33 @@ export type AdvanceResult = {
   events: GameEvent[]
 }
 
+/** O relógio está parado: pausado pelo jogador ou esperando uma escolha. */
+export function isWaiting(state: GameState): boolean {
+  return state.clock.paused || state.choices.length > 0
+}
+
 /**
  * Avança a simulação em `ms` milissegundos reais de jogo.
  *
  * O relógio anda em unidades inteiras e os eventos acontecem na virada de cada
- * dia. O dinheiro acumula de forma contínua (taxa por segundo real vezes
+ * dia. O dinheiro acumula de forma contínua (taxa por mês do jogo vezes o
  * tempo); como as taxas só mudam nesses eventos ou em ações do jogador, a
  * renda entre duas viradas é calculada de uma vez. Avançar um minuto numa
  * chamada deixa o relógio igual a avançar 60 vezes um segundo, e o dinheiro
  * igual a menos de arredondamento.
+ *
+ * Quando uma virada de dia abre uma escolha, o relógio para ali e o resto do
+ * tempo é descartado, como na pausa. O dia da escolha é mais um ponto de corte,
+ * então avançar de uma vez ou aos poucos continua dando o mesmo resultado.
  *
  * Função pura: não altera `state` e devolve um estado novo.
  */
 export function advance(state: GameState, ms: number): AdvanceResult {
   if (!Number.isFinite(ms)) throw new RangeError(`Tempo inválido: ${ms}`)
   const ticks = msToTicks(ms)
-  if (state.clock.paused || ticks <= 0) return { state, events: [] }
+  if (isWaiting(state) || ticks <= 0) return { state, events: [] }
 
-  const draft = structuredClone(state)
+  const draft = draftOf(state)
   const rng = createRng(draft.rngState)
   const events: GameEvent[] = []
   let rates = familyRates(draft)
@@ -38,6 +48,7 @@ export function advance(state: GameState, ms: number): AdvanceResult {
     if (remaining < untilNextDay) {
       accrue(draft, rates, remaining)
       draft.clock.tickOfDay += remaining
+      remaining = 0
       break
     }
     accrue(draft, rates, untilNextDay)
@@ -45,10 +56,12 @@ export function advance(state: GameState, ms: number): AdvanceResult {
     draft.clock.day += 1
     draft.clock.tickOfDay = 0
     if (processNewDay(draft, rng, events)) rates = familyRates(draft)
+    if (draft.choices.length > 0) break
   }
 
   draft.rngState = rng.state
-  draft.stats.simulatedMs += ms
+  // Parado numa escolha, conta só o tempo que passou, em milissegundos inteiros.
+  draft.stats.simulatedMs += remaining > 0 ? Math.round((ticks - remaining) / TICKS_PER_MS) : ms
   appendLog(draft, events)
   return { state: draft, events }
 }
@@ -56,21 +69,21 @@ export function advance(state: GameState, ms: number): AdvanceResult {
 /**
  * Avança até o instante real `now` (epoch em ms), a partir de
  * `lastSimulatedAt`. Serve ao loop do jogo e ao progresso offline: o tempo
- * simulado é limitado a OFFLINE_CAP_MS e, com o jogo pausado, o relógio fica
- * parado mesmo com o jogo fechado.
+ * simulado é limitado a OFFLINE_CAP_MS e, com o jogo pausado ou esperando uma
+ * escolha, o relógio fica parado mesmo com o jogo fechado.
  */
 export function advanceTo(state: GameState, now: number): AdvanceResult {
   const elapsed = now - state.lastSimulatedAt
-  const ms = state.clock.paused ? 0 : Math.min(Math.max(elapsed, 0), OFFLINE_CAP_MS)
+  const ms = isWaiting(state) ? 0 : Math.min(Math.max(elapsed, 0), OFFLINE_CAP_MS)
   const result = ms > 0 ? advance(state, ms) : { state, events: [] }
   return { state: { ...result.state, lastSimulatedAt: now }, events: result.events }
 }
 
 /** Soma a renda e desconta a despesa de um intervalo com taxas constantes. */
 function accrue(draft: GameState, rates: Rates, ticks: number): void {
-  const seconds = ticksToSeconds(ticks)
-  const earned = rates.income * seconds
-  const owed = rates.expense * seconds
+  const months = ticksToMonths(ticks)
+  const earned = rates.income * months
+  const owed = rates.expense * months
   const balance = draft.money + earned - owed
   // O saldo nunca fica negativo: a despesa que não cabe no caixa não é cobrada.
   const unpaid = balance < 0 ? -balance : 0

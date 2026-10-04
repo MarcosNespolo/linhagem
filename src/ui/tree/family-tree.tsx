@@ -9,7 +9,7 @@ import {
   type ReactZoomPanPinchRef,
 } from 'react-zoom-pan-pinch'
 import { ageOf, memberExpense, memberIncome, type GameState, type MemberId } from '@/engine'
-import { formatRate } from '@/lib/format'
+import { formatSignedMoney } from '@/lib/format'
 import { Avatar } from '../avatar/avatar'
 import { avatarLook, lookKey, type AvatarLook } from '../avatar/look'
 import type { NodeAction } from '../selectors'
@@ -325,7 +325,7 @@ const TreeNode = memo(
               rate < 0 ? 'text-expense' : 'text-income'
             }`}
           >
-            {formatRate(rate)}
+            {formatSignedMoney(rate)}
           </span>
         ) : null}
       </button>

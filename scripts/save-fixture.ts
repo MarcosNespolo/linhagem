@@ -6,8 +6,9 @@
  * que já existe nunca é sobrescrito, porque representa os saves reais daquela
  * versão.
  *
- * O exemplo passa pelas ações principais do jogo: dois filhos, um deles
- * casado, e o outro com pessoas sugeridas como par esperando resposta.
+ * O exemplo passa pelas ações principais do jogo: dois filhos, um deles com
+ * emprego escolhido e casado, e o outro recém-chegado aos 18, com a escolha do
+ * primeiro emprego aberta e pessoas sugeridas como par esperando resposta.
  */
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { BALANCE } from '../src/content/balance'
@@ -17,6 +18,7 @@ import {
   CURRENT_SCHEMA_VERSION,
   daysToMs,
   newGame,
+  suggestedPicks,
   type Action,
   type GameState,
 } from '../src/engine'
@@ -42,16 +44,21 @@ let state = newGame({
   startDate: '2026-10-03',
   familyName: 'Exemplo',
 })
-state = { ...state, money: 100_000 }
+state = { ...state, money: 18_000_000 }
 state = advance(state, 2 * year).state
 state = act(state, { type: 'haveChild', parentId: 'm1' })
 state = advance(state, 2 * year).state
 state = act(state, { type: 'haveChild', parentId: 'm1' })
+// O relógio para nos 18 anos do primeiro filho, que escolhe o emprego sugerido.
 state = advance(state, 19 * year).state
+state = act(state, { type: 'choose', picks: suggestedPicks(state) })
+// E para de novo nos 18 anos do segundo, que fica com a escolha aberta.
+state = advance(state, 3 * year).state
 state = act(state, { type: 'findSuitors', memberId: 'm3' })
 state = act(state, { type: 'marry', memberId: 'm3', suitorIndex: 0 })
 state = act(state, { type: 'findSuitors', memberId: 'm4' })
 state = advance(state, daysToMs(100)).state
+if (state.choices.length !== 1) throw new Error('O exemplo devia terminar com uma escolha aberta')
 
 mkdirSync('tests/fixtures', { recursive: true })
 writeFileSync(path, `${JSON.stringify(state, null, 2)}\n`)

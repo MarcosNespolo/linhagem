@@ -1,6 +1,8 @@
 import { BALANCE } from '../content/balance'
 import { inheritAppearance } from './appearance'
+import { applyPicks, checkPicks, type ChoicePick } from './choices'
 import { FAMILY_NAME_MAX_LENGTH } from './constants'
+import { draftOf } from './draft'
 import { refuse, type ActionError, type Refusal } from './errors'
 import { appendLog } from './log'
 import { checkMarry, checkSeekPartner, joinFamily, rollSuitors } from './marriage'
@@ -17,6 +19,8 @@ export type Action =
   | { type: 'haveChild'; parentId: MemberId }
   | { type: 'findSuitors'; memberId: MemberId }
   | { type: 'marry'; memberId: MemberId; suitorIndex: number }
+  /** Responde escolhas abertas. Quando não sobra nenhuma, o relógio volta a andar. */
+  | { type: 'choose'; picks: ChoicePick[] }
 
 export type ActionResult = { ok: true; state: GameState; events: GameEvent[] } | Refusal
 
@@ -38,6 +42,8 @@ export function applyAction(state: GameState, action: Action): ActionResult {
       return findSuitors(state, action.memberId)
     case 'marry':
       return marry(state, action.memberId, action.suitorIndex)
+    case 'choose':
+      return choose(state, action.picks)
   }
 }
 
@@ -87,7 +93,7 @@ function haveChild(state: GameState, parentId: MemberId): ActionResult {
   const check = checkHaveChild(state, parentId)
   if (!check.ok) return check
 
-  const draft = structuredClone(state)
+  const draft = draftOf(state)
   const rng = createRng(draft.rngState)
   const day = draft.clock.day
   const parent = draft.members[parentId]
@@ -116,7 +122,7 @@ function findSuitors(state: GameState, memberId: MemberId): ActionResult {
   const check = checkSeekPartner(state, memberId)
   if (!check.ok) return check
 
-  const draft = structuredClone(state)
+  const draft = draftOf(state)
   const rng = createRng(draft.rngState)
   draft.suitors[memberId] = rollSuitors(draft, rng, draft.members[memberId])
   draft.rngState = rng.state
@@ -127,7 +133,7 @@ function marry(state: GameState, memberId: MemberId, suitorIndex: number): Actio
   const check = checkMarry(state, memberId, suitorIndex)
   if (!check.ok) return check
 
-  const draft = structuredClone(state)
+  const draft = draftOf(state)
   const rng = createRng(draft.rngState)
   const spouse = joinFamily(draft, rng, draft.members[memberId], check.suitor)
   delete draft.suitors[memberId]
@@ -137,6 +143,16 @@ function marry(state: GameState, memberId: MemberId, suitorIndex: number): Actio
   const events: GameEvent[] = [
     { type: 'married', day: draft.clock.day, memberId, partnerId: spouse.id },
   ]
+  appendLog(draft, events)
+  return done(draft, events)
+}
+
+function choose(state: GameState, picks: readonly ChoicePick[]): ActionResult {
+  const check = checkPicks(state, picks)
+  if (!check.ok) return check
+
+  const draft = draftOf(state)
+  const events = applyPicks(draft, picks)
   appendLog(draft, events)
   return done(draft, events)
 }

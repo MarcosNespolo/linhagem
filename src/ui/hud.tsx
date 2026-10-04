@@ -1,16 +1,18 @@
 'use client'
 
-import { Coins, Pause, Pencil, Play } from 'lucide-react'
+import { Pause, Pencil, Play } from 'lucide-react'
 import { calendarDate, type GameState } from '@/engine'
 import { useGameStore } from '@/game/store'
-import { formatMoney, formatMonthYear, formatRate } from '@/lib/format'
+import { formatAmount, formatMonthYear, formatRate } from '@/lib/format'
 import { useUiStore } from './ui-store'
 
-/** Barra do topo: nome da família, data, dinheiro, renda por segundo e pausa. */
+/** Barra do topo: nome da família, data, dinheiro, renda por mês e pausa. */
 export function Hud({ game, net }: { game: GameState; net: number }) {
   const dispatch = useGameStore((store) => store.dispatch)
   const openSheet = useUiStore((store) => store.openSheet)
+  const showChoices = useUiStore((store) => store.showChoices)
   const paused = game.clock.paused
+  const waiting = waitingText(game)
 
   return (
     <header className="border-line bg-surface z-20 shrink-0 border-b px-4 pt-[max(env(safe-area-inset-top),0.75rem)] pb-3">
@@ -32,9 +34,9 @@ export function Hud({ game, net }: { game: GameState; net: number }) {
           </span>
         </button>
         <div className="shrink-0 text-right">
-          <p className="tabular flex items-center justify-end gap-1.5 text-[24px] leading-7 font-black">
-            <Coins size={20} className="text-gold" aria-hidden="true" />
-            {formatMoney(game.money)}
+          <p className="tabular flex items-baseline justify-end gap-1 text-[24px] leading-7 font-black">
+            <span className="text-gold text-[16px] font-extrabold">R$</span>
+            {formatAmount(game.money)}
           </p>
           <p
             className={`tabular text-[14px] font-bold ${net < 0 ? 'text-expense' : 'text-income'}`}
@@ -57,11 +59,32 @@ export function Hud({ game, net }: { game: GameState; net: number }) {
           )}
         </button>
       </div>
-      {paused ? (
+      {waiting ? (
+        <div className="bg-gold-soft text-gold mx-auto mt-2 flex max-w-3xl items-center gap-3 rounded-xl py-1 pr-1 pl-3 text-[13px] font-bold">
+          <p className="min-w-0 flex-1">{waiting}</p>
+          <button
+            type="button"
+            onClick={showChoices}
+            className="bg-gold shrink-0 rounded-full px-3 py-1.5 text-white transition active:scale-95"
+          >
+            Escolher
+          </button>
+        </div>
+      ) : paused ? (
         <p className="bg-gold-soft text-gold mx-auto mt-2 max-w-3xl rounded-xl px-3 py-1.5 text-center text-[13px] font-bold">
           Tempo pausado. Ninguém envelhece e o dinheiro não entra.
         </p>
       ) : null}
     </header>
   )
+}
+
+/** Aviso de tempo parado por escolhas abertas, ou null quando não há nenhuma. */
+function waitingText(game: GameState): string | null {
+  const [first] = game.choices
+  if (!first) return null
+  if (game.choices.length > 1)
+    return `Tempo parado: ${game.choices.length} escolhas esperando você.`
+  const name = game.members[first.memberId]?.firstName ?? 'alguém'
+  return `Tempo parado: falta escolher o primeiro emprego de ${name}.`
 }

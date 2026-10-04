@@ -4,16 +4,20 @@ import { BALANCE } from '../content/balance'
  * O relógio conta o tempo em unidades inteiras, para que avançar de uma vez ou
  * aos poucos dê exatamente o mesmo resultado, sem erro de arredondamento. Um
  * dia tem TICKS_PER_DAY unidades; o valor faz 1 ms real virar um número
- * inteiro de unidades em qualquer ritmo com até duas casas decimais.
+ * inteiro de unidades em ritmos como 1, 2, 4, 5 ou 10 segundos por mês do jogo.
  */
 export const TICKS_PER_DAY = 1_200_000
 
-/** Unidades do relógio por milissegundo real, no ritmo de BALANCE.gameMonthsPerSecond. */
-export const TICKS_PER_MS =
-  (TICKS_PER_DAY * BALANCE.daysPerYear * BALANCE.gameMonthsPerSecond) / 12_000
+/** Unidades do relógio num mês do jogo, que é um doze avos do ano. */
+export const TICKS_PER_MONTH = (TICKS_PER_DAY * BALANCE.daysPerYear) / 12
 
-if (!Number.isInteger(TICKS_PER_MS)) {
-  throw new Error('BALANCE.gameMonthsPerSecond precisa ter no máximo duas casas decimais')
+/** Unidades do relógio por milissegundo real, no ritmo de BALANCE.secondsPerGameMonth. */
+export const TICKS_PER_MS = TICKS_PER_MONTH / (BALANCE.secondsPerGameMonth * 1000)
+
+if (!Number.isInteger(TICKS_PER_MONTH) || !Number.isInteger(TICKS_PER_MS)) {
+  throw new Error(
+    'BALANCE.secondsPerGameMonth precisa dar um número inteiro de unidades do relógio por milissegundo',
+  )
 }
 
 /** Milissegundos reais convertidos em unidades do relógio, arredondados para a unidade. */
@@ -21,9 +25,9 @@ export function msToTicks(ms: number): number {
   return Math.round(ms * TICKS_PER_MS)
 }
 
-/** Segundos reais que um intervalo em unidades do relógio representa. */
-export function ticksToSeconds(ticks: number): number {
-  return ticks / TICKS_PER_MS / 1000
+/** Meses do jogo que um intervalo em unidades do relógio representa. */
+export function ticksToMonths(ticks: number): number {
+  return ticks / TICKS_PER_MONTH
 }
 
 /** Milissegundos reais que `days` dias do jogo levam para passar. */

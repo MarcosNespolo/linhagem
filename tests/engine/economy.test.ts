@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { BALANCE } from '@/content/balance'
-import { ageOf, familyRates, memberExpense, memberIncome, salaryPerSecond } from '@/engine'
+import { ageOf, familyRates, memberExpense, memberIncome, salaryPerMonth } from '@/engine'
 import { founders, lastMember, makeGame, setMember, withChild } from '../helpers'
 
 describe('economia', () => {
   it('soma o salário de quem trabalha', () => {
     const state = makeGame(3)
     const [first, second] = founders(state)
-    const income = salaryPerSecond(first) + salaryPerSecond(second)
+    const income = salaryPerMonth(first) + salaryPerMonth(second)
     expect(familyRates(state)).toEqual({ income, expense: 0, net: income })
   })
 
@@ -24,8 +24,8 @@ describe('economia', () => {
   it('paga pensão a quem passou da idade de aposentadoria', () => {
     const [first] = founders(makeGame(3))
     const retirementDay = first.birthDay + BALANCE.retirementAge * BALANCE.daysPerYear
-    expect(memberIncome(first, retirementDay - 1)).toBe(salaryPerSecond(first))
-    expect(memberIncome(first, retirementDay)).toBe(salaryPerSecond(first) * BALANCE.pensionRatio)
+    expect(memberIncome(first, retirementDay - 1)).toBe(salaryPerMonth(first))
+    expect(memberIncome(first, retirementDay)).toBe(salaryPerMonth(first) * BALANCE.pensionRatio)
   })
 
   it('não conta quem morreu, e a idade dele para de contar', () => {

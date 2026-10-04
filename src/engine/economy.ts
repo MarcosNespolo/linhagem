@@ -3,22 +3,22 @@ import { careerLevel } from '../content/careers'
 import { ageOf, isAlive } from './members'
 import type { GameState, Member } from './types'
 
-/** Salário por segundo do nível atual da carreira, sem considerar idade. */
-export function salaryPerSecond(member: Member): number {
+/** Salário por mês do nível atual da carreira, sem considerar idade. */
+export function salaryPerMonth(member: Pick<Member, 'career'>): number {
   if (!member.career) return 0
-  return careerLevel(member.career.id, member.career.level).salaryPerSecond
+  return careerLevel(member.career.id, member.career.level).salaryPerMonth
 }
 
-/** Renda por segundo: salário para adultos, pensão para aposentados, zero para crianças. */
+/** Renda por mês: salário para adultos, pensão para aposentados, zero para crianças. */
 export function memberIncome(member: Member, day: number): number {
   if (!isAlive(member)) return 0
   const age = ageOf(member, day)
   if (age < BALANCE.adultAge) return 0
-  const salary = salaryPerSecond(member)
+  const salary = salaryPerMonth(member)
   return age >= BALANCE.retirementAge ? salary * BALANCE.pensionRatio : salary
 }
 
-/** Despesa por segundo. Só crianças custam dinheiro, e custam mais conforme crescem. */
+/** Despesa por mês. Só crianças custam dinheiro, e custam mais conforme crescem. */
 export function memberExpense(member: Member, day: number): number {
   if (!isAlive(member)) return 0
   const age = ageOf(member, day)
@@ -27,9 +27,11 @@ export function memberExpense(member: Member, day: number): number {
 }
 
 export type Rates = {
+  /** Renda por mês do jogo, em reais. */
   income: number
+  /** Despesa por mês do jogo, em reais. */
   expense: number
-  /** Renda menos despesa, por segundo. */
+  /** Renda menos despesa, por mês. */
   net: number
 }
 

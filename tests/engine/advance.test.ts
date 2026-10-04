@@ -5,15 +5,22 @@ import {
   advanceTo,
   ageOf,
   applyAction,
+  bestOffer,
+  calendarDate,
   familyRates,
+  isWaiting,
   memberExpense,
   memberIncome,
   msToTicks,
   OFFLINE_CAP_MS,
-  salaryPerSecond,
+  salaryPerMonth,
+  suggestedPicks,
+  TICKS_PER_DAY,
+  ticksToMonths,
   type GameState,
 } from '@/engine'
 import {
+  chooseSuggested,
   days,
   expectClose,
   expectOk,
@@ -27,19 +34,27 @@ import {
   years,
 } from '../helpers'
 
+/** Partida parada no dia em que o primeiro filho do casal fundador faz 18 anos. */
+function atFirstJobChoice(seed: number): { state: GameState; childId: string } {
+  const born = withChild(makeGame(seed))
+  const childId = lastMember(born).id
+  return { state: advance(born, years(BALANCE.adultAge + 1)).state, childId }
+}
+
 describe('advance', () => {
-  it('passa um ano do jogo a cada 12 s reais, no ritmo de 1 mês por segundo', () => {
-    expect(BALANCE.gameMonthsPerSecond).toBe(1)
-    const { state } = advance(makeGame(), 12_000)
+  it('passa um ano do jogo a cada minuto real, no ritmo de 1 mês a cada 5 s', () => {
+    expect(BALANCE.secondsPerGameMonth).toBe(5)
+    const { state } = advance(makeGame(), 60_000)
     expect(state.clock).toEqual({ day: BALANCE.daysPerYear, tickOfDay: 0, paused: false })
   })
 
-  it('acumula dinheiro pela taxa líquida por segundo real', () => {
+  it('acumula dinheiro pela taxa líquida por mês do jogo', () => {
     const state = makeGame()
     const { net } = familyRates(state)
-    const { state: next } = advance(state, 10)
-    expectClose(next.money, state.money + net * 0.01)
-    expect(next.clock).toEqual({ day: 0, tickOfDay: msToTicks(10), paused: false })
+    const { state: next } = advance(state, BALANCE.secondsPerGameMonth * 1_000)
+    expectClose(next.money, state.money + net)
+    const tickOfDay = msToTicks(BALANCE.secondsPerGameMonth * 1_000) - 30 * TICKS_PER_DAY
+    expect(next.clock).toEqual({ day: 30, tickOfDay, paused: false })
   })
 
   it('vira o dia quando o relógio completa um dia', () => {
@@ -53,6 +68,16 @@ describe('advance', () => {
     const copy = structuredClone(state)
     advance(state, years(1))
     expect(state).toEqual(copy)
+  })
+
+  it('não copia quem já morreu, que continua o mesmo objeto no estado novo', () => {
+    const start = makeGame(2)
+    const [first, second] = founders(start)
+    const widowed = setMember(start, first.id, { deathDay: 0 })
+    const { state } = advance(widowed, days(10))
+    expect(state.members[first.id]).toBe(widowed.members[first.id])
+    expect(state.members[second.id]).not.toBe(widowed.members[second.id])
+    expect(state.members[second.id]).toEqual(widowed.members[second.id])
   })
 
   it('não anda com o jogo pausado', () => {
@@ -82,7 +107,8 @@ describe('advance', () => {
 
   it('dá o mesmo resultado com passos fracionados e atravessando aniversários', () => {
     const start = withChild(makeGame(4))
-    const total = years(2)
+    // 1 ano e 73 dias: 72 s reais, múltiplo exato dos passos de 2,5 ms.
+    const total = years(1) + days(73)
     const atOnce = advance(start, total).state
     let stepwise = start
     for (let elapsed = 0; elapsed < total; elapsed += 2.5) stepwise = advance(stepwise, 2.5).state
@@ -95,29 +121,89 @@ describe('advance', () => {
       state = advance(state, years(1)).state
       const [first] = founders(state)
       state = expectOk(applyAction(state, { type: 'haveChild', parentId: first.id })).state
-      return advance(state, years(20)).state
+      state = chooseSuggested(advance(state, years(20)).state)
+      return advance(state, years(5)).state
     }
     expect(run()).toEqual(run())
   })
 
-  it('a criança vira adulta aos 18, consegue um emprego e para de custar', () => {
+  it('aos 18, a criança para de custar e o relógio para na escolha do primeiro emprego', () => {
     const start = withChild(makeGame(4))
     const child = lastMember(start)
     expect(memberExpense(child, start.clock.day)).toBeGreaterThan(0)
 
-    const { state, events } = advance(start, years(BALANCE.adultAge))
+    const { state, events } = advance(start, years(BALANCE.adultAge + 1))
+    const birthday = child.birthDay + BALANCE.adultAge * BALANCE.daysPerYear
+    expect(state.clock).toEqual({ day: birthday, tickOfDay: 0, paused: false })
+    expect(state.stats.simulatedMs).toBe(start.stats.simulatedMs + years(BALANCE.adultAge))
+
     const grown = state.members[child.id]
     expect(ageOf(grown, state.clock.day)).toBe(BALANCE.adultAge)
-    expect(events).toContainEqual({ type: 'becameAdult', day: state.clock.day, memberId: child.id })
-    expect(grown.career).not.toBeNull()
-    expect(events).toContainEqual({
-      type: 'firstJob',
-      day: state.clock.day,
-      memberId: child.id,
-      careerId: grown.career?.id,
+    expect(events).toContainEqual({ type: 'becameAdult', day: birthday, memberId: child.id })
+    expect(events.some((event) => event.type === 'firstJob')).toBe(false)
+    expect(grown.career).toBeNull()
+    expect(memberExpense(grown, birthday)).toBe(0)
+    expect(memberIncome(grown, birthday)).toBe(0)
+
+    const [choice] = state.choices
+    expect(state.choices).toHaveLength(1)
+    expect(choice).toMatchObject({ type: 'firstJob', memberId: child.id, day: birthday })
+    expect(new Set(choice.offers.map((offer) => offer.careerId)).size).toBe(
+      BALANCE.jobs.offersPerChoice,
+    )
+    expect(choice.suggested).toBe(bestOffer(choice.offers))
+    expect(isWaiting(state)).toBe(true)
+    expect(advance(state, 1_000).state).toBe(state)
+  })
+
+  it('escolher o emprego dá a carreira, entra no histórico e solta o relógio', () => {
+    const { state, childId } = atFirstJobChoice(4)
+    const [choice] = state.choices
+    const option = (choice.suggested + 1) % choice.offers.length
+    const result = expectOk(
+      applyAction(state, { type: 'choose', picks: [{ memberId: childId, option }] }),
+    )
+    const careerId = choice.offers[option].careerId
+    const firstJob = { type: 'firstJob', day: state.clock.day, memberId: childId, careerId }
+    expect(result.state.members[childId].career).toEqual({ id: careerId, level: 0, xp: 0 })
+    expect(result.state.choices).toEqual([])
+    expect(result.events).toEqual([firstJob])
+    expect(result.state.log.at(-1)).toEqual(firstJob)
+    expect(memberIncome(result.state.members[childId], state.clock.day)).toBeGreaterThan(0)
+    expect(advance(result.state, 1_000).state.clock.tickOfDay).toBeGreaterThan(0)
+  })
+
+  it('dá o mesmo resultado de uma vez ou aos poucos até parar na escolha', () => {
+    const start = withChild(makeGame(5))
+    const total = years(BALANCE.adultAge + 1)
+    const atOnce = advance(start, total).state
+    let stepwise = start
+    for (let elapsed = 0; elapsed < total; elapsed += 1_000) {
+      stepwise = advance(stepwise, 1_000).state
+    }
+    expect(atOnce.choices).toHaveLength(1)
+    expectSameState(atOnce, stepwise)
+  })
+
+  it('paga o 13º em 20 de dezembro a quem trabalha e a quem é aposentado', () => {
+    const start = makeGame(6)
+    const [first, second] = founders(start)
+    const retiree = setMember(start, first.id, {
+      birthDay: -(BALANCE.retirementAge + 1) * BALANCE.daysPerYear,
+      lifespan: 100,
     })
-    expect(memberExpense(grown, state.clock.day)).toBe(0)
-    expect(memberIncome(grown, state.clock.day)).toBeGreaterThan(0)
+    const day = 78
+    expect(calendarDate(retiree.startDate, day)).toBe('2026-12-20')
+
+    const before = advance(retiree, days(day - 1))
+    expect(before.events.some((event) => event.type === 'thirteenth')).toBe(false)
+
+    const { state, events } = advance(retiree, days(day))
+    const amount = salaryPerMonth(second) + salaryPerMonth(first) * BALANCE.pensionRatio
+    expect(events).toContainEqual({ type: 'thirteenth', day, amount })
+    const accrued = familyRates(retiree).net * ticksToMonths(day * TICKS_PER_DAY)
+    expectClose(state.money, retiree.money + accrued + amount)
+    expect(state.log.map((event) => String(event.type))).not.toContain('thirteenth')
   })
 
   it('aposenta aos 65 com pensão', () => {
@@ -129,7 +215,7 @@ describe('advance', () => {
     const { state, events } = advance(aging, days(1))
     expect(events).toContainEqual({ type: 'retired', day: 1, memberId: first.id })
     expect(memberIncome(state.members[first.id], 1)).toBe(
-      salaryPerSecond(first) * BALANCE.pensionRatio,
+      salaryPerMonth(first) * BALANCE.pensionRatio,
     )
   })
 
@@ -158,11 +244,11 @@ describe('advance', () => {
   it('nunca deixa o saldo negativo e só registra a despesa paga', () => {
     let start = withChild(makeGame(10))
     for (const member of founders(start)) start = setMember(start, member.id, { career: null })
-    start = withMoney(start, 0.5)
+    start = withMoney(start, 90)
 
     const { state } = advance(start, days(60))
     expect(state.money).toBe(0)
-    expectClose(state.stats.totalSpent - start.stats.totalSpent, 0.5)
+    expectClose(state.stats.totalSpent - start.stats.totalSpent, 90)
   })
 })
 
@@ -189,6 +275,25 @@ describe('advanceTo', () => {
     const later = paused.lastSimulatedAt + 3_600_000
     const { state } = advanceTo(paused, later)
     expect(state).toEqual({ ...paused, lastSimulatedAt: later })
+  })
+
+  it('com o jogo fechado, para na primeira escolha e espera por ela', () => {
+    const born = withChild(makeGame(12))
+    const birthday = lastMember(born).birthDay + BALANCE.adultAge * BALANCE.daysPerYear
+    const teen = advance(born, years(BALANCE.adultAge - 1)).state
+    const { state } = advanceTo(teen, teen.lastSimulatedAt + years(3))
+    expect(state.clock.day).toBe(birthday)
+    expect(state.choices).toHaveLength(1)
+
+    // Uma hora depois, nada andou: só a âncora de tempo.
+    const later = state.lastSimulatedAt + 3_600_000
+    const waited = advanceTo(state, later).state
+    expect(waited).toEqual({ ...state, lastSimulatedAt: later })
+
+    // Depois da escolha, o relógio volta a andar a partir dali.
+    const chosen = expectOk(applyAction(waited, { type: 'choose', picks: suggestedPicks(waited) }))
+    const resumed = advanceTo(chosen.state, later + 1_000).state
+    expect(resumed.stats.simulatedMs).toBe(state.stats.simulatedMs + 1_000)
   })
 
   it('não anda para trás se o relógio do aparelho voltar no tempo', () => {
