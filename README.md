@@ -23,7 +23,9 @@ Jogue em [linhagem.vercel.app](https://linhagem.vercel.app).
   ao 4º e ao 5º nível
 - Casar quem fez 18 anos, escolhendo entre pessoas sugeridas, cada uma com formação e emprego; o
   cônjuge entra na família e trabalha
-- Acompanhar o dinheiro em reais, com salários e despesas por mês e o 13º salário em dezembro
+- Comprar imóveis, do kitnet ao shopping, que rendem aluguel todo mês na aba Imóveis
+- Acompanhar o dinheiro em reais, com salários, aluguel e despesas por mês e o 13º salário em
+  dezembro
 - Ver a família numa árvore com zoom e arrasto, com quem já morreu esmaecido
 - Ver o histórico na aba Família: nascimentos, casamentos, estudos, empregos, promoções e mortes
 - Voltar ao jogo e ver o resumo do que aconteceu enquanto esteve fora
@@ -150,6 +152,18 @@ calendário exatamente igual.
 
 Todo sorteio usa um gerador com seed guardada no save, então a mesma partida avançada da mesma
 forma chega sempre ao mesmo estado. Os testes conferem isso.
+
+## Imóveis
+
+São nove tipos, do kitnet ao shopping (`src/content/properties.ts`), cada um de 3 a 4,5 vezes mais
+caro que o anterior. O primeiro de cada tipo se paga em 10 anos do jogo, no kitnet, até 32, no
+shopping. Cada imóvel a mais do mesmo tipo custa 15% mais que o anterior, com o mesmo aluguel, e o
+tipo seguinte libera com a primeira compra do anterior. A compra é de um em um, sem venda nem
+financiamento por enquanto.
+
+O aluguel entra na renda da família todo mês, sem depender de quem está vivo: os imóveis são da
+família e ficam quando as pessoas morrem. O resumo da volta ao jogo mostra quanto veio de aluguel.
+As regras ficam em `src/engine/properties.ts`, e o crescimento do preço em `BALANCE.properties`.
 
 ## Avatares
 
