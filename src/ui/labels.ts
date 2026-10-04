@@ -1,12 +1,24 @@
 import { BALANCE } from '@/content/balance'
 import { careerLevel } from '@/content/careers'
 import {
+  degree,
+  isHigherStage,
+  techCourseName,
+  type DegreeId,
+  type Network,
+  type SchoolStage,
+  type Stage,
+  type TechCourseId,
+} from '@/content/schools'
+import {
   ageOf,
   calendarDate,
   childCooldownDaysLeft,
   daysToSeconds,
   isAlive,
   type ChildCheck,
+  type Enrollment,
+  type Formation,
   type GameEvent,
   type GameState,
   type Member,
@@ -28,14 +40,22 @@ export function careerTitle(member: Pick<Member, 'career' | 'gender'>): string |
   return careerLevel(member.career.id, member.career.level).title[member.gender]
 }
 
-/** O que a pessoa é ou faz hoje: "Bebê", "Criança", "Enfermeira", "Aposentado". */
+/** O que a pessoa é ou faz hoje: "Bebê", "Estudante de Direito", "Enfermeira", "Aposentado". */
 export function roleLabel(member: Member, day: number): string {
   const age = ageOf(member, day)
   if (age < 3) return 'Bebê'
-  if (age < 13) return 'Criança'
-  if (age < BALANCE.adultAge) return 'Adolescente'
+  const school = member.education.school
+  if (school?.stage === 'faculdade' && school.degree) {
+    return `Estudante de ${degree(school.degree).name}`
+  }
+  if (school?.stage === 'tecnico') return 'Estudante de curso técnico'
+  if (school?.stage === 'cursinho') return 'No cursinho'
   if (age >= BALANCE.retirementAge) return byGender(member, 'Aposentada', 'Aposentado')
-  return careerTitle(member) ?? 'Sem trabalho'
+  const title = careerTitle(member)
+  if (title) return title
+  if (age < 13) return 'Criança'
+  if (age < BALANCE.adultAge && school) return 'Adolescente'
+  return 'Procurando o primeiro emprego'
 }
 
 /** Idade em texto, com "Faleceu aos" para quem já morreu. */
@@ -68,17 +88,14 @@ export function generationLabel(generation: number): string {
 
 /** Frase curta sobre um acontecimento, para avisos e para o histórico. */
 export function describeEvent(state: GameState, event: GameEvent): string {
+  if (event.type === 'thirteenth') return `Chegou o 13º salário: ${formatMoney(event.amount)}`
   const member = state.members[event.memberId]
   const name = member?.firstName ?? 'Alguém'
   switch (event.type) {
     case 'born':
       return `${name} nasceu`
-    case 'becameAdult': {
-      const job = member ? firstJobTitle(member) : null
-      return job
-        ? `${name} fez ${BALANCE.adultAge} anos e começou a trabalhar como ${lowerFirst(job)}`
-        : `${name} fez ${BALANCE.adultAge} anos`
-    }
+    case 'becameAdult':
+      return `${name} fez ${BALANCE.adultAge} anos`
     case 'firstJob': {
       const title = careerLevel(event.careerId, 0).title[member?.gender ?? 'f']
       return `${name} começou a trabalhar como ${lowerFirst(title)}`
@@ -91,13 +108,133 @@ export function describeEvent(state: GameState, event: GameEvent): string {
       return `${name} se aposentou`
     case 'died':
       return `${name} faleceu aos ${formatAge(event.age)}`
+    case 'schoolStarted':
+      return `${name} ${schoolStartText(event.stage, event.network, event.course, event.degree)}`
+    case 'schoolChanged':
+      return event.network === 'particular'
+        ? `${name} mudou para um colégio particular`
+        : `${name} mudou para a escola pública`
+    case 'schoolFinished':
+      if (event.formation.level === 'superior') {
+        return `${name} se formou em ${degree(event.formation.degree).name}`
+      }
+      if (event.formation.level === 'tecnico') {
+        const title = member ? formationLabel(member, event.formation) : 'Técnico'
+        return `${name} se formou ${lowerFirst(title)}`
+      }
+      return `${name} terminou o ensino médio`
+    case 'enem':
+      return `Saiu a nota do ENEM de ${name}: ${event.score} pontos`
   }
 }
 
-/** Cargo do primeiro emprego, que é o nível inicial da carreira atual. */
-function firstJobTitle(member: Member): string | null {
-  if (!member.career) return null
-  return careerLevel(member.career.id, 0).title[member.gender]
+/** O que a pessoa começou na matrícula, para o histórico. */
+function schoolStartText(
+  stage: Stage,
+  network: Network,
+  course?: TechCourseId,
+  degreeId?: DegreeId,
+): string {
+  const technical = course ? `técnico em ${techCourseName(course)}` : 'técnico'
+  switch (stage) {
+    case 'creche':
+      if (network === 'avos') return 'vai ficar com os avós até a escola'
+      if (network === 'casa') return 'vai ficar em casa até a escola'
+      return network === 'publica' ? 'entrou na creche pública' : 'entrou numa creche particular'
+    case 'escola':
+      return network === 'particular'
+        ? 'começou a escola num colégio particular'
+        : 'começou a escola na rede municipal'
+    case 'medio':
+      if (network === 'federal') return `começou o ensino médio no instituto federal, ${technical}`
+      return network === 'particular'
+        ? 'começou o ensino médio num colégio particular'
+        : 'começou o ensino médio na escola estadual'
+    case 'cursinho':
+      return 'entrou no cursinho para fazer o ENEM de novo'
+    case 'tecnico':
+      return network === 'federal'
+        ? `começou o curso ${technical} no instituto federal`
+        : `começou o curso ${technical}`
+    case 'faculdade': {
+      const name = degreeId ? degree(degreeId).name : 'a faculdade'
+      return network === 'federal'
+        ? `entrou na universidade federal para cursar ${name}`
+        : `começou ${name} numa faculdade particular`
+    }
+  }
+}
+
+/** Nome da rede numa etapa: "Creche pública", "Escola municipal", "Universidade federal". */
+export function schoolName(stage: Stage, network: Network): string {
+  if (stage === 'cursinho') return 'Cursinho'
+  if (stage === 'faculdade') {
+    return network === 'federal' ? 'Universidade federal' : 'Faculdade particular'
+  }
+  if (stage === 'tecnico') {
+    return network === 'federal' ? 'Instituto federal' : 'Curso técnico particular'
+  }
+  switch (network) {
+    case 'publica':
+      return stage === 'creche'
+        ? 'Creche pública'
+        : stage === 'escola'
+          ? 'Escola municipal'
+          : 'Escola estadual'
+    case 'particular':
+      return stage === 'creche' ? 'Creche particular' : 'Colégio particular'
+    case 'federal':
+      return 'Instituto federal'
+    case 'avos':
+      return 'Com os avós'
+    case 'casa':
+      return 'Em casa'
+  }
+}
+
+/** Nome da rede com artigo, para o meio da frase: "a escola municipal", "o colégio particular". */
+export function schoolNameInSentence(stage: Stage, network: Network): string {
+  const name = schoolName(stage, network).toLowerCase()
+  if (network === 'avos' || network === 'casa') return name
+  return /^(colégio|instituto|cursinho|curso)/.test(name) ? `o ${name}` : `a ${name}`
+}
+
+/** Ano escolar pela idade que a criança faz no ano: "Pré-escola", "3º ano do fundamental". */
+export function gradeLabel(stage: SchoolStage, ageThisYear: number): string {
+  if (stage === 'creche') return 'Creche'
+  if (stage === 'medio') return `${ageThisYear - 14}º ano do médio`
+  return ageThisYear <= 5 ? 'Pré-escola' : `${ageThisYear - 5}º ano do fundamental`
+}
+
+/** Ano de quem está no cursinho, no técnico ou na faculdade: "2º ano de Direito". */
+export function higherGradeLabel(school: Enrollment): string {
+  const left = school.yearsLeft ?? 1
+  if (school.stage === 'cursinho') return 'Cursinho para o ENEM'
+  if (school.stage === 'tecnico') {
+    const year = BALANCE.college.technical.years - left + 1
+    return `${year}º ano do técnico${school.course ? ` em ${techCourseName(school.course)}` : ''}`
+  }
+  if (school.degree) {
+    const course = degree(school.degree)
+    return `${course.years - left + 1}º ano de ${course.name}`
+  }
+  return 'Faculdade'
+}
+
+/** Ano escolar de qualquer matrícula, da creche à faculdade. */
+export function schoolYearLabel(school: Enrollment, ageThisYear: number): string {
+  return isHigherStage(school.stage)
+    ? higherGradeLabel(school)
+    : gradeLabel(school.stage, ageThisYear)
+}
+
+/** Formação em palavras: "Ensino médio", "Técnica em Informática", "Formado em Direito". */
+export function formationLabel(member: Pick<Member, 'gender'>, formation: Formation): string {
+  if (formation.level === 'medio') return 'Ensino médio'
+  if (formation.level === 'superior') {
+    return `${byGender(member, 'Formada', 'Formado')} em ${degree(formation.degree).name}`
+  }
+  return `${byGender(member, 'Técnica', 'Técnico')} em ${techCourseName(formation.course)}`
 }
 
 /** Ano do calendário em que um acontecimento aconteceu. */

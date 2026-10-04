@@ -2,8 +2,18 @@ import { BALANCE } from '../content/balance'
 import { CAREER_IDS } from '../content/careers'
 import { FEMALE_NAMES, MALE_NAMES } from '../content/names'
 import type { Rng } from './rng'
+import { newEducation } from './school'
 import { ageInYears } from './time'
-import type { Appearance, CareerState, GameState, Gender, Member, MemberId, Origin } from './types'
+import type {
+  Appearance,
+  CareerState,
+  Education,
+  GameState,
+  Gender,
+  Member,
+  MemberId,
+  Origin,
+} from './types'
 
 export function isAlive(member: Member): boolean {
   return member.deathDay === null
@@ -86,6 +96,8 @@ export type NewMember = {
   career?: CareerState | null
   lifespan?: number
   avatarSeed?: string
+  /** Vida escolar. Sem valor, a de quem nasce: sem escola e sem formação. */
+  education?: Education
 }
 
 /** Cria um membro e o registra no rascunho do estado, que é alterado. */
@@ -109,6 +121,7 @@ export function addMember(draft: GameState, rng: Rng, input: NewMember): Member 
     traits: [],
     appearance: input.appearance,
     avatarSeed: input.avatarSeed ?? rollAvatarSeed(rng),
+    education: input.education ?? newEducation(),
   }
   draft.members[id] = member
   return member

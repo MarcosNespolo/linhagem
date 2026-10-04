@@ -1,36 +1,51 @@
 'use client'
 
-import { Baby, Briefcase, Cake, Heart, Leaf, Sun } from 'lucide-react'
+import {
+  Baby,
+  Briefcase,
+  Cake,
+  FileText,
+  GraduationCap,
+  Heart,
+  Leaf,
+  School,
+  Sun,
+} from 'lucide-react'
 import type { ReactNode } from 'react'
-import { calendarDate, LOG_LIMIT, type GameEvent, type GameState } from '@/engine'
+import { calendarDate, LOG_LIMIT, type GameState, type MemberEvent } from '@/engine'
 import { formatShortMonth } from '@/lib/format'
 import { describeEvent } from '../labels'
 import { card } from '../styles'
 
-const ICONS: Record<GameEvent['type'], ReactNode> = {
+const ICONS: Record<MemberEvent['type'], ReactNode> = {
   born: <Baby size={16} />,
   becameAdult: <Cake size={16} />,
   firstJob: <Briefcase size={16} />,
   married: <Heart size={15} fill="currentColor" />,
   retired: <Sun size={16} />,
   died: <Leaf size={16} />,
+  schoolStarted: <School size={16} />,
+  schoolChanged: <School size={16} />,
+  schoolFinished: <GraduationCap size={17} />,
+  enem: <FileText size={16} />,
 }
 
-const TONES: Record<GameEvent['type'], string> = {
+const TONES: Record<MemberEvent['type'], string> = {
   born: 'bg-leaf-soft text-leaf-strong',
   becameAdult: 'bg-gold-soft text-gold',
   firstJob: 'bg-gold-soft text-gold',
   married: 'bg-rose-soft text-rose',
   retired: 'bg-gold-soft text-gold',
   died: 'bg-line text-ink-soft',
+  schoolStarted: 'bg-leaf-soft text-leaf-strong',
+  schoolChanged: 'bg-leaf-soft text-leaf-strong',
+  schoolFinished: 'bg-gold-soft text-gold',
+  enem: 'bg-leaf-soft text-leaf-strong',
 }
 
 /** Aba Histórico: os acontecimentos da família, do mais recente para o mais antigo. */
 export function HistoryTab({ game }: { game: GameState }) {
-  const events = game.log
-    .filter((event) => event.type !== 'firstJob')
-    .slice()
-    .reverse()
+  const events = game.log.slice().reverse()
   if (events.length === 0) {
     return (
       <div className="mx-auto w-full max-w-md px-4 pt-5">
@@ -44,7 +59,7 @@ export function HistoryTab({ game }: { game: GameState }) {
     )
   }
 
-  const years: { year: string; items: { event: GameEvent; date: string }[] }[] = []
+  const years: { year: string; items: { event: MemberEvent; date: string }[] }[] = []
   for (const event of events) {
     const date = calendarDate(game.startDate, event.day)
     const year = date.slice(0, 4)

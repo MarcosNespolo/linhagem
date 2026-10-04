@@ -1,4 +1,5 @@
 import type { CareerId } from '../content/careers'
+import type { DegreeId, Network, SchoolStage, Stage, TechCourseId } from '../content/schools'
 
 export type MemberId = string
 export type Gender = 'f' | 'm'
@@ -10,9 +11,98 @@ export type CareerState = {
   id: CareerId
   /** Índice do nível atual na lista de níveis da carreira. */
   level: number
-  /** Experiência no nível atual. Usada pelas promoções a partir da Fase 4. */
+  /** Experiência no nível atual. Ainda não usada; as promoções entram na etapa 4.4. */
   xp: number
 }
+
+/** Matrícula de quem está na creche, na escola, no cursinho, no técnico ou na faculdade. */
+export type Enrollment = {
+  stage: Stage
+  network: Network
+  /** Curso técnico: integrado ao médio no instituto federal, ou o técnico depois do médio. */
+  course?: TechCourseId
+  /** Curso da faculdade. */
+  degree?: DegreeId
+  /** Anos que faltam, contando o atual, no cursinho, no técnico e na faculdade. */
+  yearsLeft?: number
+  /** Quem trabalha meio período para cuidar da criança em casa. */
+  caregiverId?: MemberId
+  /** Troca de rede pedida para a próxima matrícula, dentro da mesma etapa. */
+  next?: Network
+}
+
+/** Maior formação concluída: ensino médio, técnico ou faculdade. */
+export type Formation =
+  | { level: 'medio' }
+  | { level: 'tecnico'; course: TechCourseId }
+  | { level: 'superior'; degree: DegreeId }
+
+export type Education = {
+  /** Matrícula atual, ou null fora dos estudos. */
+  school: Enrollment | null
+  /** Pontos que as escolas e o cursinho somaram à nota. */
+  points: number
+  /** Rede de cada etapa já concluída, para sugerir a mesma aos irmãos mais novos. */
+  past: Partial<Record<Stage, Network>>
+  formation: Formation | null
+  /** Nota do último ENEM, ou null para quem não fez. */
+  enem: number | null
+}
+
+/** Vaga oferecida na escolha do primeiro emprego: o primeiro nível de uma carreira. */
+export type JobOffer = { careerId: CareerId }
+
+/** Opção na matrícula de uma etapa nova. */
+export type SchoolOption = {
+  network: Network
+  /** Curso técnico, nas opções do instituto federal. */
+  course?: TechCourseId
+  /** Saiu vaga, passou na prova: dá para escolher. */
+  available: boolean
+}
+
+/** Caminho depois do ensino médio, na escolha de janeiro. */
+export type PathOption =
+  | { path: 'faculdade'; network: 'federal' | 'particular'; degree: DegreeId; available: boolean }
+  | { path: 'tecnico'; network: 'federal' | 'particular'; course: TechCourseId; available: boolean }
+  | { path: 'cursinho'; available: boolean }
+  | { path: 'trabalho'; available: boolean }
+
+/**
+ * Escolha que espera o jogador. Enquanto houver alguma aberta, o relógio não
+ * anda, nem com o jogo fechado.
+ */
+export type Choice =
+  | {
+      /** Primeiro emprego, aos 18 anos. */
+      type: 'firstJob'
+      memberId: MemberId
+      /** Dia do jogo em que a escolha abriu. */
+      day: number
+      offers: JobOffer[]
+      /** Índice da vaga sugerida: a de maior salário. */
+      suggested: number
+    }
+  | {
+      /** Matrícula numa etapa nova da escola, em janeiro. */
+      type: 'school'
+      memberId: MemberId
+      day: number
+      stage: SchoolStage
+      options: SchoolOption[]
+      /** Índice da opção sugerida: a do instituto federal, a dos irmãos ou a mais barata. */
+      suggested: number
+    }
+  | {
+      /** O que fazer depois do ensino médio, em janeiro, com a nota do ENEM. */
+      type: 'afterSchool'
+      memberId: MemberId
+      day: number
+      enem: number
+      options: PathOption[]
+      /** Índice do caminho sugerido: a federal que a nota alcança, o técnico federal ou trabalhar. */
+      suggested: number
+    }
 
 /**
  * Traços visuais. Cores e textura passam de pais para filhos; o corte de
@@ -58,8 +148,9 @@ export type Member = {
   career: CareerState | null
   /** Dia do jogo em que teve o último filho, para o intervalo mínimo entre filhos. */
   lastChildDay: number | null
-  /** Traços de personalidade. Entram na Fase 4. */
+  /** Traços de personalidade. Ficam para depois do v1. */
   traits: string[]
+  education: Education
   appearance: Appearance
   /** Semente para detalhes do avatar que não são herdados, como a cor da roupa. */
   avatarSeed: string
@@ -108,16 +199,36 @@ export type GameState = {
   nextMemberId: number
   /** Pessoas sugeridas como par, por membro solteiro que procurou. */
   suitors: Record<MemberId, Suitor[]>
+  /** Escolhas abertas, na ordem em que abriram. Com alguma aberta, o relógio para. */
+  choices: Choice[]
   /** Últimos acontecimentos da família, do mais antigo para o mais novo. */
-  log: GameEvent[]
+  log: MemberEvent[]
   stats: GameStats
 }
 
-/** Acontecimentos que a engine reporta para a interface mostrar. */
-export type GameEvent =
+/** Acontecimentos de uma pessoa da família, que ficam no histórico. */
+export type MemberEvent =
   | { type: 'born'; day: number; memberId: MemberId }
   | { type: 'becameAdult'; day: number; memberId: MemberId }
   | { type: 'firstJob'; day: number; memberId: MemberId; careerId: CareerId }
   | { type: 'married'; day: number; memberId: MemberId; partnerId: MemberId }
   | { type: 'retired'; day: number; memberId: MemberId }
   | { type: 'died'; day: number; memberId: MemberId; age: number }
+  | {
+      type: 'schoolStarted'
+      day: number
+      memberId: MemberId
+      stage: Stage
+      network: Network
+      course?: TechCourseId
+      degree?: DegreeId
+    }
+  | { type: 'enem'; day: number; memberId: MemberId; score: number }
+  | { type: 'schoolChanged'; day: number; memberId: MemberId; network: Network }
+  | { type: 'schoolFinished'; day: number; memberId: MemberId; formation: Formation }
+
+/**
+ * Acontecimentos que a engine reporta para a interface mostrar. O 13º salário
+ * vira aviso, mas não entra no histórico, para não repetir uma linha por ano.
+ */
+export type GameEvent = MemberEvent | { type: 'thirteenth'; day: number; amount: number }

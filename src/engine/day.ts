@@ -1,12 +1,18 @@
 import { BALANCE } from '../content/balance'
-import { rollStarterCareer } from './members'
+import { openFirstJobChoice } from './jobs'
+import { incomeOf } from './economy'
+import { isEnrollmentDay, processEnrollment } from './enrollment'
 import type { Rng } from './rng'
+import { halfTimeCaregivers } from './school'
+import { calendarDate } from './time'
 import type { GameEvent, GameState } from './types'
 
 /**
  * Processa a virada para o dia atual do relógio: aniversários, maioridade,
- * aposentadoria e morte. Altera o rascunho e devolve true quando houve algum
- * aniversário, porque aí as taxas de renda e despesa podem ter mudado.
+ * aposentadoria, morte, as matrículas de janeiro e o 13º salário. As escolhas
+ * abertas aqui (matrículas, depois do médio, primeiro emprego) param o relógio.
+ * Altera o rascunho e devolve true quando algo pode ter mudado as taxas de
+ * renda e despesa.
  */
 export function processNewDay(draft: GameState, rng: Rng, events: GameEvent[]): boolean {
   const day = draft.clock.day
@@ -28,14 +34,35 @@ export function processNewDay(draft: GameState, rng: Rng, events: GameEvent[]): 
     }
     if (age === BALANCE.adultAge) {
       events.push({ type: 'becameAdult', day, memberId: member.id })
-      if (!member.career) {
-        member.career = rollStarterCareer(rng)
-        events.push({ type: 'firstJob', day, memberId: member.id, careerId: member.career.id })
+      // Quem terminou a escola já escolheu o caminho em janeiro. Fica a reserva para quem
+      // chega aos 18 sem estudar, sem emprego e sem escolha aberta.
+      const waiting = draft.choices.some((choice) => choice.memberId === member.id)
+      if (!member.career && !member.education.school && !waiting) {
+        openFirstJobChoice(draft, rng, member)
       }
     }
     if (age === BALANCE.retirementAge && member.career) {
       events.push({ type: 'retired', day, memberId: member.id })
     }
   }
+
+  if (isEnrollmentDay(draft)) {
+    processEnrollment(draft, rng, events)
+    changed = true
+  }
+  payThirteenth(draft, events)
   return changed
+}
+
+/** No dia do 13º, quem trabalha recebe um salário a mais, e quem é aposentado, uma pensão a mais. */
+function payThirteenth(draft: GameState, events: GameEvent[]): void {
+  const day = draft.clock.day
+  if (calendarDate(draft.startDate, day).slice(5) !== BALANCE.thirteenthSalaryDate) return
+  const caregivers = halfTimeCaregivers(draft)
+  let amount = 0
+  for (const member of Object.values(draft.members)) amount += incomeOf(draft, member, caregivers)
+  if (amount <= 0) return
+  draft.money += amount
+  draft.stats.totalEarned += amount
+  events.push({ type: 'thirteenth', day, amount })
 }

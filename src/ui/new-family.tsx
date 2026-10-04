@@ -8,7 +8,9 @@ import { formatAge } from '@/lib/format'
 import { PersonAvatar } from './avatar/person-avatar'
 import { FamilyMark } from './family-mark'
 import { roleLabel } from './labels'
+import { CloudLoginSheet } from './sheets/cloud-login-sheet'
 import { button } from './styles'
+import { useUiStore } from './ui-store'
 
 /** Tela de criar família: mostra o casal fundador sorteado e pede o sobrenome. */
 export function NewFamily({ draft, current }: { draft: SetupDraft; current: GameState | null }) {
@@ -79,7 +81,43 @@ export function NewFamily({ draft, current }: { draft: SetupDraft; current: Game
         <button type="button" className={`${button.quiet} mt-3 self-center`} onClick={closeSetup}>
           Voltar para a família {current.familyName}
         </button>
-      ) : null}
+      ) : (
+        <CloudStart />
+      )}
     </main>
+  )
+}
+
+/** No primeiro acesso: entrar para continuar uma família que já está na nuvem. */
+function CloudStart() {
+  const cloud = useGameStore((store) => store.cloud)
+  const sheet = useUiStore((store) => store.sheet)
+  const openSheet = useUiStore((store) => store.openSheet)
+
+  let status: string | null = null
+  if (cloud.mode === 'signedIn') {
+    if (cloud.problem === 'offline') status = 'Sem conexão para buscar a família na nuvem.'
+    else if (cloud.problem) status = 'Não deu para buscar a família na nuvem agora.'
+    else if (cloud.syncedAt === null) status = 'Procurando sua família na nuvem…'
+    else
+      status =
+        'Não há família salva na nuvem com este e-mail. A que você começar agora fica guardada nela.'
+  }
+
+  return (
+    <>
+      {status ? (
+        <p className="text-ink-soft mt-4 text-center text-[14px]">{status}</p>
+      ) : cloud.mode === 'signedOut' ? (
+        <button
+          type="button"
+          className={`${button.quiet} mt-3 self-center`}
+          onClick={() => openSheet({ kind: 'cloudLogin' })}
+        >
+          Já tenho uma família salva na nuvem
+        </button>
+      ) : null}
+      {sheet?.kind === 'cloudLogin' ? <CloudLoginSheet /> : null}
+    </>
   )
 }

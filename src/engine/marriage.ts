@@ -12,6 +12,7 @@ import {
   rollStarterCareer,
 } from './members'
 import type { Rng } from './rng'
+import { newEducation } from './school'
 import type { GameState, Member, MemberId, Suitor } from './types'
 
 /**
@@ -105,6 +106,7 @@ export function joinFamily(draft: GameState, rng: Rng, member: Member, suitor: S
     career: suitor.career,
     lifespan: suitor.lifespan,
     avatarSeed: suitor.avatarSeed,
+    education: newEducation({ level: 'medio' }),
   })
   const day = draft.clock.day
   member.partnerId = spouse.id

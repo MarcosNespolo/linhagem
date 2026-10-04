@@ -5,9 +5,12 @@ import { useGameStore } from '@/game/store'
 import { BottomNav } from './bottom-nav'
 import { showMember } from './flows'
 import { generationLabel } from './labels'
-import { loveActions, nodeActions, type LoveActions } from './selectors'
+import { choicesKey, loveActions, nodeActions, type LoveActions } from './selectors'
 import { AwaySheet } from './sheets/away-sheet'
+import { ChoiceSheet } from './sheets/choice-sheet'
+import { CloudLoginSheet } from './sheets/cloud-login-sheet'
 import { ConfirmNewFamilySheet } from './sheets/confirm-new-family-sheet'
+import { ConflictSheet } from './sheets/conflict-sheet'
 import { MemberSheet } from './sheets/member-sheet'
 import { PartnerSheet } from './sheets/partner-sheet'
 import { RenameSheet } from './sheets/rename-sheet'
@@ -15,6 +18,7 @@ import { button } from './styles'
 import { HistoryTab } from './tabs/history-tab'
 import { LoveTab } from './tabs/love-tab'
 import { SettingsTab } from './tabs/settings-tab'
+import { StudiesTab } from './tabs/studies-tab'
 import { Toasts } from './toasts'
 import { FamilyTree } from './tree/family-tree'
 import { Hud } from './hud'
@@ -25,12 +29,16 @@ export function Shell({ game }: { game: GameState }) {
   const tab = useUiStore((store) => store.tab)
   const sheet = useUiStore((store) => store.sheet)
   const showDeceased = useUiStore((store) => store.showDeceased)
+  const hiddenChoices = useUiStore((store) => store.hiddenChoices)
+  const hideChoices = useUiStore((store) => store.hideChoices)
   const away = useGameStore((store) => store.away)
+  const cloud = useGameStore((store) => store.cloud)
 
   const actions = loveActions(game)
   const net = familyRates(game).net
   const ended = livingMembers(game).length === 0
   const selectedId = sheet?.kind === 'member' ? sheet.memberId : null
+  const openChoices = choicesKey(game)
 
   return (
     <div className="flex h-dvh flex-col overflow-hidden">
@@ -55,6 +63,7 @@ export function Shell({ game }: { game: GameState }) {
         ) : (
           <div className="h-full overflow-y-auto overscroll-contain">
             {tab === 'love' ? <LoveTab game={game} actions={actions} /> : null}
+            {tab === 'studies' ? <StudiesTab game={game} /> : null}
             {tab === 'history' ? <HistoryTab game={game} /> : null}
             {tab === 'settings' ? <SettingsTab game={game} /> : null}
           </div>
@@ -62,10 +71,14 @@ export function Shell({ game }: { game: GameState }) {
       </main>
       <BottomNav loveBadge={actions.ready} />
       <Toasts game={game} />
-      {sheet ? (
+      {cloud.conflict && !cloud.conflictHidden ? (
+        <ConflictSheet game={game} conflict={cloud.conflict} />
+      ) : sheet ? (
         <SheetHost game={game} sheet={sheet} />
       ) : away ? (
         <AwaySheet game={game} away={away} />
+      ) : openChoices && hiddenChoices !== openChoices ? (
+        <ChoiceSheet game={game} onHide={() => hideChoices(openChoices)} />
       ) : null}
     </div>
   )
@@ -85,6 +98,8 @@ function SheetHost({ game, sheet }: { game: GameState; sheet: Sheet }) {
       return <RenameSheet game={game} />
     case 'confirmNewFamily':
       return <ConfirmNewFamilySheet game={game} />
+    case 'cloudLogin':
+      return <CloudLoginSheet />
   }
 }
 

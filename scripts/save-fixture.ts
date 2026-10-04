@@ -6,8 +6,11 @@
  * que já existe nunca é sobrescrito, porque representa os saves reais daquela
  * versão.
  *
- * O exemplo passa pelas ações principais do jogo: dois filhos, um deles
- * casado, e o outro com pessoas sugeridas como par esperando resposta.
+ * O exemplo passa pelas ações principais do jogo: dois filhos que fizeram a
+ * escola com as matrículas sugeridas. O mais velho faz Direito numa faculdade
+ * particular, casou e tem um filho na creche; o mais novo acabou o médio, com
+ * a escolha do que fazer depois aberta, e o mais velho tem pessoas sugeridas
+ * como par para o irmão conhecer depois.
  */
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { BALANCE } from '../src/content/balance'
@@ -16,8 +19,13 @@ import {
   applyAction,
   CURRENT_SCHEMA_VERSION,
   daysToMs,
+  msToTicks,
   newGame,
+  suggestedPicks,
+  TICKS_PER_DAY,
+  TICKS_PER_MS,
   type Action,
+  type Choice,
   type GameState,
 } from '../src/engine'
 
@@ -36,22 +44,60 @@ function act(state: GameState, action: Action): GameState {
   return result.state
 }
 
+/** Avança respondendo as escolhas com a sugestão; para na primeira escolha de `stopAt`. */
+function play(game: GameState, ms: number, stopAt?: Choice['type']): GameState {
+  const clockMs = (state: GameState) =>
+    (state.clock.day * TICKS_PER_DAY + state.clock.tickOfDay) / TICKS_PER_MS
+  let current = game
+  let left = ms
+  while (msToTicks(left) > 0) {
+    const before = clockMs(current)
+    current = advance(current, left).state
+    left -= clockMs(current) - before
+    if (current.choices.length === 0) break
+    if (current.choices.some((choice) => choice.type === stopAt)) break
+    current = act(current, { type: 'choose', picks: suggestedPicks(current) })
+  }
+  return current
+}
+
 let state = newGame({
   seed: 20_261_003,
   now: 1_760_000_000_000,
   startDate: '2026-10-03',
   familyName: 'Exemplo',
 })
-state = { ...state, money: 100_000 }
-state = advance(state, 2 * year).state
+state = { ...state, money: 18_000_000 }
+state = play(state, 2 * year)
 state = act(state, { type: 'haveChild', parentId: 'm1' })
-state = advance(state, 2 * year).state
+state = play(state, 2 * year)
 state = act(state, { type: 'haveChild', parentId: 'm1' })
-state = advance(state, 19 * year).state
+// Os dois passam pela escola com as matrículas sugeridas. No janeiro em que o
+// mais velho faz 18, ele vai para Direito numa faculdade particular.
+state = play(state, 16 * year, 'afterSchool')
+const afterSchool = state.choices.find((choice) => choice.type === 'afterSchool')
+if (afterSchool?.type !== 'afterSchool') throw new Error('O exemplo devia parar depois do médio')
+const law = afterSchool.options.findIndex(
+  (option) =>
+    option.path === 'faculdade' && option.network === 'particular' && option.degree === 'direito',
+)
+state = act(state, { type: 'choose', picks: [{ memberId: afterSchool.memberId, option: law }] })
+// Já com 18, casa e tem um filho, que entra na creche.
+state = play(state, year)
 state = act(state, { type: 'findSuitors', memberId: 'm3' })
 state = act(state, { type: 'marry', memberId: 'm3', suitorIndex: 0 })
-state = act(state, { type: 'findSuitors', memberId: 'm4' })
+state = act(state, { type: 'haveChild', parentId: 'm3' })
+// No janeiro em que o mais novo faz 18, a escolha do que fazer depois fica aberta.
+state = play(state, 2 * year, 'afterSchool')
+const others = state.choices.filter((choice) => choice.type !== 'afterSchool')
+if (others.length > 0) {
+  const picks = others.map((choice) => ({ memberId: choice.memberId, option: choice.suggested }))
+  state = act(state, { type: 'choose', picks })
+}
 state = advance(state, daysToMs(100)).state
+if (state.choices.length !== 1 || state.choices[0].type !== 'afterSchool') {
+  throw new Error('O exemplo devia terminar com a escolha depois do médio aberta')
+}
 
 mkdirSync('tests/fixtures', { recursive: true })
 writeFileSync(path, `${JSON.stringify(state, null, 2)}\n`)

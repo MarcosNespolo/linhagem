@@ -1,8 +1,17 @@
 import { describe, expect, it } from 'vitest'
 import { BALANCE } from '@/content/balance'
-import { advance, applyAction, type GameState } from '@/engine'
+import { applyAction, type GameState } from '@/engine'
 import { buildFamilyTree, layoutFamilyTree, TREE_METRICS } from '@/ui/tree/layout'
-import { expectOk, founders, makeGame, marryMember, setMember, withMoney, years } from '../helpers'
+import {
+  expectOk,
+  founders,
+  makeGame,
+  marryMember,
+  play,
+  setMember,
+  withMoney,
+  years,
+} from '../helpers'
 
 /** Família com três filhos, o mais velho casado e com um filho. */
 function bigFamily(): GameState {
@@ -10,9 +19,9 @@ function bigFamily(): GameState {
   const [mother] = founders(state)
   for (let i = 0; i < 3; i++) {
     state = expectOk(applyAction(state, { type: 'haveChild', parentId: mother.id })).state
-    state = advance(state, years(1)).state
+    state = play(state, years(1))
   }
-  state = advance(state, years(BALANCE.adultAge)).state
+  state = play(state, years(BALANCE.adultAge))
   const firstChild = Object.values(state.members).find((member) => member.generation === 1)!
   state = marryMember(state, firstChild.id)
   state = expectOk(applyAction(state, { type: 'haveChild', parentId: firstChild.id })).state

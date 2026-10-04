@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { BALANCE } from '@/content/balance'
 import {
-  advance,
   applyAction,
   checkHaveChild,
   childCooldownDaysLeft,
@@ -9,7 +8,18 @@ import {
   FAMILY_NAME_MAX_LENGTH,
   type GameState,
 } from '@/engine'
-import { days, expectOk, founders, lastMember, makeGame, setMember, withMoney } from '../helpers'
+import {
+  days,
+  expectOk,
+  founders,
+  lastMember,
+  makeGame,
+  play,
+  setMember,
+  withChild,
+  withMoney,
+  years,
+} from '../helpers'
 
 const haveChild = (state: GameState) =>
   applyAction(state, { type: 'haveChild', parentId: founders(state)[0].id })
@@ -40,7 +50,7 @@ describe('ter filho', () => {
     for (let i = 0; i < 3; i++) {
       costs.push(childCost(state, first.id, second.id))
       state = expectOk(haveChild(state)).state
-      state = advance(state, days(BALANCE.children.cooldownDays)).state
+      state = play(state, days(BALANCE.children.cooldownDays))
     }
     const { baseCost, coupleGrowth } = BALANCE.children
     const factor = (living: number) => BALANCE.familySizeGrowth ** living
@@ -69,11 +79,11 @@ describe('ter filho', () => {
     expect(haveChild(afterFirst)).toEqual({ ok: false, error: 'cooldown' })
     expect(childCooldownDaysLeft(afterFirst, parentId)).toBe(BALANCE.children.cooldownDays)
 
-    const almost = advance(afterFirst, days(BALANCE.children.cooldownDays - 1)).state
+    const almost = play(afterFirst, days(BALANCE.children.cooldownDays - 1))
     expect(childCooldownDaysLeft(almost, parentId)).toBe(1)
     expect(haveChild(almost).ok).toBe(false)
 
-    const ready = advance(almost, days(1)).state
+    const ready = play(almost, days(1))
     expect(childCooldownDaysLeft(ready, parentId)).toBe(0)
     expect(haveChild(ready).ok).toBe(true)
   })
@@ -111,7 +121,7 @@ describe('ter filho', () => {
     let state = withMoney(makeGame(12), 10_000_000)
     for (let i = 0; i < 6; i++) {
       state = expectOk(haveChild(state)).state
-      state = advance(state, days(BALANCE.children.cooldownDays)).state
+      state = play(state, days(BALANCE.children.cooldownDays))
     }
     const names = Object.values(state.members).map((member) => member.firstName)
     expect(new Set(names).size).toBe(names.length)
@@ -153,5 +163,40 @@ describe('outras ações', () => {
     })
     const long = 'x'.repeat(FAMILY_NAME_MAX_LENGTH + 1)
     expect(applyAction(state, { type: 'renameFamily', name: long }).ok).toBe(false)
+  })
+})
+
+describe('escolher', () => {
+  it('recusa resposta sem escolha aberta', () => {
+    const state = makeGame()
+    const refused = { ok: false, error: 'choiceNotFound' }
+    expect(applyAction(state, { type: 'choose', picks: [] })).toEqual(refused)
+    const [first] = founders(state)
+    const pick = { memberId: first.id, option: 0 }
+    expect(applyAction(state, { type: 'choose', picks: [pick] })).toEqual(refused)
+  })
+
+  it('recusa opção que não existe e resposta repetida para a mesma pessoa', () => {
+    const born = withChild(makeGame(4))
+    const memberId = lastMember(born).id
+    const waiting = play(born, years(BALANCE.adultAge + 1), 'firstJob')
+    const choose = (...options: number[]) =>
+      applyAction(waiting, {
+        type: 'choose',
+        picks: options.map((option) => ({ memberId, option })),
+      })
+    expect(choose(9)).toEqual({ ok: false, error: 'optionNotFound' })
+    expect(choose(0.5)).toEqual({ ok: false, error: 'optionNotFound' })
+    expect(choose(0, 1)).toEqual({ ok: false, error: 'choiceNotFound' })
+    expect(choose(1).ok).toBe(true)
+  })
+
+  it('não altera o estado recebido', () => {
+    const born = withChild(makeGame(4))
+    const waiting = play(born, years(BALANCE.adultAge + 1), 'firstJob')
+    const copy = structuredClone(waiting)
+    const memberId = waiting.choices[0].memberId
+    expectOk(applyAction(waiting, { type: 'choose', picks: [{ memberId, option: 0 }] }))
+    expect(waiting).toEqual(copy)
   })
 })

@@ -13,17 +13,35 @@ export {
   type ActionResult,
   type ChildCheck,
 } from './actions'
-export { advance, advanceTo, type AdvanceResult } from './advance'
+export { advance, advanceTo, isWaiting, type AdvanceResult } from './advance'
 export { inheritAppearance, rollAppearance } from './appearance'
+export { suggestedPicks, type ChoicePick } from './choices'
+export { rollEnem } from './college'
 export { FAMILY_NAME_MAX_LENGTH } from './constants'
-export { familyRates, memberExpense, memberIncome, salaryPerSecond, type Rates } from './economy'
-export { LOG_LIMIT } from './log'
+export {
+  familyRates,
+  incomeOf,
+  memberExpense,
+  memberIncome,
+  salaryPerMonth,
+  type Rates,
+} from './economy'
+export {
+  ageThisYear,
+  homeCareCost,
+  homeCaregiver,
+  isEnrollmentDay,
+  retiredGrandparents,
+} from './enrollment'
+export { bestOffer, formationCareer, offerSalary } from './jobs'
+export { isMemberEvent, LOG_LIMIT } from './log'
 export { checkMarry, checkSeekPartner, weddingCost, type MarriageCheck } from './marriage'
 export { ageOf, childrenOf, isAdult, isAlive, isRetired, livingMembers, partnerOf } from './members'
 export {
   CURRENT_SCHEMA_VERSION,
   MIGRATIONS,
   migrate,
+  REAIS_PER_DOLLAR,
   SaveError,
   type Migration,
   type SaveErrorCode,
@@ -32,14 +50,27 @@ export { newGame, type NewGameOptions } from './new-game'
 export { createRng, hashString, pickWeighted, type Rng } from './rng'
 export { deserialize, serialize } from './save'
 export {
+  aptitudeOf,
+  halfTimeCaregivers,
+  schoolFee,
+  schoolScore,
+  stageFee,
+  stageForAge,
+  stagePoints,
+  stageYears,
+  yearlyPoints,
+} from './school'
+export {
   ageInYears,
   calendarDate,
   daysToMs,
   daysToSeconds,
+  lastDayOfYear,
   msToTicks,
   OFFLINE_CAP_MS,
   TICKS_PER_DAY,
+  TICKS_PER_MONTH,
   TICKS_PER_MS,
-  ticksToSeconds,
+  ticksToMonths,
 } from './time'
 export type * from './types'

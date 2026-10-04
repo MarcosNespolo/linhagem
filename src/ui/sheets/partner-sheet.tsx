@@ -51,7 +51,7 @@ export function PartnerSheet({ game, member }: { game: GameState; member: Member
                 </p>
                 <p className="text-ink-soft truncate text-[14px]">{level.title[suitor.gender]}</p>
                 <p className="tabular text-income text-[13px] font-bold">
-                  {formatRate(level.salaryPerSecond)}
+                  {formatRate(level.salaryPerMonth)}
                 </p>
               </div>
               <button

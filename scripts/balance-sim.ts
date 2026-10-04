@@ -3,11 +3,13 @@
  * família, para ajustar src/content/balance.ts olhando números em vez de
  * jogar por horas.
  *
- * Estratégia: quem fica adulto casa assim que dá (com a pessoa de maior
- * salário entre as sugeridas) e todo casal tem filho sempre que pode, até o
- * limite de filhos por casal.
+ * Estratégia: quem faz 18 anos fica com a vaga sugerida (a de maior salário),
+ * quem é adulto casa assim que dá (com a pessoa de maior salário entre as
+ * sugeridas) e todo casal tem filho sempre que pode, até o limite de filhos
+ * por casal. As escolhas são respondidas na hora, então o relógio quase não
+ * fica parado.
  *
- * Uso: npm run sim -- --minutos 30 --seed 7 --filhos 4
+ * Uso: npm run sim -- --minutos 120 --seed 7 --filhos 4
  */
 import { parseArgs } from 'node:util'
 import { BALANCE } from '../src/content/balance'
@@ -20,7 +22,11 @@ import {
   childrenOf,
   familyRates,
   livingMembers,
+  msToTicks,
   newGame,
+  suggestedPicks,
+  TICKS_PER_DAY,
+  TICKS_PER_MS,
   weddingCost,
   type GameState,
 } from '../src/engine'
@@ -28,7 +34,7 @@ import { formatMoney, formatRate } from '../src/lib/format'
 
 const { values } = parseArgs({
   options: {
-    minutos: { type: 'string', default: '30' },
+    minutos: { type: 'string', default: '120' },
     seed: { type: 'string', default: '1' },
     filhos: { type: 'string', default: '4' },
   },
@@ -43,7 +49,7 @@ if (!Number.isFinite(minutes) || minutes <= 0) {
 /** Milissegundos reais entre uma decisão e outra da estratégia. */
 const STEP_MS = 1_000
 /** De quanto em quanto tempo real a tabela ganha uma linha. */
-const ROW_EVERY_MS = 2 * 60_000
+const ROW_EVERY_MS = 5 * 60_000
 
 let state: GameState = newGame({ seed, now: 0, startDate: '2026-01-01' })
 let births = 0
@@ -66,6 +72,11 @@ const snapshot = (elapsedMs: number) => {
   })
 }
 
+/** Posição do relógio em milissegundos reais desde o dia 0, sem arredondar. */
+function clockMs(game: GameState): number {
+  return (game.clock.day * TICKS_PER_DAY + game.clock.tickOfDay) / TICKS_PER_MS
+}
+
 function tryAct(action: Parameters<typeof applyAction>[1]): boolean {
   const result = applyAction(state, action)
   if (result.ok) state = result.state
@@ -74,9 +85,17 @@ function tryAct(action: Parameters<typeof applyAction>[1]): boolean {
 
 snapshot(0)
 for (let elapsed = STEP_MS; elapsed <= minutes * 60_000; elapsed += STEP_MS) {
-  const result = advance(state, STEP_MS)
-  state = result.state
-  deaths += result.events.filter((event) => event.type === 'died').length
+  // O relógio para em cada escolha; a estratégia responde e avança o resto do passo.
+  let left = STEP_MS
+  while (msToTicks(left) > 0) {
+    const before = clockMs(state)
+    const result = advance(state, left)
+    state = result.state
+    deaths += result.events.filter((event) => event.type === 'died').length
+    left -= clockMs(state) - before
+    if (state.choices.length === 0) break
+    if (!tryAct({ type: 'choose', picks: suggestedPicks(state) })) break
+  }
 
   for (const member of livingMembers(state)) {
     if (!checkSeekPartner(state, member.id).ok || state.money < weddingCost(state)) continue
@@ -84,8 +103,8 @@ for (let elapsed = STEP_MS; elapsed <= minutes * 60_000; elapsed += STEP_MS) {
     const suitors = state.suitors[member.id] ?? []
     const best = suitors.reduce(
       (bestIndex, suitor, index) =>
-        careerLevel(suitor.career.id, 0).salaryPerSecond >
-        careerLevel(suitors[bestIndex].career.id, 0).salaryPerSecond
+        careerLevel(suitor.career.id, 0).salaryPerMonth >
+        careerLevel(suitors[bestIndex].career.id, 0).salaryPerMonth
           ? index
           : bestIndex,
       0,

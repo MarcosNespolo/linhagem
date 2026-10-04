@@ -1,7 +1,7 @@
 'use client'
 
 import { BALANCE } from '@/content/balance'
-import type { GameState } from '@/engine'
+import { isMemberEvent, type GameState } from '@/engine'
 import { useGameStore, type AwaySummary } from '@/game/store'
 import { formatGameSpan, formatMoney } from '@/lib/format'
 import { describeEvent } from '../labels'
@@ -13,7 +13,8 @@ const EVENTS_SHOWN = 6
 /** Resumo do que aconteceu enquanto o jogo esteve fechado ou em segundo plano. */
 export function AwaySheet({ game, away }: { game: GameState; away: AwaySummary }) {
   const dismiss = useGameStore((store) => store.dismissAway)
-  const events = away.events.filter((event) => event.type !== 'firstJob')
+  // O 13º já entra na soma do dinheiro; a lista fica com o que aconteceu às pessoas.
+  const events = away.events.filter(isMemberEvent)
   const shown = events.slice(-EVENTS_SHOWN).reverse()
   const hidden = events.length - shown.length
 
@@ -23,7 +24,11 @@ export function AwaySheet({ game, away }: { game: GameState; away: AwaySummary }
         Passaram <strong>{formatGameSpan(away.days, BALANCE.daysPerYear)}</strong> na família e
         entraram <strong className="tabular text-gold">{formatMoney(away.earned)}</strong>.
       </p>
-      {away.capped ? (
+      {away.waiting ? (
+        <p className="text-ink-soft mt-2 text-[14px]">
+          O tempo parou numa escolha e está esperando você.
+        </p>
+      ) : away.capped ? (
         <p className="text-ink-soft mt-2 text-[14px]">
           Com o jogo fechado, o tempo anda no máximo {BALANCE.offlineCapYears} anos.
         </p>

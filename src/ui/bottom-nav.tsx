@@ -1,11 +1,12 @@
 'use client'
 
-import { Heart, ScrollText, Settings, TreeDeciduous, type LucideIcon } from 'lucide-react'
+import { Heart, School, ScrollText, Settings, TreeDeciduous, type LucideIcon } from 'lucide-react'
 import { useUiStore, type Tab } from './ui-store'
 
 const TABS: { id: Tab; label: string; icon: LucideIcon }[] = [
   { id: 'family', label: 'Família', icon: TreeDeciduous },
   { id: 'love', label: 'Amor', icon: Heart },
+  { id: 'studies', label: 'Estudos', icon: School },
   { id: 'history', label: 'Histórico', icon: ScrollText },
   { id: 'settings', label: 'Ajustes', icon: Settings },
 ]
@@ -17,7 +18,7 @@ export function BottomNav({ loveBadge }: { loveBadge: number }) {
 
   return (
     <nav className="border-line bg-surface z-20 shrink-0 border-t pb-[env(safe-area-inset-bottom)]">
-      <ul className="mx-auto grid max-w-md grid-cols-4">
+      <ul className="mx-auto grid max-w-md grid-cols-5">
         {TABS.map(({ id, label, icon: Icon }) => {
           const active = tab === id
           const badge = id === 'love' && loveBadge > 0 ? loveBadge : 0

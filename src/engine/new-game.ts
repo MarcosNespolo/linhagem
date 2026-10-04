@@ -5,6 +5,7 @@ import { FAMILY_NAME_MAX_LENGTH } from './constants'
 import { addMember, rollStarterCareer } from './members'
 import { CURRENT_SCHEMA_VERSION } from './migrations'
 import { createRng, type Rng } from './rng'
+import { newEducation } from './school'
 import type { GameState, Gender, Member } from './types'
 
 export type NewGameOptions = {
@@ -34,6 +35,7 @@ export function newGame({ seed, now, startDate, familyName }: NewGameOptions): G
     members: {},
     nextMemberId: 1,
     suitors: {},
+    choices: [],
     log: [],
     stats: { simulatedMs: 0, totalEarned: 0, totalSpent: 0 },
   }
@@ -60,6 +62,7 @@ function addFounder(draft: GameState, rng: Rng, gender: Gender): Member {
     origin: 'founder',
     appearance,
     career: rollStarterCareer(rng),
+    education: newEducation({ level: 'medio' }),
   })
 }
 

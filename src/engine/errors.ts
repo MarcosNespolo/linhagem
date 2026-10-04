@@ -10,6 +10,11 @@ export type ActionError =
   | 'invalidName'
   | 'alreadyMarried'
   | 'suitorNotFound'
+  | 'choiceNotFound'
+  | 'optionNotFound'
+  | 'optionUnavailable'
+  | 'notStudying'
+  | 'invalidSchool'
 
 export type Refusal = { ok: false; error: ActionError }
 
