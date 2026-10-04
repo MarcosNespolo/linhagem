@@ -12,8 +12,10 @@ Jogue em [linhagem.vercel.app](https://linhagem.vercel.app).
 
 - Criar uma família a partir de um casal fundador sorteado e dar o sobrenome
 - Ter filhos, que herdam o tom de pele, a cor do cabelo e dos olhos dos pais
+- Escolher o primeiro emprego de quem faz 18 anos, entre três vagas; o tempo para até a escolha
 - Casar quem fez 18 anos, escolhendo entre pessoas sugeridas; o cônjuge entra na família e
   trabalha
+- Acompanhar o dinheiro em reais, com salários e despesas por mês e o 13º salário em dezembro
 - Ver a família numa árvore com zoom e arrasto, com quem já morreu esmaecido
 - Acompanhar o histórico de nascimentos, casamentos, aposentadorias e mortes
 - Voltar ao jogo e ver o resumo do que aconteceu enquanto esteve fora
@@ -52,7 +54,7 @@ Abra http://localhost:3000.
 | `npm run build`        | build de produção                                                  |
 | `npm test`             | testes da engine, do save, da árvore e dos avatares                |
 | `npm run check`        | tipos, lint, formatação e testes, como no CI                       |
-| `npm run sim`          | simula minutos de jogo casando todo mundo e imprime a evolução     |
+| `npm run sim`          | simula horas de jogo casando todo mundo e imprime a evolução       |
 | `npm run gallery`      | gera um HTML com avatares em várias idades, para revisar o desenho |
 | `npm run fixture:save` | grava um save de exemplo antes de criar uma migração nova          |
 | `npm run icons`        | gera os PNGs do app a partir dos SVGs em `public/icons`            |
@@ -79,14 +81,19 @@ sincroniza com a nuvem.
 
 ## Como o tempo funciona
 
-O jogo passa a 1 mês por segundo real (`BALANCE.gameMonthsPerSecond` em
-`src/content/balance.ts`): um ano leva 12 segundos e um filho vira adulto em pouco mais de 3
-minutos. O dinheiro acumula por segundo real e os eventos (aniversários, maioridade,
-aposentadoria, morte) acontecem na virada de cada dia do jogo.
+O jogo passa a 1 ano por minuto, ou 1 mês a cada 5 segundos (`BALANCE.secondsPerGameMonth` em
+`src/content/balance.ts`): um filho vira adulto em 18 minutos. Salários e despesas são em reais
+por mês do jogo e o dinheiro entra aos poucos, a cada instante. Os eventos (aniversários,
+maioridade, aposentadoria, morte e o 13º salário, em 20 de dezembro) acontecem na virada de cada
+dia do jogo.
+
+Quando alguém precisa de uma escolha, como o primeiro emprego aos 18 anos, o relógio para até o
+jogador decidir. As escolhas abertas ficam no save (`choices`), e a sugestão de cada uma já vem
+marcada no painel.
 
 Com o jogo fechado ou a aba escondida, o relógio não anda. Ao voltar, o tempo fora é simulado de
-uma vez, com limite de 5 anos do jogo (`BALANCE.offlineCapYears`). A pausa congela o relógio,
-inclusive com o jogo fechado.
+uma vez, com limite de 5 anos do jogo (`BALANCE.offlineCapYears`), e para na primeira escolha que
+aparecer. A pausa congela o relógio, inclusive com o jogo fechado.
 
 O relógio conta o tempo em unidades inteiras, então avançar de uma vez ou aos poucos deixa o
 calendário exatamente igual.
