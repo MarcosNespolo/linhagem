@@ -11,12 +11,15 @@ Jogue em [linhagem.vercel.app](https://linhagem.vercel.app).
 ## O que já dá para fazer
 
 - Criar uma família a partir de um casal fundador sorteado e dar o sobrenome
-- Ter filhos, que herdam o tom de pele, a cor do cabelo e dos olhos dos pais
+- Ter filhos a partir dos 20 anos, com 2 anos entre um e outro; eles herdam o tom de pele, a cor
+  do cabelo e dos olhos dos pais
 - Matricular os filhos todo janeiro: creche, escola e ensino médio, na rede pública, num colégio
   particular ou no instituto federal, para quem passa na prova
 - Fazer o ENEM no fim do médio e escolher o que vem depois: universidade federal (quando a nota
   alcança o corte do curso), faculdade particular, curso técnico, cursinho ou trabalhar
-- Ver na aba Estudos quem estuda, onde, a mensalidade e a nota ou o ENEM de cada um
+- Ver na aba Estudos quem estuda, onde, a mensalidade e a nota ou o ENEM de cada um, e contratar
+  professor particular para quem está na escola ou no médio
+- Tocar na foto de quem está numa escolha para ver a nota, de onde ela vem, o ENEM e a formação
 - Escolher o primeiro emprego entre três vagas das carreiras que a formação abre, ou estudar para
   concurso público; o tempo para até a escolha
 - Acompanhar na aba Trabalho as carreiras, os níveis e as promoções, e pagar os cursos que levam
@@ -106,14 +109,17 @@ marcada no painel.
 Como no Brasil, as matrículas são em janeiro. Quem começa a creche (no ano em que faz 1), a escola
 (4) ou o ensino médio (15) ganha uma escolha, e todas aparecem juntas numa pausa só. A escola
 particular cobra mensalidade e soma pontos na nota, que é a aptidão de cada um mais esses pontos; o
-instituto federal é gratuito, pede nota 550 na prova e forma técnico. As regras ficam em
-`src/engine/enrollment.ts` e `src/engine/school.ts`, e os valores em `BALANCE.school`.
+instituto federal é gratuito, pede nota 550 na prova e forma técnico. Quem está na escola ou no
+médio pode ter professor particular, por R$ 800 por mês, que soma 5 pontos na nota por ano, em
+proporção ao tempo (`src/engine/tutor.ts`). A aptidão é sorteada no nascimento, de 400 a 700, mais
+perto de 550. As regras ficam em `src/engine/enrollment.ts` e `src/engine/school.ts`, e os valores
+em `BALANCE.school`.
 
 No janeiro em que termina o médio, a pessoa faz o ENEM (a nota da escola, para mais ou para menos
 até 50 pontos) e o jogador escolhe o caminho. A universidade federal é gratuita e cada curso tem
 nota de corte, de 600 em Licenciatura a 780 em Medicina; a faculdade particular aceita qualquer
 nota e cobra mensalidade; o curso técnico dura 2 anos, no instituto federal para quem tirou 550 ou
-mais; o cursinho dura 1 ano, soma 30 pontos e leva a um ENEM novo; e trabalhar abre na hora a
+mais; o cursinho dura 1 ano e soma 30 pontos à nota do ENEM anterior; e trabalhar abre na hora a
 escolha do primeiro emprego. Quem estuda não tem salário. Na formatura, também em janeiro, a
 formação fica registrada e abre a escolha do emprego. Os cursos ficam em `src/content/schools.ts`,
 as regras em `src/engine/college.ts` e os valores em `BALANCE.college`. Quem chega aos 18 sem
