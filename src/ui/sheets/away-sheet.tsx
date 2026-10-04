@@ -1,7 +1,7 @@
 'use client'
 
 import { BALANCE } from '@/content/balance'
-import { isMemberEvent, type GameState } from '@/engine'
+import { isLogEvent, type GameState } from '@/engine'
 import { useGameStore, type AwaySummary } from '@/game/store'
 import { formatGameSpan, formatMoney } from '@/lib/format'
 import { describeEvent } from '../labels'
@@ -14,7 +14,7 @@ const EVENTS_SHOWN = 6
 export function AwaySheet({ game, away }: { game: GameState; away: AwaySummary }) {
   const dismiss = useGameStore((store) => store.dismissAway)
   // O 13º já entra na soma do dinheiro; a lista fica com o que aconteceu às pessoas.
-  const events = away.events.filter(isMemberEvent)
+  const events = away.events.filter(isLogEvent)
   const shown = events.slice(-EVENTS_SHOWN).reverse()
   const hidden = events.length - shown.length
 
@@ -22,7 +22,14 @@ export function AwaySheet({ game, away }: { game: GameState; away: AwaySummary }
     <Sheet title="Enquanto você esteve fora" onClose={dismiss}>
       <p className="mt-2 text-[16px]">
         Passaram <strong>{formatGameSpan(away.days, BALANCE.daysPerYear)}</strong> na família e
-        entraram <strong className="tabular text-gold">{formatMoney(away.earned)}</strong>.
+        entraram <strong className="tabular text-gold">{formatMoney(away.earned)}</strong>
+        {away.rent > 0 ? (
+          <>
+            , <strong className="tabular text-gold">{formatMoney(away.rent)}</strong> deles do
+            aluguel dos imóveis
+          </>
+        ) : null}
+        .
       </p>
       {away.waiting ? (
         <p className="text-ink-soft mt-2 text-[14px]">
@@ -36,7 +43,7 @@ export function AwaySheet({ game, away }: { game: GameState; away: AwaySummary }
       {shown.length > 0 ? (
         <ul className="bg-canvas mt-4 space-y-2 rounded-2xl p-4 text-[15px]">
           {shown.map((event, index) => (
-            <li key={`${event.type}-${event.memberId}-${index}`}>{describeEvent(game, event)}</li>
+            <li key={`${event.type}-${event.day}-${index}`}>{describeEvent(game, event)}</li>
           ))}
           {hidden > 0 ? <li className="text-ink-soft">E mais {hidden} no histórico.</li> : null}
         </ul>

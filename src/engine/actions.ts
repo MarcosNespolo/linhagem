@@ -1,5 +1,6 @@
 import { BALANCE } from '../content/balance'
 import { inheritAppearance } from './appearance'
+import type { PropertyId } from '../content/properties'
 import type { Network } from '../content/schools'
 import { applyPicks, checkPicks, type ChoicePick } from './choices'
 import { FAMILY_NAME_MAX_LENGTH } from './constants'
@@ -15,6 +16,7 @@ import {
   courseFor,
   payCourse as applyCourse,
 } from './promotions'
+import { buyProperty as applyPurchase, checkBuyProperty } from './properties'
 import { createRng } from './rng'
 import type { GameEvent, GameState, MemberId } from './types'
 
@@ -35,6 +37,8 @@ export type Action =
   | { type: 'payCourse'; memberId: MemberId }
   /** Paga os cursos disponíveis, do mais barato ao mais caro, enquanto houver dinheiro. */
   | { type: 'payAllCourses' }
+  /** Compra um imóvel do tipo, de um em um. */
+  | { type: 'buyProperty'; propertyId: PropertyId }
 
 export type ActionResult = { ok: true; state: GameState; events: GameEvent[] } | Refusal
 
@@ -64,6 +68,8 @@ export function applyAction(state: GameState, action: Action): ActionResult {
       return payCourse(state, action.memberId)
     case 'payAllCourses':
       return payAllCourses(state)
+    case 'buyProperty':
+      return buyProperty(state, action.propertyId)
   }
 }
 
@@ -211,6 +217,16 @@ function payAllCourses(state: GameState): ActionResult {
 
   const draft = draftOf(state)
   const events = courses.map((course) => applyCourse(draft, course))
+  appendLog(draft, events)
+  return done(draft, events)
+}
+
+function buyProperty(state: GameState, id: PropertyId): ActionResult {
+  const check = checkBuyProperty(state, id)
+  if (!check.ok) return check
+
+  const draft = draftOf(state)
+  const events = [applyPurchase(draft, id, check.price)]
   appendLog(draft, events)
   return done(draft, events)
 }

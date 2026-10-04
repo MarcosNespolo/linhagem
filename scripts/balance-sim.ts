@@ -6,9 +6,10 @@
  * Estratégia: as escolhas ficam com a sugestão (a escola, o caminho depois do
  * médio e a vaga de maior salário), a família paga os cursos de promoção que
  * cabem no dinheiro, quem é adulto casa assim que dá (com a pessoa de maior
- * salário entre as sugeridas) e todo casal tem filho sempre que pode, até o
- * limite de filhos por casal. As escolhas são respondidas na hora, então o
- * relógio quase não fica parado.
+ * salário entre as sugeridas), todo casal tem filho sempre que pode, até o
+ * limite de filhos por casal, e o que sobra além do próximo casamento vai para
+ * o imóvel que se paga mais rápido. As escolhas são respondidas na hora, então
+ * o relógio quase não fica parado.
  *
  * Uso: npm run sim -- --minutos 120 --seed 7 --filhos 4
  */
@@ -22,10 +23,16 @@ import {
   checkSeekPartner,
   childrenOf,
   familyRates,
+  isPropertyUnlocked,
   livingMembers,
   msToTicks,
   newGame,
+  paybackYears,
+  propertyPrice,
+  rentPerMonth,
   suggestedPicks,
+  totalProperties,
+  visiblePropertyTypes,
   TICKS_PER_DAY,
   TICKS_PER_MS,
   weddingCost,
@@ -71,6 +78,8 @@ const snapshot = (elapsedMs: number) => {
     nascimentos: births,
     mortes: deaths,
     cursos: courses,
+    imóveis: totalProperties(state),
+    aluguel: formatRate(rentPerMonth(state)),
     'próx. casamento': formatMoney(weddingCost(state)),
   })
 }
@@ -124,6 +133,14 @@ for (let elapsed = STEP_MS; elapsed <= minutes * 60_000; elapsed += STEP_MS) {
     if (childrenOf(state, member.id).length >= maxChildren) continue
     if (!checkHaveChild(state, member.id).ok) continue
     if (tryAct({ type: 'haveChild', parentId: member.id })) births += 1
+  }
+  // O que sobra além do próximo casamento vai para o imóvel que se paga mais rápido.
+  for (;;) {
+    const [best] = visiblePropertyTypes(state)
+      .filter((type) => isPropertyUnlocked(state, type.id))
+      .sort((a, b) => paybackYears(state, a.id) - paybackYears(state, b.id))
+    if (!best || state.money - propertyPrice(state, best.id) < weddingCost(state)) break
+    if (!tryAct({ type: 'buyProperty', propertyId: best.id })) break
   }
   if (elapsed % ROW_EVERY_MS === 0) snapshot(elapsed)
 }

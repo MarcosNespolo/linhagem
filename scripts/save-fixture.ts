@@ -11,7 +11,7 @@
  * particular, casou e tem um filho na creche. O mais novo acabou o médio e
  * estuda para concurso, com o resultado da primeira prova aberto. A fundadora
  * pagou o curso e chegou ao 4º nível da carreira, e o fundador tem o curso
- * dele para pagar.
+ * dele para pagar. A família tem dois kitnets e um apartamento alugados.
  */
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { BALANCE } from '../src/content/balance'
@@ -108,6 +108,10 @@ state = act(state, {
 })
 // A fundadora paga o curso e sobe para o 4º nível; o do fundador fica para depois.
 state = act(state, { type: 'payCourse', memberId: 'm1' })
+// A família compra dois kitnets e um apartamento para alugar.
+state = act(state, { type: 'buyProperty', propertyId: 'kitnet' })
+state = act(state, { type: 'buyProperty', propertyId: 'kitnet' })
+state = act(state, { type: 'buyProperty', propertyId: 'apartamento' })
 // Até a primeira prova, que abre o resultado do concurso.
 state = advance(state, year).state
 if (state.choices.length !== 1 || state.choices[0].type !== 'concurso') {

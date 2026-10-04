@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import type { MemberId } from '@/engine'
 
 /** Abas da barra de baixo, mais Ajustes, que abre pela engrenagem do topo. */
-export type Tab = 'family' | 'love' | 'studies' | 'work' | 'settings'
+export type Tab = 'family' | 'love' | 'studies' | 'work' | 'properties' | 'settings'
 
 /** O que a aba Família mostra: a árvore ou o histórico. */
 export type FamilyView = 'tree' | 'history'

@@ -37,6 +37,7 @@ export function newGame({ seed, now, startDate, familyName }: NewGameOptions): G
     nextMemberId: 1,
     suitors: {},
     choices: [],
+    properties: {},
     log: [],
     stats: { simulatedMs: 0, totalEarned: 0, totalSpent: 0 },
   }

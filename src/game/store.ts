@@ -4,7 +4,10 @@ import {
   applyAction,
   migrate,
   OFFLINE_CAP_MS,
+  rentPerMonth,
   SaveError,
+  TICKS_PER_DAY,
+  ticksToMonths,
   type Action,
   type ActionResult,
   type GameEvent,
@@ -25,6 +28,8 @@ export type AwaySummary = {
   /** Dias do jogo que passaram. */
   days: number
   earned: number
+  /** A parte do que entrou que veio do aluguel dos imóveis. */
+  rent: number
   events: GameEvent[]
   /** O tempo fora passou do limite do progresso offline. */
   capped: boolean
@@ -267,6 +272,7 @@ function catchUp(
       away: {
         days: after.clock.day - before.clock.day,
         earned: after.stats.totalEarned - before.stats.totalEarned,
+        rent: rentEarned(before, after),
         events,
         capped: !waiting && now - before.lastSimulatedAt > OFFLINE_CAP_MS,
         waiting,
@@ -281,10 +287,22 @@ function catchUp(
   return { toasts: [...store.toasts, ...added].slice(-TOAST_LIMIT) }
 }
 
+/**
+ * Aluguel que entrou entre dois estados. Imóveis só se compram com o relógio
+ * parado numa ação, então o aluguel por mês é o mesmo o tempo todo.
+ */
+function rentEarned(before: GameState, after: GameState): number {
+  const ticks =
+    (after.clock.day - before.clock.day) * TICKS_PER_DAY +
+    (after.clock.tickOfDay - before.clock.tickOfDay)
+  return rentPerMonth(before) * ticksToMonths(ticks)
+}
+
 const QUIET_EVENTS = new Set<GameEvent['type']>([
   'firstJob',
   'promoted',
   'concursoStarted',
+  'propertyBought',
   'retired',
   'schoolStarted',
   'schoolChanged',

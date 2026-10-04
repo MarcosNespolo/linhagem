@@ -6,7 +6,7 @@ import { ageInYears, lastDayOfYear } from './time'
 import type { GameState } from './types'
 
 /** Versão atual do formato do save. Sobe a cada migração nova. */
-export const CURRENT_SCHEMA_VERSION = 6
+export const CURRENT_SCHEMA_VERSION = 7
 
 export type SaveErrorCode = 'corrupt' | 'futureVersion' | 'missingMigration'
 
@@ -180,6 +180,9 @@ function careerSince(career: unknown, day: number): unknown {
   return upgraded
 }
 
+/** Versão 6 para 7: entram os imóveis, com a família começando sem nenhum. */
+const toVersion7: Migration = (save) => ({ ...save, properties: {} })
+
 /**
  * Migrações, indexadas pela versão de origem. São sempre aditivas: criam
  * campos novos com valores padrão e nunca apagam dados do jogador; uma troca
@@ -194,6 +197,7 @@ export const MIGRATIONS: Readonly<Record<number, Migration>> = {
   3: toVersion4,
   4: toVersion5,
   5: toVersion6,
+  6: toVersion7,
 }
 
 /** Valida um save lido de JSON e o leva até a versão atual. */
@@ -241,6 +245,7 @@ function assertGameState(save: RawSave): asserts save is RawSave & GameState {
     typeof save.nextMemberId === 'number' &&
     isRecord(save.suitors) &&
     Array.isArray(save.choices) &&
+    isRecord(save.properties) &&
     Array.isArray(save.log) &&
     isRecord(clock) &&
     typeof clock.day === 'number' &&

@@ -8,7 +8,7 @@ describe('economia', () => {
     const state = makeGame(3)
     const [first, second] = founders(state)
     const income = salaryPerMonth(first) + salaryPerMonth(second)
-    expect(familyRates(state)).toEqual({ income, expense: 0, net: income })
+    expect(familyRates(state)).toEqual({ income, rent: 0, expense: 0, net: income })
   })
 
   it('cobra das crianças uma despesa que cresce com a idade', () => {

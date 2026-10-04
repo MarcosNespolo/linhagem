@@ -50,7 +50,7 @@ export {
   offerSalary,
   rollJobOffers,
 } from './jobs'
-export { isMemberEvent, LOG_LIMIT } from './log'
+export { isLogEvent, isMemberEvent, LOG_LIMIT } from './log'
 export { checkMarry, checkSeekPartner, weddingCost, type MarriageCheck } from './marriage'
 export { ageOf, childrenOf, isAdult, isAlive, isRetired, livingMembers, partnerOf } from './members'
 export {
@@ -63,6 +63,17 @@ export {
   type SaveErrorCode,
 } from './migrations'
 export { newGame, type NewGameOptions } from './new-game'
+export {
+  checkBuyProperty,
+  isPropertyUnlocked,
+  ownedCount,
+  paybackYears,
+  propertyPrice,
+  rentPerMonth,
+  totalProperties,
+  visiblePropertyTypes,
+  type PropertyCheck,
+} from './properties'
 export {
   affordableCourses,
   availableCourses,

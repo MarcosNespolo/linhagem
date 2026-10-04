@@ -17,6 +17,7 @@ import { RenameSheet } from './sheets/rename-sheet'
 import { button } from './styles'
 import { HistoryTab } from './tabs/history-tab'
 import { LoveTab } from './tabs/love-tab'
+import { PropertiesTab } from './tabs/properties-tab'
 import { SettingsTab } from './tabs/settings-tab'
 import { StudiesTab } from './tabs/studies-tab'
 import { WorkTab } from './tabs/work-tab'
@@ -76,6 +77,7 @@ export function Shell({ game }: { game: GameState }) {
             {tab === 'love' ? <LoveTab game={game} actions={actions} /> : null}
             {tab === 'studies' ? <StudiesTab game={game} /> : null}
             {tab === 'work' ? <WorkTab game={game} /> : null}
+            {tab === 'properties' ? <PropertiesTab game={game} /> : null}
             {tab === 'settings' ? <SettingsTab game={game} /> : null}
           </div>
         )}

@@ -1,6 +1,6 @@
 'use client'
 
-import { Briefcase, Heart, School, TreeDeciduous, type LucideIcon } from 'lucide-react'
+import { Briefcase, Building2, Heart, School, TreeDeciduous, type LucideIcon } from 'lucide-react'
 import { useUiStore, type Tab } from './ui-store'
 
 const TABS: { id: Tab; label: string; icon: LucideIcon; badgeLabel?: string }[] = [
@@ -8,6 +8,7 @@ const TABS: { id: Tab; label: string; icon: LucideIcon; badgeLabel?: string }[] 
   { id: 'love', label: 'Amor', icon: Heart, badgeLabel: 'ações disponíveis' },
   { id: 'studies', label: 'Estudos', icon: School },
   { id: 'work', label: 'Trabalho', icon: Briefcase, badgeLabel: 'cursos cabem no dinheiro' },
+  { id: 'properties', label: 'Imóveis', icon: Building2 },
 ]
 
 /**
@@ -20,7 +21,7 @@ export function BottomNav({ badges }: { badges: Partial<Record<Tab, number>> }) 
 
   return (
     <nav className="border-line bg-surface z-20 shrink-0 border-t pb-[env(safe-area-inset-bottom)]">
-      <ul className="mx-auto grid max-w-md grid-cols-4">
+      <ul className="mx-auto grid max-w-md grid-cols-5">
         {TABS.map(({ id, label, icon: Icon, badgeLabel }) => {
           const active = tab === id
           const badge = badges[id] ?? 0

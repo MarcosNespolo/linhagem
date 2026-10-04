@@ -16,6 +16,8 @@ export type ActionError =
   | 'notStudying'
   | 'invalidSchool'
   | 'noCourse'
+  | 'propertyNotFound'
+  | 'propertyLocked'
 
 export type Refusal = { ok: false; error: ActionError }
 

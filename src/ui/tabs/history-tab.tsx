@@ -4,6 +4,7 @@ import {
   Baby,
   BookOpen,
   Briefcase,
+  Building2,
   Cake,
   FileText,
   GraduationCap,
@@ -15,12 +16,12 @@ import {
   TrendingUp,
 } from 'lucide-react'
 import type { ReactNode } from 'react'
-import { calendarDate, LOG_LIMIT, type GameState, type MemberEvent } from '@/engine'
+import { calendarDate, LOG_LIMIT, type GameState, type LogEvent } from '@/engine'
 import { formatShortMonth } from '@/lib/format'
 import { describeEvent } from '../labels'
 import { card } from '../styles'
 
-const ICONS: Record<MemberEvent['type'], ReactNode> = {
+const ICONS: Record<LogEvent['type'], ReactNode> = {
   born: <Baby size={16} />,
   becameAdult: <Cake size={16} />,
   firstJob: <Briefcase size={16} />,
@@ -34,9 +35,10 @@ const ICONS: Record<MemberEvent['type'], ReactNode> = {
   schoolChanged: <School size={16} />,
   schoolFinished: <GraduationCap size={17} />,
   enem: <FileText size={16} />,
+  propertyBought: <Building2 size={16} />,
 }
 
-const TONES: Record<MemberEvent['type'], string> = {
+const TONES: Record<LogEvent['type'], string> = {
   born: 'bg-leaf-soft text-leaf-strong',
   becameAdult: 'bg-gold-soft text-gold',
   firstJob: 'bg-gold-soft text-gold',
@@ -50,6 +52,7 @@ const TONES: Record<MemberEvent['type'], string> = {
   schoolChanged: 'bg-leaf-soft text-leaf-strong',
   schoolFinished: 'bg-gold-soft text-gold',
   enem: 'bg-leaf-soft text-leaf-strong',
+  propertyBought: 'bg-gold-soft text-gold',
 }
 
 /** Aba Histórico: os acontecimentos da família, do mais recente para o mais antigo. */
@@ -68,7 +71,7 @@ export function HistoryTab({ game }: { game: GameState }) {
     )
   }
 
-  const years: { year: string; items: { event: MemberEvent; date: string }[] }[] = []
+  const years: { year: string; items: { event: LogEvent; date: string }[] }[] = []
   for (const event of events) {
     const date = calendarDate(game.startDate, event.day)
     const year = date.slice(0, 4)
@@ -85,7 +88,7 @@ export function HistoryTab({ game }: { game: GameState }) {
           <ul className={`${card} divide-line mt-2 divide-y`}>
             {items.map(({ event, date }, index) => (
               <li
-                key={`${event.type}-${event.memberId}-${event.day}-${index}`}
+                key={`${event.type}-${'memberId' in event ? event.memberId : event.propertyId}-${event.day}-${index}`}
                 className="flex items-center gap-3 px-3 py-2.5"
               >
                 <span

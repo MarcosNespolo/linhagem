@@ -1,5 +1,6 @@
 import { BALANCE } from '@/content/balance'
 import { careerLevel, getCareer, PUBLIC_CAREER, type CareerId } from '@/content/careers'
+import { propertyType } from '@/content/properties'
 import {
   degree,
   isHigherStage,
@@ -25,6 +26,7 @@ import {
   type GameEvent,
   type GameState,
   type Member,
+  type PropertyEvent,
 } from '@/engine'
 import { formatAge, formatDuration, formatGameSpan, formatMoney } from '@/lib/format'
 
@@ -137,6 +139,7 @@ export function generationLabel(generation: number): string {
 /** Frase curta sobre um acontecimento, para avisos e para o histórico. */
 export function describeEvent(state: GameState, event: GameEvent): string {
   if (event.type === 'thirteenth') return `Chegou o 13º salário: ${formatMoney(event.amount)}`
+  if (event.type === 'propertyBought') return purchaseText(event)
   const member = state.members[event.memberId]
   const name = member?.firstName ?? 'Alguém'
   switch (event.type) {
@@ -187,6 +190,15 @@ export function describeEvent(state: GameState, event: GameEvent): string {
     case 'enem':
       return `Saiu a nota do ENEM de ${name}: ${event.score} pontos`
   }
+}
+
+/** Compra de imóvel: "A família comprou um kitnet", "A família comprou a 3ª casa". */
+function purchaseText(event: PropertyEvent): string {
+  const type = propertyType(event.propertyId)
+  const name = type.name.toLowerCase()
+  const female = type.gender === 'f'
+  if (event.count === 1) return `A família comprou ${female ? 'uma' : 'um'} ${name}`
+  return `A família comprou ${female ? 'a' : 'o'} ${event.count}${female ? 'ª' : 'º'} ${name}`
 }
 
 /** O que a pessoa começou na matrícula, para o histórico. */
