@@ -18,6 +18,38 @@ export function formatDate(isoDate: string): string {
   return `${day}/${month}/${year}`
 }
 
+const MONTHS = [
+  'janeiro',
+  'fevereiro',
+  'março',
+  'abril',
+  'maio',
+  'junho',
+  'julho',
+  'agosto',
+  'setembro',
+  'outubro',
+  'novembro',
+  'dezembro',
+] as const
+
+/** Mês e ano de uma data AAAA-MM-DD: "outubro de 2026", ou "out 2026" no formato curto. */
+export function formatMonthYear(isoDate: string, style: 'long' | 'short' = 'long'): string {
+  const [year, month] = isoDate.split('-')
+  const name = MONTHS[Number(month) - 1] ?? ''
+  return style === 'long' ? `${name} de ${year}` : `${name.slice(0, 3)} ${year}`
+}
+
+/** Mês abreviado de uma data AAAA-MM-DD: "out". */
+export function formatShortMonth(isoDate: string): string {
+  return (MONTHS[Number(isoDate.split('-')[1]) - 1] ?? '').slice(0, 3)
+}
+
+/** Idade em texto: "1 ano", "26 anos". */
+export function formatAge(age: number): string {
+  return age === 1 ? '1 ano' : `${age} anos`
+}
+
 /** Duração em tempo real, curta e arredondada para cima: 1 s, 45 s, 12 min, 3 h 5 min. */
 export function formatDuration(seconds: number): string {
   const total = Math.max(0, Math.ceil(seconds))

@@ -1,6 +1,6 @@
 {
   "name": "linhagem",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "license": "MIT",
   "engines": {
@@ -19,12 +19,16 @@
     "check": "npm run typecheck && npm run lint && npm run format:check && npm test",
     "sim": "tsx scripts/balance-sim.ts",
     "fixture:save": "tsx scripts/save-fixture.ts",
+    "gallery": "tsx scripts/avatar-gallery.tsx",
     "icons": "node scripts/generate-icons.mjs"
   },
   "dependencies": {
+    "@fontsource-variable/nunito": "^5.3.0",
+    "lucide-react": "^1.52.0",
     "next": "16.3.8",
     "react": "19.2.8",
     "react-dom": "19.2.8",
+    "react-zoom-pan-pinch": "^4.2.0",
     "zustand": "^5.0.15"
   },
   "devDependencies": {

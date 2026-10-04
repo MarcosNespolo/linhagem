@@ -1,19 +1,24 @@
-/** Marca provisória do jogo: um casal e dois filhos. Mesmo desenho do ícone do app. */
+/** Marca do jogo: um casal e dois filhos ligados por um galho. Mesmo desenho do ícone do app. */
 export function FamilyMark({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 512 512" className={className} aria-hidden="true">
-      <rect width="512" height="512" rx="112" fill="#4f46e5" />
+      <rect width="512" height="512" rx="112" fill="#2f6b4e" />
       <path
-        d="M256 196V272M256 272C256 302 176 292 176 322M256 272C256 302 336 292 336 322"
+        d="M256 214V262C256 300 176 292 176 330M256 262C256 300 336 292 336 330"
         fill="none"
-        stroke="#c7d2fe"
+        stroke="#e9dcc4"
         strokeWidth="20"
         strokeLinecap="round"
       />
-      <circle cx="212" cy="158" r="56" fill="#fbbf24" />
-      <circle cx="300" cy="158" r="56" fill="#ffffff" stroke="#4f46e5" strokeWidth="12" />
-      <circle cx="176" cy="366" r="44" fill="#ffffff" />
-      <circle cx="336" cy="366" r="44" fill="#fbbf24" />
+      <path
+        d="M0 0Q26 -22 56 0Q26 22 0 0Z"
+        fill="#8db27f"
+        transform="translate(268 282) rotate(-32)"
+      />
+      <circle cx="208" cy="162" r="58" fill="#f2b84b" />
+      <circle cx="304" cy="162" r="58" fill="#fff6e6" stroke="#2f6b4e" strokeWidth="12" />
+      <circle cx="176" cy="372" r="46" fill="#fff6e6" />
+      <circle cx="336" cy="372" r="46" fill="#f2b84b" />
     </svg>
   )
 }
