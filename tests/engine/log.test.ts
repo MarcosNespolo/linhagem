@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { BALANCE } from '@/content/balance'
-import { advance, applyAction, isMemberEvent, LOG_LIMIT, type MemberEvent } from '@/engine'
+import {
+  advance,
+  applyAction,
+  isLogEvent,
+  isMemberEvent,
+  LOG_LIMIT,
+  type MemberEvent,
+} from '@/engine'
 import { expectOk, founders, makeGame, withAdultChild, withMoney, years } from '../helpers'
 
 describe('histórico', () => {
@@ -10,7 +17,8 @@ describe('histórico', () => {
 
   it('guarda nascimentos, casamentos e o que acontece com o tempo, em ordem', () => {
     const { state, childId } = withAdultChild(3)
-    const own = state.log.filter((event) => event.memberId === childId)
+    const people = state.log.filter(isMemberEvent)
+    const own = people.filter((event) => event.memberId === childId)
     expect(own.map((event) => event.type)).toEqual([
       'born',
       'schoolStarted',
@@ -22,7 +30,7 @@ describe('histórico', () => {
       'becameAdult',
     ])
     // Enquanto o filho cresce, os fundadores sobem de nível com o tempo.
-    const others = state.log.filter((event) => event.memberId !== childId)
+    const others = people.filter((event) => event.memberId !== childId)
     expect(others.length).toBeGreaterThan(0)
     expect(others.every((event) => event.type === 'promoted')).toBe(true)
 
@@ -38,7 +46,7 @@ describe('histórico', () => {
     const result = advance(state, years(BALANCE.retirementAge))
     const added = result.state.log.slice(state.log.length)
     expect(result.events.some((event) => event.type === 'thirteenth')).toBe(true)
-    expect(added).toEqual(result.events.filter(isMemberEvent).slice(-added.length))
+    expect(added).toEqual(result.events.filter(isLogEvent).slice(-added.length))
   })
 
   it(`guarda no máximo ${LOG_LIMIT} acontecimentos, descartando os mais antigos`, () => {

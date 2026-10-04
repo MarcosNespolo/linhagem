@@ -10,6 +10,7 @@ import {
   familyRates,
   halfTimeCaregivers,
   incomeOf,
+  isMemberEvent,
   memberExpense,
   memberIncome,
   schoolScore,
@@ -296,7 +297,7 @@ describe('matrículas', () => {
     state = play(state, years(20))
 
     for (const childId of children) {
-      const events = state.log.filter((event) => event.memberId === childId)
+      const events = state.log.filter(isMemberEvent).filter((event) => event.memberId === childId)
       const started = events.flatMap((event) =>
         event.type === 'schoolStarted' ? [event.stage] : [],
       )

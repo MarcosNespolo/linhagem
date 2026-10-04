@@ -99,6 +99,13 @@ export const BALANCE = {
   },
 
   /**
+   * Imóveis rendem aluguel todo mês para a família. Cada imóvel do mesmo tipo
+   * custa este fator vezes o anterior, e o aluguel fica igual: o décimo kitnet
+   * custa cerca de 3,5 vezes o primeiro e demora 3,5 vezes mais para se pagar.
+   */
+  properties: { priceGrowth: 1.15 },
+
+  /**
    * Concurso público: quem estuda não trabalha, paga o cursinho e faz uma prova
    * a cada três meses, por até um ano. A nota parte da nota do ENEM e sobe com
    * os meses de estudo.

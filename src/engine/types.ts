@@ -1,4 +1,5 @@
 import type { CareerId } from '../content/careers'
+import type { PropertyId } from '../content/properties'
 import type { DegreeId, Network, SchoolStage, Stage, TechCourseId } from '../content/schools'
 
 export type MemberId = string
@@ -241,8 +242,10 @@ export type GameState = {
   suitors: Record<MemberId, Suitor[]>
   /** Escolhas abertas, na ordem em que abriram. Com alguma aberta, o relógio para. */
   choices: Choice[]
+  /** Quantos imóveis de cada tipo a família tem. São da família e ficam quando as pessoas morrem. */
+  properties: Partial<Record<PropertyId, number>>
   /** Últimos acontecimentos da família, do mais antigo para o mais novo. */
-  log: MemberEvent[]
+  log: LogEvent[]
   stats: GameStats
 }
 
@@ -285,8 +288,19 @@ export type MemberEvent =
   | { type: 'schoolChanged'; day: number; memberId: MemberId; network: Network }
   | { type: 'schoolFinished'; day: number; memberId: MemberId; formation: Formation }
 
+/** Compra de um imóvel pela família. `count` é quantos do tipo ela tem depois da compra. */
+export type PropertyEvent = {
+  type: 'propertyBought'
+  day: number
+  propertyId: PropertyId
+  count: number
+}
+
+/** Acontecimentos que ficam no histórico: os das pessoas e as compras da família. */
+export type LogEvent = MemberEvent | PropertyEvent
+
 /**
  * Acontecimentos que a engine reporta para a interface mostrar. O 13º salário
  * vira aviso, mas não entra no histórico, para não repetir uma linha por ano.
  */
-export type GameEvent = MemberEvent | { type: 'thirteenth'; day: number; amount: number }
+export type GameEvent = LogEvent | { type: 'thirteenth'; day: number; amount: number }

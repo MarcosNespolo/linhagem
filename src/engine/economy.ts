@@ -1,6 +1,7 @@
 import { BALANCE } from '../content/balance'
 import { careerLevel, PUBLIC_CAREER } from '../content/careers'
 import { ageOf, isAlive } from './members'
+import { rentPerMonth } from './properties'
 import { halfTimeCaregivers, schoolFee } from './school'
 import type { GameState, Member, MemberId } from './types'
 
@@ -51,21 +52,25 @@ export function memberExpense(member: Member, day: number): number {
 }
 
 export type Rates = {
-  /** Renda por mês do jogo, em reais. */
+  /** Renda por mês do jogo, em reais: salários, pensões e aluguel. */
   income: number
+  /** A parte da renda que vem do aluguel dos imóveis. */
+  rent: number
   /** Despesa por mês do jogo, em reais. */
   expense: number
   /** Renda menos despesa, por mês. */
   net: number
 }
 
+/** Renda, despesa e saldo da família por mês. O aluguel entra na renda. */
 export function familyRates(state: GameState): Rates {
   const caregivers = halfTimeCaregivers(state)
-  let income = 0
+  const rent = rentPerMonth(state)
+  let income = rent
   let expense = 0
   for (const member of Object.values(state.members)) {
     income += incomeOf(state, member, caregivers)
     expense += memberExpense(member, state.clock.day)
   }
-  return { income, expense, net: income - expense }
+  return { income, rent, expense, net: income - expense }
 }
