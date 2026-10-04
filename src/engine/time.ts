@@ -48,6 +48,13 @@ export function ageInYears(birthDay: number, day: number): number {
   return Math.floor((day - birthDay) / BALANCE.daysPerYear)
 }
 
+/** Dia do jogo que cai em 31 de dezembro, no ano do calendário do dia `day`. */
+export function lastDayOfYear(startDate: string, day: number): number {
+  const start = Date.parse(`${startDate}T00:00:00Z`)
+  const year = new Date(start + day * 86_400_000).getUTCFullYear()
+  return Math.round((Date.UTC(year, 11, 31) - start) / 86_400_000)
+}
+
 /** Data do calendário (AAAA-MM-DD) que corresponde a um dia do jogo. */
 export function calendarDate(startDate: string, day: number): string {
   const start = Date.parse(`${startDate}T00:00:00Z`)

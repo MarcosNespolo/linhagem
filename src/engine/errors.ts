@@ -12,6 +12,9 @@ export type ActionError =
   | 'suitorNotFound'
   | 'choiceNotFound'
   | 'optionNotFound'
+  | 'optionUnavailable'
+  | 'notStudying'
+  | 'invalidSchool'
 
 export type Refusal = { ok: false; error: ActionError }
 

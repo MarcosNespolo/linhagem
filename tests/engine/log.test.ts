@@ -11,7 +11,15 @@ describe('histórico', () => {
   it('guarda nascimentos, casamentos e o que acontece com o tempo, em ordem', () => {
     const { state, childId } = withAdultChild(3)
     const types = state.log.map((event) => event.type)
-    expect(types).toEqual(['born', 'becameAdult', 'firstJob'])
+    expect(types).toEqual([
+      'born',
+      'schoolStarted',
+      'schoolStarted',
+      'schoolStarted',
+      'schoolFinished',
+      'becameAdult',
+      'firstJob',
+    ])
     expect(state.log.every((event) => event.memberId === childId)).toBe(true)
 
     const searched = expectOk(applyAction(state, { type: 'findSuitors', memberId: childId })).state

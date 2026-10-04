@@ -81,10 +81,15 @@ export function Hud({ game, net }: { game: GameState; net: number }) {
 
 /** Aviso de tempo parado por escolhas abertas, ou null quando não há nenhuma. */
 function waitingText(game: GameState): string | null {
-  const [first] = game.choices
+  const { choices } = game
+  const [first] = choices
   if (!first) return null
-  if (game.choices.length > 1)
-    return `Tempo parado: ${game.choices.length} escolhas esperando você.`
+  if (choices.length > 1) {
+    const allSchool = choices.every((choice) => choice.type === 'school')
+    return `Tempo parado: ${choices.length} ${allSchool ? 'matrículas' : 'escolhas'} esperando você.`
+  }
   const name = game.members[first.memberId]?.firstName ?? 'alguém'
-  return `Tempo parado: falta escolher o primeiro emprego de ${name}.`
+  return first.type === 'school'
+    ? `Tempo parado: falta a matrícula de ${name}.`
+    : `Tempo parado: falta escolher o primeiro emprego de ${name}.`
 }

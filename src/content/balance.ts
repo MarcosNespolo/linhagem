@@ -72,4 +72,49 @@ export const BALANCE = {
     /** Quantas vagas aparecem na escolha do primeiro emprego. */
     offersPerChoice: 3,
   },
+
+  /**
+   * Aptidão para os estudos, tirada da semente do avatar: mínimo mais dois
+   * valores de 0 a `spread`. Com 400 e 150, fica entre 400 e 700, mais perto de
+   * 550. A nota de quem estuda é a aptidão mais os pontos que as escolas somam.
+   */
+  aptitude: { min: 400, spread: 150 },
+
+  school: {
+    /** Dia do calendário (MM-DD) das matrículas: as escolhas de escola do ano abrem juntas. */
+    enrollmentDate: '01-01',
+    /** Chance de sair vaga na creche pública. */
+    daycareVacancyChance: 0.5,
+    /** Nota mínima para passar na prova do instituto federal. */
+    federalCutoff: 550,
+    /** Quantos cursos técnicos o instituto federal oferece em cada matrícula. */
+    federalCourses: 2,
+    /** Fração do salário de quem trabalha meio período para cuidar de um filho em casa. */
+    halfTimeRatio: 0.5,
+    /**
+     * Etapas, pela idade que a criança faz no ano. A mensalidade é por mês, e os
+     * pontos de cada rede se dividem pelos anos da etapa: o colégio particular
+     * soma 40 ao longo dos 11 anos da escola.
+     */
+    stages: {
+      creche: {
+        firstAge: 1,
+        lastAge: 3,
+        fees: { particular: 1200 },
+        points: { publica: 20, particular: 20 },
+      },
+      escola: {
+        firstAge: 4,
+        lastAge: 14,
+        fees: { particular: 1500 },
+        points: { particular: 40 },
+      },
+      medio: {
+        firstAge: 15,
+        lastAge: 17,
+        fees: { particular: 2000 },
+        points: { particular: 40, federal: 60 },
+      },
+    },
+  },
 } as const

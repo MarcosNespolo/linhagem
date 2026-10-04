@@ -1,5 +1,6 @@
 import { BALANCE } from '@/content/balance'
 import { careerLevel } from '@/content/careers'
+import { techCourseName, type Network, type SchoolStage } from '@/content/schools'
 import {
   ageOf,
   calendarDate,
@@ -7,6 +8,7 @@ import {
   daysToSeconds,
   isAlive,
   type ChildCheck,
+  type Formation,
   type GameEvent,
   type GameState,
   type Member,
@@ -88,7 +90,78 @@ export function describeEvent(state: GameState, event: GameEvent): string {
       return `${name} se aposentou`
     case 'died':
       return `${name} faleceu aos ${formatAge(event.age)}`
+    case 'schoolStarted':
+      return `${name} ${schoolStartText(event.stage, event.network)}${
+        event.course ? `, técnico em ${techCourseName(event.course)}` : ''
+      }`
+    case 'schoolChanged':
+      return event.network === 'particular'
+        ? `${name} mudou para um colégio particular`
+        : `${name} mudou para a escola pública`
+    case 'schoolFinished':
+      return event.formation.level === 'tecnico'
+        ? `${name} se formou ${member ? formationLabel(member, event.formation).toLowerCase() : 'no técnico'} no instituto federal`
+        : `${name} terminou o ensino médio`
   }
+}
+
+/** O que a pessoa começou na matrícula, para o histórico. */
+function schoolStartText(stage: SchoolStage, network: Network): string {
+  switch (stage) {
+    case 'creche':
+      if (network === 'avos') return 'vai ficar com os avós até a escola'
+      if (network === 'casa') return 'vai ficar em casa até a escola'
+      return network === 'publica' ? 'entrou na creche pública' : 'entrou numa creche particular'
+    case 'escola':
+      return network === 'particular'
+        ? 'começou a escola num colégio particular'
+        : 'começou a escola na rede municipal'
+    case 'medio':
+      if (network === 'federal') return 'começou o ensino médio no instituto federal'
+      return network === 'particular'
+        ? 'começou o ensino médio num colégio particular'
+        : 'começou o ensino médio na escola estadual'
+  }
+}
+
+/** Nome da rede numa etapa: "Creche pública", "Escola municipal", "Instituto federal". */
+export function schoolName(stage: SchoolStage, network: Network): string {
+  switch (network) {
+    case 'publica':
+      return stage === 'creche'
+        ? 'Creche pública'
+        : stage === 'escola'
+          ? 'Escola municipal'
+          : 'Escola estadual'
+    case 'particular':
+      return stage === 'creche' ? 'Creche particular' : 'Colégio particular'
+    case 'federal':
+      return 'Instituto federal'
+    case 'avos':
+      return 'Com os avós'
+    case 'casa':
+      return 'Em casa'
+  }
+}
+
+/** Nome da rede com artigo, para o meio da frase: "a escola municipal", "o colégio particular". */
+export function schoolNameInSentence(stage: SchoolStage, network: Network): string {
+  const name = schoolName(stage, network).toLowerCase()
+  if (network === 'avos' || network === 'casa') return name
+  return name.startsWith('colégio') || name.startsWith('instituto') ? `o ${name}` : `a ${name}`
+}
+
+/** Ano escolar pela idade que a criança faz no ano: "Pré-escola", "3º ano do fundamental". */
+export function gradeLabel(stage: SchoolStage, ageThisYear: number): string {
+  if (stage === 'creche') return 'Creche'
+  if (stage === 'medio') return `${ageThisYear - 14}º ano do médio`
+  return ageThisYear <= 5 ? 'Pré-escola' : `${ageThisYear - 5}º ano do fundamental`
+}
+
+/** Formação em palavras: "Ensino médio", "Técnica em Informática". */
+export function formationLabel(member: Pick<Member, 'gender'>, formation: Formation): string {
+  if (formation.level === 'medio') return 'Ensino médio'
+  return `${byGender(member, 'Técnica', 'Técnico')} em ${techCourseName(formation.course)}`
 }
 
 /** Ano do calendário em que um acontecimento aconteceu. */

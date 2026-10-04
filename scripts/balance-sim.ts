@@ -22,8 +22,11 @@ import {
   childrenOf,
   familyRates,
   livingMembers,
+  msToTicks,
   newGame,
   suggestedPicks,
+  TICKS_PER_DAY,
+  TICKS_PER_MS,
   weddingCost,
   type GameState,
 } from '../src/engine'
@@ -69,6 +72,11 @@ const snapshot = (elapsedMs: number) => {
   })
 }
 
+/** Posição do relógio em milissegundos reais desde o dia 0, sem arredondar. */
+function clockMs(game: GameState): number {
+  return (game.clock.day * TICKS_PER_DAY + game.clock.tickOfDay) / TICKS_PER_MS
+}
+
 function tryAct(action: Parameters<typeof applyAction>[1]): boolean {
   const result = applyAction(state, action)
   if (result.ok) state = result.state
@@ -79,12 +87,12 @@ snapshot(0)
 for (let elapsed = STEP_MS; elapsed <= minutes * 60_000; elapsed += STEP_MS) {
   // O relógio para em cada escolha; a estratégia responde e avança o resto do passo.
   let left = STEP_MS
-  while (left > 0) {
-    const before = state.stats.simulatedMs
+  while (msToTicks(left) > 0) {
+    const before = clockMs(state)
     const result = advance(state, left)
     state = result.state
     deaths += result.events.filter((event) => event.type === 'died').length
-    left -= state.stats.simulatedMs - before
+    left -= clockMs(state) - before
     if (state.choices.length === 0) break
     if (!tryAct({ type: 'choose', picks: suggestedPicks(state) })) break
   }

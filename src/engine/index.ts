@@ -17,7 +17,21 @@ export { advance, advanceTo, isWaiting, type AdvanceResult } from './advance'
 export { inheritAppearance, rollAppearance } from './appearance'
 export { bestOffer, offerSalary, suggestedPicks, type ChoicePick } from './choices'
 export { FAMILY_NAME_MAX_LENGTH } from './constants'
-export { familyRates, memberExpense, memberIncome, salaryPerMonth, type Rates } from './economy'
+export {
+  familyRates,
+  incomeOf,
+  memberExpense,
+  memberIncome,
+  salaryPerMonth,
+  type Rates,
+} from './economy'
+export {
+  ageThisYear,
+  homeCareCost,
+  homeCaregiver,
+  isEnrollmentDay,
+  retiredGrandparents,
+} from './enrollment'
 export { isMemberEvent, LOG_LIMIT } from './log'
 export { checkMarry, checkSeekPartner, weddingCost, type MarriageCheck } from './marriage'
 export { ageOf, childrenOf, isAdult, isAlive, isRetired, livingMembers, partnerOf } from './members'
@@ -34,10 +48,22 @@ export { newGame, type NewGameOptions } from './new-game'
 export { createRng, hashString, pickWeighted, type Rng } from './rng'
 export { deserialize, serialize } from './save'
 export {
+  aptitudeOf,
+  halfTimeCaregivers,
+  schoolFee,
+  schoolScore,
+  stageFee,
+  stageForAge,
+  stagePoints,
+  stageYears,
+  yearlyPoints,
+} from './school'
+export {
   ageInYears,
   calendarDate,
   daysToMs,
   daysToSeconds,
+  lastDayOfYear,
   msToTicks,
   OFFLINE_CAP_MS,
   TICKS_PER_DAY,

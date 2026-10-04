@@ -105,6 +105,10 @@ describe('save', () => {
     expect(state.stats.simulatedMs).toBe(v2.stats.simulatedMs)
     expect(state.clock).toEqual(v2.clock)
     expect(state.choices).toEqual([])
-    expect(state.members).toEqual(v2.members)
+    for (const [id, member] of Object.entries(state.members)) {
+      const { education, ...rest } = member
+      expect(rest).toEqual(v2.members[id])
+      expect(education.formation).toEqual({ level: 'medio' })
+    }
   })
 })

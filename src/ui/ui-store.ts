@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import type { MemberId } from '@/engine'
 
-export type Tab = 'family' | 'love' | 'history' | 'settings'
+export type Tab = 'family' | 'love' | 'studies' | 'history' | 'settings'
 
 export type Sheet =
   | { kind: 'member'; memberId: MemberId }

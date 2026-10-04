@@ -1,16 +1,22 @@
 'use client'
 
-import { Baby, Briefcase, Heart } from 'lucide-react'
+import { Baby, Briefcase, Heart, School } from 'lucide-react'
+import { techCourseName, type Network } from '@/content/schools'
 import {
+  ageThisYear,
   calendarDate,
   checkHaveChild,
   checkSeekPartner,
   childCost,
   childrenOf,
+  incomeOf,
   memberExpense,
-  memberIncome,
   partnerOf,
+  schoolFee,
+  schoolScore,
   weddingCost,
+  type Choice,
+  type Enrollment,
   type GameState,
   type Member,
 } from '@/engine'
@@ -18,7 +24,17 @@ import { useGameStore } from '@/game/store'
 import { formatMoney, formatMonthYear, formatRate } from '@/lib/format'
 import { PersonAvatar } from '../avatar/person-avatar'
 import { seekPartner, showMember } from '../flows'
-import { ageLabel, byGender, childStatus, relationLine, roleLabel } from '../labels'
+import {
+  ageLabel,
+  byGender,
+  childStatus,
+  formationLabel,
+  gradeLabel,
+  relationLine,
+  roleLabel,
+  schoolName,
+  schoolNameInSentence,
+} from '../labels'
 import { button } from '../styles'
 import { useUiStore } from '../ui-store'
 import { Sheet } from './sheet'
@@ -30,7 +46,10 @@ export function MemberSheet({ game, member }: { game: GameState; member: Member 
   const partner = partnerOf(game, member)
   const parents = member.parentIds.map((id) => game.members[id]).filter(Boolean)
   const children = childrenOf(game, member.id)
-  const rate = memberIncome(member, day) - memberExpense(member, day)
+  const rate = incomeOf(game, member) - memberExpense(member, day)
+  const school = member.education.school
+  const formation = member.education.formation
+  const choice = game.choices.find((open) => open.memberId === member.id)
 
   return (
     <Sheet title={member.firstName} hideTitle onClose={closeSheet}>
@@ -62,6 +81,26 @@ export function MemberSheet({ game, member }: { game: GameState; member: Member 
               {rate === 0 ? 'Nenhuma' : formatRate(rate)}
             </span>
           </Fact>
+        ) : null}
+        {alive && school ? (
+          <>
+            <Fact label="Estuda">
+              {schoolName(school.stage, school.network)}
+              {school.course ? ` · ${techCourseName(school.course)}` : ''}
+              <span className="text-ink-soft block text-[13px] font-normal">
+                {gradeLabel(school.stage, ageThisYear(member, game.startDate, day))}
+                {schoolFee(school) > 0 ? ` · ${formatMoney(schoolFee(school))}/mês` : ' · gratuita'}
+              </span>
+            </Fact>
+            {school.stage !== 'creche' ? (
+              <Fact label="Nota">
+                <span className="tabular">{Math.floor(schoolScore(member))}</span>
+              </Fact>
+            ) : null}
+          </>
+        ) : null}
+        {formation && !school ? (
+          <Fact label="Formação">{formationLabel(member, formation)}</Fact>
         ) : null}
         <Fact label="Nasceu em">
           {formatMonthYear(calendarDate(game.startDate, member.birthDay))}
@@ -97,25 +136,67 @@ export function MemberSheet({ game, member }: { game: GameState; member: Member 
         ) : null}
       </dl>
 
-      {alive && game.choices.some((choice) => choice.memberId === member.id) ? (
-        <ChooseJob member={member} />
-      ) : null}
+      {alive && choice ? <OpenChoice member={member} choice={choice} /> : null}
+      {alive && school && !choice ? <SchoolChange member={member} school={school} /> : null}
       {alive ? <MemberActions game={game} member={member} partner={partner} /> : null}
     </Sheet>
   )
 }
 
-/** Quem acabou de fazer 18 anos espera a escolha do primeiro emprego, e o relógio também. */
-function ChooseJob({ member }: { member: Member }) {
+/** A pessoa tem uma escolha esperando, e o relógio também. */
+function OpenChoice({ member, choice }: { member: Member; choice: Choice }) {
   const showChoices = useUiStore((store) => store.showChoices)
+  const school = choice.type === 'school'
   return (
     <div className="mt-5">
       <button type="button" className={`${button.primary} w-full`} onClick={showChoices}>
-        <Briefcase size={18} />
-        Escolher o primeiro emprego
+        {school ? <School size={18} /> : <Briefcase size={18} />}
+        {school ? 'Fazer a matrícula' : 'Escolher o primeiro emprego'}
       </button>
       <p className="text-ink-soft mt-2 text-center text-sm">
-        O tempo parou até {member.firstName} ter um emprego.
+        {school
+          ? `O tempo parou até a matrícula de ${member.firstName}.`
+          : `O tempo parou até ${member.firstName} ter um emprego.`}
+      </p>
+    </div>
+  )
+}
+
+/** Troca entre escola pública e colégio particular, que vale na matrícula seguinte. */
+function SchoolChange({ member, school }: { member: Member; school: Enrollment }) {
+  const dispatch = useGameStore((store) => store.dispatch)
+  if (school.stage === 'creche' || school.network === 'federal') return null
+  const other = school.network === 'particular' ? 'publica' : 'particular'
+  const change = (network: Network) =>
+    dispatch({ type: 'changeSchool', memberId: member.id, network })
+
+  if (school.next) {
+    return (
+      <div className="mt-5 text-center">
+        <p className="text-[14px] font-semibold">
+          Em janeiro, {member.firstName} muda para {schoolNameInSentence(school.stage, school.next)}
+          .
+        </p>
+        <button
+          type="button"
+          className={`${button.quiet} mt-1`}
+          onClick={() => change(school.network)}
+        >
+          Desfazer
+        </button>
+      </div>
+    )
+  }
+  return (
+    <div className="mt-5">
+      <button type="button" className={`${button.secondary} w-full`} onClick={() => change(other)}>
+        <School size={16} />
+        Mudar para {schoolNameInSentence(school.stage, other)} em janeiro
+      </button>
+      <p className="text-ink-soft mt-2 text-center text-sm">
+        {other === 'particular'
+          ? `A mensalidade é de ${formatMoney(schoolFee({ stage: school.stage, network: other }))} e soma pontos na nota.`
+          : 'A escola pública é gratuita, mas não soma pontos na nota.'}
       </p>
     </div>
   )

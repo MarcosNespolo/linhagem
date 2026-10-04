@@ -8,7 +8,14 @@ import {
   useControls,
   type ReactZoomPanPinchRef,
 } from 'react-zoom-pan-pinch'
-import { ageOf, memberExpense, memberIncome, type GameState, type MemberId } from '@/engine'
+import {
+  ageOf,
+  halfTimeCaregivers,
+  incomeOf,
+  memberExpense,
+  type GameState,
+  type MemberId,
+} from '@/engine'
 import { formatSignedMoney } from '@/lib/format'
 import { Avatar } from '../avatar/avatar'
 import { avatarLook, lookKey, type AvatarLook } from '../avatar/look'
@@ -82,6 +89,7 @@ export function FamilyTree({ game, showDeceased, actions, selectedId, onSelect }
   const layout = treeLayoutFor(game, showDeceased)
   if (!layout) return null
   const day = game.clock.day
+  const caregivers = halfTimeCaregivers(game)
 
   return (
     <TransformWrapper
@@ -119,6 +127,7 @@ export function FamilyTree({ game, showDeceased, actions, selectedId, onSelect }
           {layout.people.map((person) => {
             const member = game.members[person.id]
             const age = ageOf(member, day)
+            const rate = incomeOf(game, member, caregivers) - memberExpense(member, day)
             return (
               <TreeNode
                 key={person.id}
@@ -127,7 +136,7 @@ export function FamilyTree({ game, showDeceased, actions, selectedId, onSelect }
                 y={person.y}
                 name={member.firstName}
                 age={age}
-                rate={memberIncome(member, day) - memberExpense(member, day)}
+                rate={rate}
                 alive={member.deathDay === null}
                 look={avatarLook(member.appearance, member.gender, age, member.avatarSeed)}
                 canMarry={actions.get(person.id) === 'marry'}

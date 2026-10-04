@@ -1,5 +1,6 @@
 import { BALANCE } from '../content/balance'
 import { CAREER_IDS, careerLevel } from '../content/careers'
+import { applySchoolPick } from './enrollment'
 import { refuse, type Refusal } from './errors'
 import type { Rng } from './rng'
 import type { GameEvent, GameState, JobOffer, Member, MemberId } from './types'
@@ -51,15 +52,20 @@ export function suggestedPicks(state: GameState): ChoicePick[] {
   return state.choices.map((choice) => ({ memberId: choice.memberId, option: choice.suggested }))
 }
 
-/** Confere se cada resposta aponta para uma escolha aberta e para uma opção que existe. */
+/**
+ * Confere se cada resposta aponta para uma escolha aberta e para uma opção que
+ * existe e que dá para escolher.
+ */
 export function checkPicks(state: GameState, picks: readonly ChoicePick[]): { ok: true } | Refusal {
   if (picks.length === 0) return refuse('choiceNotFound')
   const answered = new Set<MemberId>()
   for (const pick of picks) {
     const choice = state.choices.find((open) => open.memberId === pick.memberId)
     if (!choice || answered.has(pick.memberId)) return refuse('choiceNotFound')
-    if (!Number.isInteger(pick.option) || !choice.offers[pick.option]) {
-      return refuse('optionNotFound')
+    const options = choice.type === 'firstJob' ? choice.offers : choice.options
+    if (!Number.isInteger(pick.option) || !options[pick.option]) return refuse('optionNotFound')
+    if (choice.type === 'school' && !choice.options[pick.option].available) {
+      return refuse('optionUnavailable')
     }
     answered.add(pick.memberId)
   }
@@ -72,6 +78,10 @@ export function applyPicks(draft: GameState, picks: readonly ChoicePick[]): Game
   for (const pick of picks) {
     const index = draft.choices.findIndex((open) => open.memberId === pick.memberId)
     const [choice] = draft.choices.splice(index, 1)
+    if (choice.type === 'school') {
+      events.push(applySchoolPick(draft, choice, pick.option))
+      continue
+    }
     const { careerId } = choice.offers[pick.option]
     draft.members[pick.memberId].career = { id: careerId, level: 0, xp: 0 }
     events.push({ type: 'firstJob', day: draft.clock.day, memberId: pick.memberId, careerId })

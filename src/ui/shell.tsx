@@ -18,6 +18,7 @@ import { button } from './styles'
 import { HistoryTab } from './tabs/history-tab'
 import { LoveTab } from './tabs/love-tab'
 import { SettingsTab } from './tabs/settings-tab'
+import { StudiesTab } from './tabs/studies-tab'
 import { Toasts } from './toasts'
 import { FamilyTree } from './tree/family-tree'
 import { Hud } from './hud'
@@ -62,6 +63,7 @@ export function Shell({ game }: { game: GameState }) {
         ) : (
           <div className="h-full overflow-y-auto overscroll-contain">
             {tab === 'love' ? <LoveTab game={game} actions={actions} /> : null}
+            {tab === 'studies' ? <StudiesTab game={game} /> : null}
             {tab === 'history' ? <HistoryTab game={game} /> : null}
             {tab === 'settings' ? <SettingsTab game={game} /> : null}
           </div>

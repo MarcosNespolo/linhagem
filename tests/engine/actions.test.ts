@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { BALANCE } from '@/content/balance'
 import {
-  advance,
   applyAction,
   checkHaveChild,
   childCooldownDaysLeft,
@@ -15,6 +14,7 @@ import {
   founders,
   lastMember,
   makeGame,
+  play,
   setMember,
   withChild,
   withMoney,
@@ -50,7 +50,7 @@ describe('ter filho', () => {
     for (let i = 0; i < 3; i++) {
       costs.push(childCost(state, first.id, second.id))
       state = expectOk(haveChild(state)).state
-      state = advance(state, days(BALANCE.children.cooldownDays)).state
+      state = play(state, days(BALANCE.children.cooldownDays))
     }
     const { baseCost, coupleGrowth } = BALANCE.children
     const factor = (living: number) => BALANCE.familySizeGrowth ** living
@@ -79,11 +79,11 @@ describe('ter filho', () => {
     expect(haveChild(afterFirst)).toEqual({ ok: false, error: 'cooldown' })
     expect(childCooldownDaysLeft(afterFirst, parentId)).toBe(BALANCE.children.cooldownDays)
 
-    const almost = advance(afterFirst, days(BALANCE.children.cooldownDays - 1)).state
+    const almost = play(afterFirst, days(BALANCE.children.cooldownDays - 1))
     expect(childCooldownDaysLeft(almost, parentId)).toBe(1)
     expect(haveChild(almost).ok).toBe(false)
 
-    const ready = advance(almost, days(1)).state
+    const ready = play(almost, days(1))
     expect(childCooldownDaysLeft(ready, parentId)).toBe(0)
     expect(haveChild(ready).ok).toBe(true)
   })
@@ -121,7 +121,7 @@ describe('ter filho', () => {
     let state = withMoney(makeGame(12), 10_000_000)
     for (let i = 0; i < 6; i++) {
       state = expectOk(haveChild(state)).state
-      state = advance(state, days(BALANCE.children.cooldownDays)).state
+      state = play(state, days(BALANCE.children.cooldownDays))
     }
     const names = Object.values(state.members).map((member) => member.firstName)
     expect(new Set(names).size).toBe(names.length)
@@ -179,7 +179,7 @@ describe('escolher', () => {
   it('recusa opção que não existe e resposta repetida para a mesma pessoa', () => {
     const born = withChild(makeGame(4))
     const memberId = lastMember(born).id
-    const waiting = advance(born, years(BALANCE.adultAge + 1)).state
+    const waiting = play(born, years(BALANCE.adultAge + 1), 'firstJob')
     const choose = (...options: number[]) =>
       applyAction(waiting, {
         type: 'choose',
@@ -193,7 +193,7 @@ describe('escolher', () => {
 
   it('não altera o estado recebido', () => {
     const born = withChild(makeGame(4))
-    const waiting = advance(born, years(BALANCE.adultAge + 1)).state
+    const waiting = play(born, years(BALANCE.adultAge + 1), 'firstJob')
     const copy = structuredClone(waiting)
     const memberId = waiting.choices[0].memberId
     expectOk(applyAction(waiting, { type: 'choose', picks: [{ memberId, option: 0 }] }))

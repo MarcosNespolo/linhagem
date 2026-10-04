@@ -1,8 +1,10 @@
 import { BALANCE } from '../content/balance'
 import { inheritAppearance } from './appearance'
+import type { Network } from '../content/schools'
 import { applyPicks, checkPicks, type ChoicePick } from './choices'
 import { FAMILY_NAME_MAX_LENGTH } from './constants'
 import { draftOf } from './draft'
+import { checkChangeSchool } from './enrollment'
 import { refuse, type ActionError, type Refusal } from './errors'
 import { appendLog } from './log'
 import { checkMarry, checkSeekPartner, joinFamily, rollSuitors } from './marriage'
@@ -21,6 +23,8 @@ export type Action =
   | { type: 'marry'; memberId: MemberId; suitorIndex: number }
   /** Responde escolhas abertas. Quando não sobra nenhuma, o relógio volta a andar. */
   | { type: 'choose'; picks: ChoicePick[] }
+  /** Troca a rede da escola ou do ensino médio na próxima matrícula. A mesma rede desfaz o pedido. */
+  | { type: 'changeSchool'; memberId: MemberId; network: Network }
 
 export type ActionResult = { ok: true; state: GameState; events: GameEvent[] } | Refusal
 
@@ -44,6 +48,8 @@ export function applyAction(state: GameState, action: Action): ActionResult {
       return marry(state, action.memberId, action.suitorIndex)
     case 'choose':
       return choose(state, action.picks)
+    case 'changeSchool':
+      return changeSchool(state, action.memberId, action.network)
   }
 }
 
@@ -155,6 +161,18 @@ function choose(state: GameState, picks: readonly ChoicePick[]): ActionResult {
   const events = applyPicks(draft, picks)
   appendLog(draft, events)
   return done(draft, events)
+}
+
+function changeSchool(state: GameState, memberId: MemberId, network: Network): ActionResult {
+  const check = checkChangeSchool(state, memberId, network)
+  if (!check.ok) return check
+
+  const draft = draftOf(state)
+  const school = draft.members[memberId].education.school
+  if (!school) return refuse('notStudying')
+  if (network === school.network) delete school.next
+  else school.next = network
+  return done(draft)
 }
 
 function done(state: GameState, events: GameEvent[] = []): ActionResult {

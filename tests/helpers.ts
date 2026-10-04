@@ -4,9 +4,13 @@ import {
   advance,
   applyAction,
   daysToMs,
+  msToTicks,
   newGame,
   suggestedPicks,
+  TICKS_PER_DAY,
+  TICKS_PER_MS,
   type ActionResult,
+  type Choice,
   type GameState,
   type Member,
 } from '@/engine'
@@ -59,13 +63,37 @@ export function chooseSuggested(state: GameState): GameState {
 }
 
 /**
- * Partida com um filho do casal fundador já adulto, com o primeiro emprego
- * sugerido e dinheiro de sobra. Devolve o id do filho.
+ * Avança `ms` como um jogador que confirma cada escolha com a sugestão e segue
+ * jogando. Com `stopAt`, para na primeira escolha desse tipo e a deixa aberta.
+ */
+export function play(state: GameState, ms: number, stopAt?: Choice['type']): GameState {
+  let current = state
+  let left = ms
+  while (msToTicks(left) > 0) {
+    const before = clockMs(current)
+    current = advance(current, left).state
+    left -= clockMs(current) - before
+    if (current.choices.length === 0) break
+    if (current.choices.some((choice) => choice.type === stopAt)) break
+    current = chooseSuggested(current)
+  }
+  return current
+}
+
+/** Posição do relógio em milissegundos reais desde o dia 0, sem arredondar. */
+function clockMs(state: GameState): number {
+  return (state.clock.day * TICKS_PER_DAY + state.clock.tickOfDay) / TICKS_PER_MS
+}
+
+/**
+ * Partida com um filho do casal fundador já adulto, que passou pela escola com
+ * as sugestões, tem o primeiro emprego sugerido e dinheiro de sobra. Devolve o
+ * id do filho.
  */
 export function withAdultChild(seed = 1): { state: GameState; childId: string } {
   const born = withChild(makeGame(seed))
   const childId = lastMember(born).id
-  const grown = chooseSuggested(advance(born, years(BALANCE.adultAge)).state)
+  const grown = chooseSuggested(play(born, years(BALANCE.adultAge)))
   return { state: withMoney(grown, 1_000_000), childId }
 }
 

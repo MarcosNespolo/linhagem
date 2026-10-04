@@ -273,15 +273,20 @@ function catchUp(
       },
     }
   }
-  // Aposentadoria e primeiro emprego (que o jogador acabou de escolher) ficam só no histórico,
-  // para os avisos não cobrirem a tela.
+  // Aposentadoria, emprego e matrículas (que o jogador acabou de escolher) ficam só no
+  // histórico, para os avisos não cobrirem a tela.
   const worthShowing = events.filter((event) => !QUIET_EVENTS.has(event.type))
   if (worthShowing.length === 0) return {}
   const added = worthShowing.map((event) => ({ id: nextToastId++, event }))
   return { toasts: [...store.toasts, ...added].slice(-TOAST_LIMIT) }
 }
 
-const QUIET_EVENTS = new Set<GameEvent['type']>(['firstJob', 'retired'])
+const QUIET_EVENTS = new Set<GameEvent['type']>([
+  'firstJob',
+  'retired',
+  'schoolStarted',
+  'schoolChanged',
+])
 
 /** Semente aleatória para uma partida nova. */
 export function randomSeed(): number {

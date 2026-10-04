@@ -1,16 +1,18 @@
 import { BALANCE } from '../content/balance'
 import { openFirstJobChoice } from './choices'
-import { memberIncome } from './economy'
+import { incomeOf } from './economy'
+import { isEnrollmentDay, processEnrollment } from './enrollment'
 import type { Rng } from './rng'
+import { halfTimeCaregivers } from './school'
 import { calendarDate } from './time'
 import type { GameEvent, GameState } from './types'
 
 /**
  * Processa a virada para o dia atual do relógio: aniversários, maioridade,
- * aposentadoria, morte e o 13º salário. Quem faz 18 anos sem emprego ganha a
- * escolha do primeiro emprego, que para o relógio. Altera o rascunho e devolve
- * true quando houve algum aniversário, porque aí as taxas de renda e despesa
- * podem ter mudado.
+ * aposentadoria, morte, as matrículas de janeiro e o 13º salário. Quem faz 18
+ * anos sem emprego ganha a escolha do primeiro emprego, e quem começa uma etapa
+ * da escola, a da matrícula; as duas param o relógio. Altera o rascunho e
+ * devolve true quando algo pode ter mudado as taxas de renda e despesa.
  */
 export function processNewDay(draft: GameState, rng: Rng, events: GameEvent[]): boolean {
   const day = draft.clock.day
@@ -39,6 +41,10 @@ export function processNewDay(draft: GameState, rng: Rng, events: GameEvent[]): 
     }
   }
 
+  if (isEnrollmentDay(draft)) {
+    processEnrollment(draft, rng, events)
+    changed = true
+  }
   payThirteenth(draft, events)
   return changed
 }
@@ -47,8 +53,9 @@ export function processNewDay(draft: GameState, rng: Rng, events: GameEvent[]): 
 function payThirteenth(draft: GameState, events: GameEvent[]): void {
   const day = draft.clock.day
   if (calendarDate(draft.startDate, day).slice(5) !== BALANCE.thirteenthSalaryDate) return
+  const caregivers = halfTimeCaregivers(draft)
   let amount = 0
-  for (const member of Object.values(draft.members)) amount += memberIncome(member, day)
+  for (const member of Object.values(draft.members)) amount += incomeOf(draft, member, caregivers)
   if (amount <= 0) return
   draft.money += amount
   draft.stats.totalEarned += amount
