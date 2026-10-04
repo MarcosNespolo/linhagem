@@ -13,6 +13,7 @@ export type Sheet =
   | { kind: 'rename' }
   | { kind: 'confirmNewFamily' }
   | { kind: 'cloudLogin' }
+  | { kind: 'missions' }
 
 type UiStore = {
   tab: Tab

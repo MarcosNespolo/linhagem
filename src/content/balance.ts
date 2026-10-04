@@ -105,6 +105,9 @@ export const BALANCE = {
    */
   properties: { priceGrowth: 1.15 },
 
+  /** Missões do dia: quantas aparecem, todas de tipos diferentes. */
+  missions: { perDay: 3 },
+
   /**
    * Concurso público: quem estuda não trabalha, paga o cursinho e faz uma prova
    * a cada três meses, por até um ano. A nota parte da nota do ENEM e sobe com

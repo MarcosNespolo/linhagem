@@ -11,7 +11,9 @@
  * particular, casou e tem um filho na creche. O mais novo acabou o médio e
  * estuda para concurso, com o resultado da primeira prova aberto. A fundadora
  * pagou o curso e chegou ao 4º nível da carreira, e o fundador tem o curso
- * dele para pagar. A família tem dois kitnets e um apartamento alugados.
+ * dele para pagar. A família tem dois kitnets e um apartamento alugados, e as
+ * missões do dia sorteadas: cumpriu a Investidor, com três kitnets a mais, e
+ * está com a renda em dobro.
  */
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { BALANCE } from '../src/content/balance'
@@ -112,6 +114,18 @@ state = act(state, { type: 'payCourse', memberId: 'm1' })
 state = act(state, { type: 'buyProperty', propertyId: 'kitnet' })
 state = act(state, { type: 'buyProperty', propertyId: 'kitnet' })
 state = act(state, { type: 'buyProperty', propertyId: 'apartamento' })
+// O primeiro dia, a partir de 4 de outubro de 2026, em que a Investidor é sorteada.
+for (let day = 4; ; day++) {
+  const date = `2026-10-${String(day).padStart(2, '0')}`
+  const drawn = act(state, { type: 'drawMissions', date })
+  if (drawn.missions?.list.some((mission) => mission.id === 'investidor')) {
+    state = drawn
+    break
+  }
+}
+// Três kitnets cumprem a Investidor, e a recompensa põe a renda em dobro.
+for (let i = 0; i < 3; i++) state = act(state, { type: 'buyProperty', propertyId: 'kitnet' })
+state = act(state, { type: 'claimMission', missionId: 'investidor' })
 // Até a primeira prova, que abre o resultado do concurso.
 state = advance(state, year).state
 if (state.choices.length !== 1 || state.choices[0].type !== 'concurso') {

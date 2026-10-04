@@ -38,8 +38,10 @@ export function newGame({ seed, now, startDate, familyName }: NewGameOptions): G
     suitors: {},
     choices: [],
     properties: {},
+    missions: null,
+    boosts: { incomeUntil: 0 },
     log: [],
-    stats: { simulatedMs: 0, totalEarned: 0, totalSpent: 0 },
+    stats: { simulatedMs: 0, totalEarned: 0, totalSpent: 0, rentEarned: 0 },
   }
 
   const first = addFounder(draft, rng, 'f')

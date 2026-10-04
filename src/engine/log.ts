@@ -1,3 +1,4 @@
+import { trackMissions } from './missions'
 import type { GameEvent, GameState, LogEvent, MemberEvent } from './types'
 
 /** Quantos acontecimentos o save guarda. Os mais antigos saem primeiro. */
@@ -11,6 +12,15 @@ export function isMemberEvent(event: GameEvent): event is MemberEvent {
 /** Acontecimentos que entram no histórico: os das pessoas e as compras da família. */
 export function isLogEvent(event: GameEvent): event is LogEvent {
   return event.type !== 'thirteenth'
+}
+
+/**
+ * Registra no rascunho o que aconteceu: entra no histórico e conta para as
+ * missões do dia.
+ */
+export function recordEvents(draft: GameState, events: readonly GameEvent[]): void {
+  appendLog(draft, events)
+  trackMissions(draft, events)
 }
 
 /** Acrescenta ao histórico do rascunho os acontecimentos, respeitando o limite. */

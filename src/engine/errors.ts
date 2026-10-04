@@ -18,6 +18,11 @@ export type ActionError =
   | 'noCourse'
   | 'propertyNotFound'
   | 'propertyLocked'
+  | 'invalidDate'
+  | 'alreadyDrawn'
+  | 'missionNotFound'
+  | 'missionNotDone'
+  | 'alreadyClaimed'
 
 export type Refusal = { ok: false; error: ActionError }
 

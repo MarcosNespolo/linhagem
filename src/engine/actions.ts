@@ -1,4 +1,5 @@
 import { BALANCE } from '../content/balance'
+import type { MissionId } from '../content/missions'
 import { inheritAppearance } from './appearance'
 import type { PropertyId } from '../content/properties'
 import type { Network } from '../content/schools'
@@ -7,9 +8,10 @@ import { FAMILY_NAME_MAX_LENGTH } from './constants'
 import { draftOf } from './draft'
 import { checkChangeSchool } from './enrollment'
 import { refuse, type ActionError, type Refusal } from './errors'
-import { appendLog } from './log'
+import { recordEvents } from './log'
 import { checkMarry, checkSeekPartner, joinFamily, rollSuitors } from './marriage'
 import { addMember, ageOf, childrenOf, familySizeFactor, isAlive } from './members'
+import { claimReward, drawMissions, isMissionDone, trackMissions } from './missions'
 import {
   affordableCourses,
   availableCourses,
@@ -39,6 +41,14 @@ export type Action =
   | { type: 'payAllCourses' }
   /** Compra um imóvel do tipo, de um em um. */
   | { type: 'buyProperty'; propertyId: PropertyId }
+  /**
+   * Sorteia as missões do dia do aparelho, no formato AAAA-MM-DD. A data vem da
+   * store, porque a engine não conhece o relógio do aparelho. As missões do dia
+   * anterior somem, com as recompensas que não foram pegas.
+   */
+  | { type: 'drawMissions'; date: string }
+  /** Pega a recompensa de uma missão cumprida. */
+  | { type: 'claimMission'; missionId: MissionId }
 
 export type ActionResult = { ok: true; state: GameState; events: GameEvent[] } | Refusal
 
@@ -70,6 +80,10 @@ export function applyAction(state: GameState, action: Action): ActionResult {
       return payAllCourses(state)
     case 'buyProperty':
       return buyProperty(state, action.propertyId)
+    case 'drawMissions':
+      return newMissions(state, action.date)
+    case 'claimMission':
+      return claimMission(state, action.missionId)
   }
 }
 
@@ -139,7 +153,7 @@ function haveChild(state: GameState, parentId: MemberId): ActionResult {
   draft.stats.totalSpent += check.cost
   draft.rngState = rng.state
   const events: GameEvent[] = [{ type: 'born', day, memberId: child.id }]
-  appendLog(draft, events)
+  recordEvents(draft, events)
   return done(draft, events)
 }
 
@@ -169,7 +183,7 @@ function marry(state: GameState, memberId: MemberId, suitorIndex: number): Actio
   const events: GameEvent[] = [
     { type: 'married', day: draft.clock.day, memberId, partnerId: spouse.id },
   ]
-  appendLog(draft, events)
+  recordEvents(draft, events)
   return done(draft, events)
 }
 
@@ -181,7 +195,7 @@ function choose(state: GameState, picks: readonly ChoicePick[]): ActionResult {
   const rng = createRng(draft.rngState)
   const events = applyPicks(draft, rng, picks)
   draft.rngState = rng.state
-  appendLog(draft, events)
+  recordEvents(draft, events)
   return done(draft, events)
 }
 
@@ -206,7 +220,7 @@ function payCourse(state: GameState, memberId: MemberId): ActionResult {
 
   const draft = draftOf(state)
   const events = [applyCourse(draft, course)]
-  appendLog(draft, events)
+  recordEvents(draft, events)
   return done(draft, events)
 }
 
@@ -217,7 +231,7 @@ function payAllCourses(state: GameState): ActionResult {
 
   const draft = draftOf(state)
   const events = courses.map((course) => applyCourse(draft, course))
-  appendLog(draft, events)
+  recordEvents(draft, events)
   return done(draft, events)
 }
 
@@ -227,8 +241,30 @@ function buyProperty(state: GameState, id: PropertyId): ActionResult {
 
   const draft = draftOf(state)
   const events = [applyPurchase(draft, id, check.price)]
-  appendLog(draft, events)
+  recordEvents(draft, events)
   return done(draft, events)
+}
+
+function newMissions(state: GameState, date: string): ActionResult {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return refuse('invalidDate')
+  if (state.missions?.date === date) return refuse('alreadyDrawn')
+
+  const draft = draftOf(state)
+  draft.missions = { date, list: drawMissions(state, date) }
+  trackMissions(draft, [])
+  return done(draft)
+}
+
+function claimMission(state: GameState, id: MissionId): ActionResult {
+  const mission = state.missions?.list.find((candidate) => candidate.id === id)
+  if (!mission) return refuse('missionNotFound')
+  if (mission.claimed) return refuse('alreadyClaimed')
+  if (!isMissionDone(mission)) return refuse('missionNotDone')
+
+  const draft = draftOf(state)
+  const target = draft.missions?.list.find((candidate) => candidate.id === id)
+  if (target) claimReward(draft, target)
+  return done(draft)
 }
 
 function done(state: GameState, events: GameEvent[] = []): ActionResult {
