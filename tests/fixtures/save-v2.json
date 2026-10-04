@@ -1,0 +1,301 @@
+{
+  "schemaVersion": 2,
+  "seed": 20261003,
+  "rngState": 1076956152,
+  "familyName": "Exemplo",
+  "startDate": "2026-10-03",
+  "clock": {
+    "day": 8495,
+    "tickOfDay": 0,
+    "paused": false
+  },
+  "lastSimulatedAt": 1760000000000,
+  "money": 102979.80821924088,
+  "members": {
+    "m1": {
+      "id": "m1",
+      "firstName": "Vitória",
+      "gender": "f",
+      "birthDay": -9728,
+      "deathDay": null,
+      "lifespan": 85,
+      "generation": 0,
+      "origin": "founder",
+      "parentIds": [],
+      "partnerId": "m2",
+      "marriedDay": 0,
+      "career": {
+        "id": "gastronomia",
+        "level": 0,
+        "xp": 0
+      },
+      "lastChildDay": 1460,
+      "traits": [],
+      "appearance": {
+        "skin": 5,
+        "hair": 1,
+        "eyes": 1,
+        "curl": 1,
+        "style": 640,
+        "freckles": false,
+        "glassesFrom": 25,
+        "beard": false,
+        "balding": false
+      },
+      "avatarSeed": "ahs7q2"
+    },
+    "m2": {
+      "id": "m2",
+      "firstName": "Samuel",
+      "gender": "m",
+      "birthDay": -8228,
+      "deathDay": null,
+      "lifespan": 76,
+      "generation": 0,
+      "origin": "founder",
+      "parentIds": [],
+      "partnerId": "m1",
+      "marriedDay": 0,
+      "career": {
+        "id": "gastronomia",
+        "level": 0,
+        "xp": 0
+      },
+      "lastChildDay": 1460,
+      "traits": [],
+      "appearance": {
+        "skin": 3,
+        "hair": 1,
+        "eyes": 0,
+        "curl": 1,
+        "style": 162,
+        "freckles": true,
+        "glassesFrom": null,
+        "beard": true,
+        "balding": false
+      },
+      "avatarSeed": "ogju5p"
+    },
+    "m3": {
+      "id": "m3",
+      "firstName": "Melissa",
+      "gender": "f",
+      "birthDay": 730,
+      "deathDay": null,
+      "lifespan": 77,
+      "generation": 1,
+      "origin": "born",
+      "parentIds": [
+        "m1",
+        "m2"
+      ],
+      "partnerId": "m5",
+      "marriedDay": 8395,
+      "career": {
+        "id": "saude",
+        "level": 0,
+        "xp": 0
+      },
+      "lastChildDay": null,
+      "traits": [],
+      "appearance": {
+        "skin": 3,
+        "hair": 1,
+        "eyes": 0,
+        "curl": 1,
+        "style": 560,
+        "freckles": true,
+        "glassesFrom": null,
+        "beard": false,
+        "balding": false
+      },
+      "avatarSeed": "dm3id9"
+    },
+    "m4": {
+      "id": "m4",
+      "firstName": "Ícaro",
+      "gender": "m",
+      "birthDay": 1460,
+      "deathDay": null,
+      "lifespan": 92,
+      "generation": 1,
+      "origin": "born",
+      "parentIds": [
+        "m1",
+        "m2"
+      ],
+      "partnerId": null,
+      "marriedDay": null,
+      "career": {
+        "id": "educacao",
+        "level": 0,
+        "xp": 0
+      },
+      "lastChildDay": null,
+      "traits": [],
+      "appearance": {
+        "skin": 5,
+        "hair": 1,
+        "eyes": 0,
+        "curl": 1,
+        "style": 514,
+        "freckles": true,
+        "glassesFrom": 22,
+        "beard": true,
+        "balding": false
+      },
+      "avatarSeed": "9fa9uw"
+    },
+    "m5": {
+      "id": "m5",
+      "firstName": "Bruno",
+      "gender": "m",
+      "birthDay": 1750,
+      "deathDay": null,
+      "lifespan": 78,
+      "generation": 1,
+      "origin": "married",
+      "parentIds": [],
+      "partnerId": "m3",
+      "marriedDay": 8395,
+      "career": {
+        "id": "construcao",
+        "level": 0,
+        "xp": 0
+      },
+      "lastChildDay": null,
+      "traits": [],
+      "appearance": {
+        "skin": 4,
+        "hair": 4,
+        "eyes": 0,
+        "curl": 0,
+        "style": 191,
+        "freckles": false,
+        "glassesFrom": null,
+        "beard": true,
+        "balding": true
+      },
+      "avatarSeed": "t8baix"
+    }
+  },
+  "nextMemberId": 6,
+  "suitors": {
+    "m4": [
+      {
+        "firstName": "Lorena",
+        "gender": "f",
+        "birthDay": 903,
+        "lifespan": 78,
+        "career": {
+          "id": "saude",
+          "level": 0,
+          "xp": 0
+        },
+        "appearance": {
+          "skin": 0,
+          "hair": 2,
+          "eyes": 3,
+          "curl": 0,
+          "style": 52,
+          "freckles": false,
+          "glassesFrom": 55,
+          "beard": false,
+          "balding": false
+        },
+        "avatarSeed": "jkofxa"
+      },
+      {
+        "firstName": "Elisa",
+        "gender": "f",
+        "birthDay": 155,
+        "lifespan": 90,
+        "career": {
+          "id": "gastronomia",
+          "level": 0,
+          "xp": 0
+        },
+        "appearance": {
+          "skin": 3,
+          "hair": 1,
+          "eyes": 0,
+          "curl": 3,
+          "style": 432,
+          "freckles": false,
+          "glassesFrom": null,
+          "beard": false,
+          "balding": false
+        },
+        "avatarSeed": "9lnpoq"
+      },
+      {
+        "firstName": "Larissa",
+        "gender": "f",
+        "birthDay": 1120,
+        "lifespan": 81,
+        "career": {
+          "id": "educacao",
+          "level": 0,
+          "xp": 0
+        },
+        "appearance": {
+          "skin": 2,
+          "hair": 6,
+          "eyes": 0,
+          "curl": 2,
+          "style": 267,
+          "freckles": false,
+          "glassesFrom": 29,
+          "beard": false,
+          "balding": false
+        },
+        "avatarSeed": "gb7zj4"
+      }
+    ]
+  },
+  "log": [
+    {
+      "type": "born",
+      "day": 730,
+      "memberId": "m3"
+    },
+    {
+      "type": "born",
+      "day": 1460,
+      "memberId": "m4"
+    },
+    {
+      "type": "becameAdult",
+      "day": 7300,
+      "memberId": "m3"
+    },
+    {
+      "type": "firstJob",
+      "day": 7300,
+      "memberId": "m3",
+      "careerId": "saude"
+    },
+    {
+      "type": "becameAdult",
+      "day": 8030,
+      "memberId": "m4"
+    },
+    {
+      "type": "firstJob",
+      "day": 8030,
+      "memberId": "m4",
+      "careerId": "educacao"
+    },
+    {
+      "type": "married",
+      "day": 8395,
+      "memberId": "m3",
+      "partnerId": "m5"
+    }
+  ],
+  "stats": {
+    "simulatedMs": 279287.6712328767,
+    "totalEarned": 5629.808219177894,
+    "totalSpent": 2650.000000000169
+  }
+}

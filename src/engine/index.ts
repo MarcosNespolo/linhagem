@@ -14,9 +14,12 @@ export {
   type ChildCheck,
 } from './actions'
 export { advance, advanceTo, type AdvanceResult } from './advance'
+export { inheritAppearance, rollAppearance } from './appearance'
 export { FAMILY_NAME_MAX_LENGTH } from './constants'
 export { familyRates, memberExpense, memberIncome, salaryPerSecond, type Rates } from './economy'
-export { ageOf, childrenOf, isAdult, isAlive, isRetired, livingMembers } from './members'
+export { LOG_LIMIT } from './log'
+export { checkMarry, checkSeekPartner, weddingCost, type MarriageCheck } from './marriage'
+export { ageOf, childrenOf, isAdult, isAlive, isRetired, livingMembers, partnerOf } from './members'
 export {
   CURRENT_SCHEMA_VERSION,
   MIGRATIONS,
@@ -26,7 +29,7 @@ export {
   type SaveErrorCode,
 } from './migrations'
 export { newGame, type NewGameOptions } from './new-game'
-export { createRng, type Rng } from './rng'
+export { createRng, hashString, pickWeighted, type Rng } from './rng'
 export { deserialize, serialize } from './save'
 export {
   ageInYears,

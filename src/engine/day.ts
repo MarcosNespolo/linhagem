@@ -22,6 +22,7 @@ export function processNewDay(draft: GameState, rng: Rng, events: GameEvent[]): 
 
     if (age >= member.lifespan) {
       member.deathDay = day
+      delete draft.suitors[member.id]
       events.push({ type: 'died', day, memberId: member.id, age })
       continue
     }

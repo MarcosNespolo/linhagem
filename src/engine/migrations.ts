@@ -1,7 +1,9 @@
+import { rollAppearance } from './appearance'
+import { createRng, hashString } from './rng'
 import type { GameState } from './types'
 
 /** Versão atual do formato do save. Sobe a cada migração nova. */
-export const CURRENT_SCHEMA_VERSION = 1
+export const CURRENT_SCHEMA_VERSION = 2
 
 export type SaveErrorCode = 'corrupt' | 'futureVersion' | 'missingMigration'
 
@@ -21,12 +23,37 @@ type RawSave = Record<string, unknown>
 export type Migration = (save: RawSave) => RawSave
 
 /**
+ * Versão 1 para 2: aparência herdável, origem de cada membro, data de
+ * casamento, pessoas sugeridas como par e histórico de acontecimentos. Quem já
+ * existia ganha uma aparência sorteada a partir da própria semente, então o
+ * mesmo save sempre migra para os mesmos rostos.
+ */
+const toVersion2: Migration = (save) => {
+  const members = isRecord(save.members) ? save.members : {}
+  const upgraded: RawSave = {}
+  for (const [id, member] of Object.entries(members)) {
+    if (!isRecord(member)) {
+      upgraded[id] = member
+      continue
+    }
+    const rng = createRng(hashString(`${String(member.avatarSeed)}:${id}`))
+    upgraded[id] = {
+      ...member,
+      origin: member.generation === 0 ? 'founder' : 'born',
+      marriedDay: member.generation === 0 && member.partnerId ? 0 : null,
+      appearance: rollAppearance(rng, member.gender === 'm' ? 'm' : 'f'),
+    }
+  }
+  return { ...save, members: upgraded, suitors: {}, log: [] }
+}
+
+/**
  * Migrações, indexadas pela versão de origem. São sempre aditivas: criam
  * campos novos com valores padrão e nunca apagam dados do jogador. Antes de
  * subir a versão, rode `npm run fixture:save` para guardar um save de exemplo
  * da versão atual em tests/fixtures; os testes carregam todos eles.
  */
-export const MIGRATIONS: Readonly<Record<number, Migration>> = {}
+export const MIGRATIONS: Readonly<Record<number, Migration>> = { 1: toVersion2 }
 
 /** Valida um save lido de JSON e o leva até a versão atual. */
 export function migrate(
@@ -71,6 +98,8 @@ function assertGameState(save: RawSave): asserts save is RawSave & GameState {
     typeof save.money === 'number' &&
     Number.isFinite(save.money) &&
     typeof save.nextMemberId === 'number' &&
+    isRecord(save.suitors) &&
+    Array.isArray(save.log) &&
     isRecord(clock) &&
     typeof clock.day === 'number' &&
     typeof clock.tickOfDay === 'number' &&
@@ -79,7 +108,11 @@ function assertGameState(save: RawSave): asserts save is RawSave & GameState {
     isRecord(members) &&
     Object.values(members).every(
       (member) =>
-        isRecord(member) && typeof member.id === 'string' && typeof member.birthDay === 'number',
+        isRecord(member) &&
+        typeof member.id === 'string' &&
+        typeof member.birthDay === 'number' &&
+        typeof member.origin === 'string' &&
+        isRecord(member.appearance),
     )
   if (!valid) throw new SaveError('corrupt', 'O save tem campos faltando ou inválidos')
 }

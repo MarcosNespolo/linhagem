@@ -1,27 +1,24 @@
 import { BALANCE } from '../content/balance'
+import { inheritAppearance } from './appearance'
 import { FAMILY_NAME_MAX_LENGTH } from './constants'
-import { addMember, ageOf, childrenOf, isAlive } from './members'
+import { refuse, type ActionError, type Refusal } from './errors'
+import { appendLog } from './log'
+import { checkMarry, checkSeekPartner, joinFamily, rollSuitors } from './marriage'
+import { addMember, ageOf, childrenOf, familySizeFactor, isAlive } from './members'
 import { createRng } from './rng'
 import type { GameEvent, GameState, MemberId } from './types'
+
+export type { ActionError }
 
 export type Action =
   | { type: 'pause' }
   | { type: 'resume' }
   | { type: 'renameFamily'; name: string }
   | { type: 'haveChild'; parentId: MemberId }
+  | { type: 'findSuitors'; memberId: MemberId }
+  | { type: 'marry'; memberId: MemberId; suitorIndex: number }
 
-export type ActionError =
-  | 'memberNotFound'
-  | 'memberDeceased'
-  | 'noPartner'
-  | 'tooYoung'
-  | 'tooOld'
-  | 'cooldown'
-  | 'notEnoughMoney'
-  | 'invalidName'
-
-export type ActionResult =
-  { ok: true; state: GameState; events: GameEvent[] } | { ok: false; error: ActionError }
+export type ActionResult = { ok: true; state: GameState; events: GameEvent[] } | Refusal
 
 /** Aplica uma ação do jogador. Função pura: devolve um estado novo ou o motivo da recusa. */
 export function applyAction(state: GameState, action: Action): ActionResult {
@@ -37,18 +34,25 @@ export function applyAction(state: GameState, action: Action): ActionResult {
     }
     case 'haveChild':
       return haveChild(state, action.parentId)
+    case 'findSuitors':
+      return findSuitors(state, action.memberId)
+    case 'marry':
+      return marry(state, action.memberId, action.suitorIndex)
   }
 }
 
-export type ChildCheck =
-  { ok: true; cost: number; partnerId: MemberId } | { ok: false; error: ActionError }
+export type ChildCheck = { ok: true; cost: number; partnerId: MemberId } | Refusal
 
-/** Custo do próximo filho do casal: cresce a cada filho que os dois já tiveram juntos. */
+/**
+ * Custo do próximo filho do casal: cresce a cada filho que os dois já tiveram
+ * juntos e com o tamanho da família viva.
+ */
 export function childCost(state: GameState, parentId: MemberId, partnerId: MemberId): number {
   const together = childrenOf(state, parentId).filter((child) =>
     child.parentIds.includes(partnerId),
   ).length
-  return Math.round(BALANCE.children.baseCost * BALANCE.children.costGrowth ** together)
+  const { baseCost, coupleGrowth } = BALANCE.children
+  return Math.round(baseCost * coupleGrowth ** together * familySizeFactor(state))
 }
 
 /** Dias do jogo até o casal poder ter outro filho. Zero quando já pode. */
@@ -88,24 +92,55 @@ function haveChild(state: GameState, parentId: MemberId): ActionResult {
   const day = draft.clock.day
   const parent = draft.members[parentId]
   const partner = draft.members[check.partnerId]
+  const gender = rng.chance(0.5) ? 'f' : 'm'
   const child = addMember(draft, rng, {
-    gender: rng.chance(0.5) ? 'f' : 'm',
+    gender,
     birthDay: day,
     generation: Math.max(parent.generation, partner.generation) + 1,
     parentIds: [parent.id, partner.id],
+    origin: 'born',
+    appearance: inheritAppearance(rng, parent.appearance, partner.appearance, gender),
   })
   parent.lastChildDay = day
   partner.lastChildDay = day
   draft.money -= check.cost
   draft.stats.totalSpent += check.cost
   draft.rngState = rng.state
-  return done(draft, [{ type: 'born', day, memberId: child.id }])
+  const events: GameEvent[] = [{ type: 'born', day, memberId: child.id }]
+  appendLog(draft, events)
+  return done(draft, events)
+}
+
+/** Sorteia novas pessoas sugeridas como par. Grátis: dá para procurar quantas vezes quiser. */
+function findSuitors(state: GameState, memberId: MemberId): ActionResult {
+  const check = checkSeekPartner(state, memberId)
+  if (!check.ok) return check
+
+  const draft = structuredClone(state)
+  const rng = createRng(draft.rngState)
+  draft.suitors[memberId] = rollSuitors(draft, rng, draft.members[memberId])
+  draft.rngState = rng.state
+  return done(draft)
+}
+
+function marry(state: GameState, memberId: MemberId, suitorIndex: number): ActionResult {
+  const check = checkMarry(state, memberId, suitorIndex)
+  if (!check.ok) return check
+
+  const draft = structuredClone(state)
+  const rng = createRng(draft.rngState)
+  const spouse = joinFamily(draft, rng, draft.members[memberId], check.suitor)
+  delete draft.suitors[memberId]
+  draft.money -= check.cost
+  draft.stats.totalSpent += check.cost
+  draft.rngState = rng.state
+  const events: GameEvent[] = [
+    { type: 'married', day: draft.clock.day, memberId, partnerId: spouse.id },
+  ]
+  appendLog(draft, events)
+  return done(draft, events)
 }
 
 function done(state: GameState, events: GameEvent[] = []): ActionResult {
   return { ok: true, state, events }
-}
-
-function refuse(error: ActionError): { ok: false; error: ActionError } {
-  return { ok: false, error }
 }

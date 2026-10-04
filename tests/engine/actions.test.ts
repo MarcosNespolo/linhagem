@@ -42,9 +42,24 @@ describe('ter filho', () => {
       state = expectOk(haveChild(state)).state
       state = advance(state, days(BALANCE.children.cooldownDays)).state
     }
-    expect(costs[0]).toBe(BALANCE.children.baseCost)
-    expect(costs[1]).toBeGreaterThan(costs[0])
-    expect(costs[2]).toBeGreaterThan(costs[1])
+    const { baseCost, coupleGrowth } = BALANCE.children
+    const factor = (living: number) => BALANCE.familySizeGrowth ** living
+    expect(costs[0]).toBe(Math.round(baseCost * factor(2)))
+    expect(costs[1]).toBe(Math.round(baseCost * coupleGrowth * factor(3)))
+    expect(costs[2]).toBe(Math.round(baseCost * coupleGrowth ** 2 * factor(4)))
+  })
+
+  it('fica mais caro quando a família viva cresce e volta a baratear quando ela diminui', () => {
+    const start = withMoney(makeGame(2), 1_000_000)
+    const [first, second] = founders(start)
+    const bigger = expectOk(haveChild(start)).state
+    const child = lastMember(bigger)
+    const withoutParentLink = setMember(bigger, child.id, { parentIds: [] })
+    expect(childCost(withoutParentLink, first.id, second.id)).toBeGreaterThan(
+      childCost(start, first.id, second.id),
+    )
+    const smaller = setMember(withoutParentLink, child.id, { deathDay: bigger.clock.day })
+    expect(childCost(smaller, first.id, second.id)).toBe(childCost(start, first.id, second.id))
   })
 
   it('respeita o intervalo entre filhos', () => {

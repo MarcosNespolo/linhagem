@@ -1,6 +1,7 @@
 import { expect } from 'vitest'
 import { BALANCE } from '@/content/balance'
 import {
+  advance,
   applyAction,
   daysToMs,
   newGame,
@@ -48,6 +49,20 @@ export function withChild(state: GameState): GameState {
   const [first] = founders(state)
   const result = applyAction(withMoney(state, 1_000_000), { type: 'haveChild', parentId: first.id })
   return expectOk(result).state
+}
+
+/** Partida com um filho do casal fundador já adulto e dinheiro de sobra. Devolve o id do filho. */
+export function withAdultChild(seed = 1): { state: GameState; childId: string } {
+  const born = withChild(makeGame(seed))
+  const childId = lastMember(born).id
+  const state = withMoney(advance(born, years(BALANCE.adultAge)).state, 1_000_000)
+  return { state, childId }
+}
+
+/** Procura par para o membro e casa com a pessoa de índice `suitorIndex`. */
+export function marryMember(state: GameState, memberId: string, suitorIndex = 0): GameState {
+  const searched = expectOk(applyAction(state, { type: 'findSuitors', memberId })).state
+  return expectOk(applyAction(searched, { type: 'marry', memberId, suitorIndex })).state
 }
 
 /** Milissegundos reais de `n` dias do jogo. */

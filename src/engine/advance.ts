@@ -1,5 +1,6 @@
 import { processNewDay } from './day'
 import { familyRates, type Rates } from './economy'
+import { appendLog } from './log'
 import { createRng } from './rng'
 import { msToTicks, OFFLINE_CAP_MS, TICKS_PER_DAY, ticksToSeconds } from './time'
 import type { GameEvent, GameState } from './types'
@@ -48,6 +49,7 @@ export function advance(state: GameState, ms: number): AdvanceResult {
 
   draft.rngState = rng.state
   draft.stats.simulatedMs += ms
+  appendLog(draft, events)
   return { state: draft, events }
 }
 

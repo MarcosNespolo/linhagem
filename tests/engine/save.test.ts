@@ -70,4 +70,19 @@ describe('save', () => {
     const v0 = { ...makeGame(), schemaVersion: 0 }
     expect(errorFrom(() => migrate(v0, {}, 1)).code).toBe('missingMigration')
   })
+
+  it('a versão 1 ganha aparência, origem, sugestões e histórico, sempre iguais', () => {
+    const json = readFileSync(new URL('save-v1.json', FIXTURES), 'utf8')
+    const v1 = JSON.parse(json) as { members: Record<string, { generation: number }> }
+    const state = deserialize(json)
+
+    expect(state.suitors).toEqual({})
+    expect(state.log).toEqual([])
+    for (const member of Object.values(state.members)) {
+      const before = v1.members[member.id]
+      expect(member.origin).toBe(before.generation === 0 ? 'founder' : 'born')
+      expect(member.appearance.skin).toBeGreaterThanOrEqual(0)
+    }
+    expect(deserialize(json)).toEqual(state)
+  })
 })

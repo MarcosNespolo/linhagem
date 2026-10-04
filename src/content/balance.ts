@@ -30,17 +30,35 @@ export const BALANCE = {
    */
   lifespan: { min: 72, spread: 12 },
 
+  /**
+   * Filhos e casamentos ficam mais caros conforme a família viva cresce: cada
+   * membro vivo multiplica esses custos por este fator. A renda cresce em linha
+   * reta com a família e os custos em curva, então a família se estabiliza num
+   * tamanho que a renda sustenta, em vez de crescer sem parar.
+   */
+  familySizeGrowth: 1.03,
+
   children: {
     /** Os dois membros do casal precisam estar nesta faixa de idade. */
     minParentAge: 18,
     maxParentAge: 45,
-    /** Custo do primeiro filho do casal. Cada filho seguinte custa `costGrowth` vezes o anterior. */
+    /** Custo base de um filho, antes do ajuste pelo tamanho da família. */
     baseCost: 400,
-    costGrowth: 1.5,
+    /** Cada filho que o casal já teve multiplica o custo do próximo por este fator. */
+    coupleGrowth: 1.3,
     /** Intervalo mínimo entre dois filhos do mesmo membro, em dias do jogo. */
     cooldownDays: 365,
     /** Despesa por segundo de uma criança: base mais um valor por ano de idade. */
     expenseBase: 1,
     expensePerYear: 0.25,
+  },
+
+  marriage: {
+    /** Custo base de um casamento, antes do ajuste pelo tamanho da família. */
+    baseCost: 300,
+    /** Diferença máxima de idade, em anos, entre o membro e as pessoas sugeridas como par. */
+    maxAgeGapYears: 5,
+    /** Quantas pessoas aparecem a cada busca por par. */
+    suitorsPerSearch: 3,
   },
 } as const

@@ -1,10 +1,11 @@
 import { BALANCE } from '../content/balance'
 import { SURNAMES } from '../content/names'
+import { rollAppearance } from './appearance'
 import { FAMILY_NAME_MAX_LENGTH } from './constants'
 import { addMember, rollStarterCareer } from './members'
 import { CURRENT_SCHEMA_VERSION } from './migrations'
 import { createRng, type Rng } from './rng'
-import type { GameState } from './types'
+import type { GameState, Gender, Member } from './types'
 
 export type NewGameOptions = {
   /** Semente do gerador aleatório: mesma seed, mesma partida. */
@@ -32,28 +33,34 @@ export function newGame({ seed, now, startDate, familyName }: NewGameOptions): G
     money: BALANCE.startingMoney,
     members: {},
     nextMemberId: 1,
+    suitors: {},
+    log: [],
     stats: { simulatedMs: 0, totalEarned: 0, totalSpent: 0 },
   }
 
-  const first = addMember(draft, rng, {
-    gender: 'f',
-    birthDay: rollAdultBirthDay(rng),
-    generation: 0,
-    parentIds: [],
-    career: rollStarterCareer(rng),
-  })
-  const second = addMember(draft, rng, {
-    gender: 'm',
-    birthDay: rollAdultBirthDay(rng),
-    generation: 0,
-    parentIds: [],
-    career: rollStarterCareer(rng),
-  })
+  const first = addFounder(draft, rng, 'f')
+  const second = addFounder(draft, rng, 'm')
   first.partnerId = second.id
   second.partnerId = first.id
+  first.marriedDay = 0
+  second.marriedDay = 0
 
   draft.rngState = rng.state
   return draft
+}
+
+function addFounder(draft: GameState, rng: Rng, gender: Gender): Member {
+  const birthDay = rollAdultBirthDay(rng)
+  const appearance = rollAppearance(rng, gender)
+  return addMember(draft, rng, {
+    gender,
+    birthDay,
+    generation: 0,
+    parentIds: [],
+    origin: 'founder',
+    appearance,
+    career: rollStarterCareer(rng),
+  })
 }
 
 /** Dia de nascimento de alguém do casal fundador, com aniversário num dia qualquer do ano. */
