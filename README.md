@@ -113,11 +113,17 @@ Migrações são sempre aditivas: criam campos com valores padrão e nunca apaga
 
 ## Supabase
 
-As migrations ficam em `supabase/migrations`. Para aplicar num projeto na nuvem:
+O save na nuvem usa o projeto `projects` (ref `ungafoolmedlexptatbd`) da organização Side
+Projects, que é compartilhado com outros projetos pessoais. Por isso tudo do jogo no banco leva o
+prefixo `linhagem_` (`linhagem_profiles` e `linhagem_saves`), e nenhuma migration do jogo mexe no
+que é de outro projeto.
 
-```bash
-npx supabase link --project-ref <ref-do-projeto>
-npx supabase db push
-```
+As migrations ficam em `supabase/migrations`. O `supabase db push` não serve aqui: o histórico de
+migrations da nuvem também tem as dos outros projetos, que não existem neste repositório. Aplique
+cada migration nova pelo conector do Supabase, que registra a migration no histórico do banco, e use
+no nome do arquivo a mesma versão que ficou registrada lá.
+
+Os usuários do Supabase Auth também são compartilhados entre os projetos. Um gatilho em
+`auth.users` que exija e-mail, por exemplo, impede o login anônimo do jogo.
 
 As variáveis de ambiente estão em `.env.example` e só são necessárias a partir da Fase 3.
