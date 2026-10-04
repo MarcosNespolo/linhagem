@@ -17,16 +17,17 @@ import {
 } from '@/engine'
 import {
   chooseSuggested,
+  days,
   expectOk,
   founders,
   lastMember,
   makeGame,
   play,
+  type Policy,
   withAptitude,
   withChild,
   withMoney,
   years,
-  type Policy,
 } from '../helpers'
 
 type PathChoice = Extract<Choice, { type: 'afterSchool' }>
@@ -157,20 +158,24 @@ describe('depois do ensino médio', () => {
     expect(job?.type === 'firstJob' && job.offers[job.suggested].careerId).toBe('tecnologia')
   })
 
-  it('cursinho: um ano, soma pontos e faz o ENEM de novo', () => {
-    const start = child(5, 500, 550)
-    const { state, choice } = afterSchool(start.state, start.childId)
-    const pointsBefore = state.members[start.childId].education.points
-    const preparing = choosePath(state, choice, (option) => option.path === 'cursinho')
-    expect(schoolFee(preparing.members[start.childId].education.school)).toBe(
-      BALANCE.college.prep.fee,
-    )
+  it('cursinho: um ano, e o ENEM seguinte vem com os pontos a mais, sem cair', () => {
+    for (const seed of [5, 15, 25]) {
+      const start = child(seed, 500, 550)
+      const { state, choice } = afterSchool(start.state, start.childId)
+      const pointsBefore = state.members[start.childId].education.points
+      const preparing = choosePath(state, choice, (option) => option.path === 'cursinho')
+      expect(schoolFee(preparing.members[start.childId].education.school)).toBe(
+        BALANCE.college.prep.fee,
+      )
 
-    const again = afterSchool(preparing, start.childId)
-    const member = again.state.members[start.childId]
-    expect(member.education.points).toBe(pointsBefore + BALANCE.college.prep.points)
-    expect(again.state.clock.day - state.clock.day).toBeGreaterThanOrEqual(365)
-    expect(again.state.log.filter((event) => event.type === 'enem')).toHaveLength(2)
+      const again = afterSchool(preparing, start.childId)
+      const member = again.state.members[start.childId]
+      expect(member.education.points).toBe(pointsBefore + BALANCE.college.prep.points)
+      expect(again.choice.enem).toBe(choice.enem + BALANCE.college.prep.points)
+      expect(member.education.enem).toBe(again.choice.enem)
+      expect(again.state.clock.day - state.clock.day).toBeGreaterThanOrEqual(365)
+      expect(again.state.log.filter((event) => event.type === 'enem')).toHaveLength(2)
+    }
   })
 
   it('curso técnico depois do médio: dois anos e forma técnico', () => {
@@ -195,7 +200,7 @@ describe('depois do ensino médio', () => {
     for (let i = 0; i < 2; i++) {
       state = expectOk(applyAction(state, { type: 'haveChild', parentId: mother.id })).state
       ids.push(lastMember(state).id)
-      state = play(state, years(1))
+      state = play(state, days(BALANCE.children.cooldownDays))
     }
     state = withAptitude(state, ids[0], 690, 700)
     state = withAptitude(state, ids[1], 400, 420)

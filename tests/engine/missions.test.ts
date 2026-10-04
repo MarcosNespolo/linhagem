@@ -22,9 +22,10 @@ import {
   expectSameState,
   founders,
   makeGame,
+  lastMember,
   marryMember,
   play,
-  withAdultChild,
+  untilParentAge,
   withMoney,
   years,
 } from '../helpers'
@@ -154,15 +155,21 @@ describe('missões do dia', () => {
   })
 
   it('Casa cheia: três pessoas vivas a mais que no sorteio', () => {
-    const adult = withAdultChild(37)
-    const { childId } = adult
-    let state = draw(adult.state)
+    // Dois filhos adultos: os dois casam e um dos casais tem um bebê.
+    let state = withMoney(makeGame(37), 1e9)
+    const [mother] = founders(state)
+    const children: string[] = []
+    for (let i = 0; i < 2; i++) {
+      state = expectOk(applyAction(state, { type: 'haveChild', parentId: mother.id })).state
+      children.push(lastMember(state).id)
+      state = play(state, days(BALANCE.children.cooldownDays))
+    }
+    state = draw(play(state, years(BALANCE.adultAge)))
     const full = mission(state, 'casaCheia')
     expect(full.base).toBe(Object.values(state.members).filter((m) => m.deathDay === null).length)
-    state = marryMember(state, childId)
-    const [mother] = founders(state)
-    state = expectOk(applyAction(state, { type: 'haveChild', parentId: mother.id })).state
-    state = expectOk(applyAction(state, { type: 'haveChild', parentId: childId })).state
+    for (const childId of children) state = marryMember(state, childId)
+    state = untilParentAge(state)
+    state = expectOk(applyAction(state, { type: 'haveChild', parentId: children[0] })).state
     expect(mission(state, 'casaCheia').progress).toBe(3)
   })
 })

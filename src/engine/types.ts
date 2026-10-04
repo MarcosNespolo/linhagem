@@ -59,6 +59,11 @@ export type Education = {
   formation: Formation | null
   /** Nota do último ENEM, ou null para quem não fez. */
   enem: number | null
+  /**
+   * Dia do jogo desde quando os pontos do professor particular estão contando,
+   * ou null sem professor. Os pontos entram em janeiro e quando ele é dispensado.
+   */
+  tutorSince: number | null
 }
 
 /**

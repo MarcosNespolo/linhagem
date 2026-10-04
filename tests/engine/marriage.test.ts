@@ -19,6 +19,7 @@ import {
   makeGame,
   marryMember,
   setMember,
+  untilParentAge,
   withAdultChild,
   withChild,
   withMoney,
@@ -109,7 +110,7 @@ describe('casar', () => {
 
   it('o casal novo pode ter filhos, que entram na geração seguinte', () => {
     const { state, childId } = withAdultChild(4)
-    const married = marryMember(state, childId)
+    const married = untilParentAge(marryMember(state, childId))
     const withGrandchild = expectOk(
       applyAction(married, { type: 'haveChild', parentId: childId }),
     ).state

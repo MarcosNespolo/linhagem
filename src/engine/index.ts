@@ -87,6 +87,7 @@ export {
 } from './promotions'
 export { createRng, hashString, pickWeighted, type Rng } from './rng'
 export { deserialize, serialize } from './save'
+export { canHaveTutor, tutorPoints } from './tutor'
 export {
   aptitudeOf,
   halfTimeCaregivers,

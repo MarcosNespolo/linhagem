@@ -48,14 +48,14 @@ export const BALANCE = {
 
   children: {
     /** Os dois membros do casal precisam estar nesta faixa de idade. */
-    minParentAge: 18,
+    minParentAge: 20,
     maxParentAge: 45,
     /** Custo base de um filho, antes do ajuste pelo tamanho da família. */
     baseCost: 72_000,
     /** Cada filho que o casal já teve multiplica o custo do próximo por este fator. */
     coupleGrowth: 1.3,
-    /** Intervalo mínimo entre dois filhos do mesmo membro, em dias do jogo. */
-    cooldownDays: 365,
+    /** Intervalo mínimo entre dois filhos do mesmo membro, em dias do jogo: 2 anos. */
+    cooldownDays: 730,
     /** Despesa por mês de uma criança: base mais um valor por ano de idade. */
     expenseBase: 180,
     expensePerYear: 45,
@@ -149,6 +149,12 @@ export const BALANCE = {
     federalCourses: 2,
     /** Fração do salário de quem trabalha meio período para cuidar de um filho em casa. */
     halfTimeRatio: 0.5,
+    /**
+     * Professor particular para quem está na escola ou no ensino médio: a
+     * mensalidade e os pontos que soma à nota por ano com ele, contados em
+     * proporção ao tempo.
+     */
+    tutor: { fee: 800, pointsPerYear: 5 },
     /**
      * Etapas, pela idade que a criança faz no ano. A mensalidade é por mês, e os
      * pontos de cada rede se dividem pelos anos da etapa: o colégio particular

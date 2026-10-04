@@ -1,11 +1,22 @@
 'use client'
 
-import { Baby, BookOpen, Briefcase, GraduationCap, Heart, Landmark, School } from 'lucide-react'
+import {
+  Baby,
+  BookOpen,
+  Briefcase,
+  GraduationCap,
+  Heart,
+  Landmark,
+  School,
+  UserRoundCheck,
+} from 'lucide-react'
 import { BALANCE } from '@/content/balance'
 import { careerLevel } from '@/content/careers'
 import { isHigherStage, techCourseName, type Network } from '@/content/schools'
 import {
   ageThisYear,
+  aptitudeOf,
+  canHaveTutor,
   calendarDate,
   checkHaveChild,
   checkSeekPartner,
@@ -111,6 +122,9 @@ export function MemberSheet({ game, member }: { game: GameState; member: Member 
             {school.stage !== 'creche' && !isHigherStage(school.stage) ? (
               <Fact label="Nota">
                 <span className="tabular">{Math.floor(schoolScore(member))}</span>
+                <span className="text-ink-soft block text-[13px] font-normal">
+                  Aptidão {aptitudeOf(member)} + {Math.floor(member.education.points)} de estudo
+                </span>
               </Fact>
             ) : null}
           </>
@@ -178,6 +192,7 @@ export function MemberSheet({ game, member }: { game: GameState; member: Member 
       {alive && choice ? <OpenChoice member={member} choice={choice} /> : null}
       {course && !choice ? <PayCourse game={game} member={member} course={course} /> : null}
       {alive && school && !choice ? <SchoolChange member={member} school={school} /> : null}
+      {alive && !choice && canHaveTutor(member) ? <Tutor game={game} member={member} /> : null}
       {alive ? <MemberActions game={game} member={member} partner={partner} /> : null}
     </Sheet>
   )
@@ -254,6 +269,43 @@ function PayCourse({
       <p className="tabular text-ink-soft mt-2 text-center text-sm">
         {missing > 0 ? `Faltam ${formatMoney(missing)}. ` : ''}
         {member.firstName} vira {lowerFirst(next)} na hora e ganha {formatRate(raise)} a mais.
+      </p>
+    </div>
+  )
+}
+
+/**
+ * Professor particular para quem está na escola ou no médio: soma pontos na
+ * nota em proporção ao tempo, contados em janeiro e quando ele é dispensado.
+ */
+function Tutor({ game, member }: { game: GameState; member: Member }) {
+  const dispatch = useGameStore((store) => store.dispatch)
+  const { fee, pointsPerYear } = BALANCE.school.tutor
+  const since = member.education.tutorSince
+  const toggle = (active: boolean) => dispatch({ type: 'setTutor', memberId: member.id, active })
+
+  if (since !== null) {
+    return (
+      <div className="mt-5 text-center">
+        <p className="text-[14px] font-semibold">
+          {member.firstName} tem professor particular desde{' '}
+          {formatMonthYear(calendarDate(game.startDate, since))}: +{pointsPerYear} na nota por ano,
+          por {formatMoney(fee)}/mês.
+        </p>
+        <button type="button" className={`${button.quiet} mt-1`} onClick={() => toggle(false)}>
+          Dispensar o professor
+        </button>
+      </div>
+    )
+  }
+  return (
+    <div className="mt-5">
+      <button type="button" className={`${button.secondary} w-full`} onClick={() => toggle(true)}>
+        <UserRoundCheck size={16} />
+        Contratar professor particular
+      </button>
+      <p className="tabular text-ink-soft mt-2 text-center text-sm">
+        {formatMoney(fee)}/mês e +{pointsPerYear} na nota por ano, contado em proporção ao tempo.
       </p>
     </div>
   )

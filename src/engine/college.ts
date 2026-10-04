@@ -24,16 +24,17 @@ export function rollEnem(rng: Rng, member: Member): number {
 
 /**
  * Faz o ENEM e abre no rascunho a escolha do que fazer depois do médio. O
- * relógio para até o jogador responder.
+ * relógio para até o jogador responder. Depois do cursinho, a nota vem pronta:
+ * a do ENEM anterior mais os pontos do cursinho.
  */
 export function openAfterSchoolChoice(
   draft: GameState,
   rng: Rng,
   member: Member,
   events: GameEvent[],
+  enem: number = rollEnem(rng, member),
 ): void {
   const day = draft.clock.day
-  const enem = rollEnem(rng, member)
   member.education.enem = enem
   events.push({ type: 'enem', day, memberId: member.id, score: enem })
   const options = pathOptions(enem)
@@ -173,8 +174,12 @@ export function advanceHigherEducation(
   member.education.school = null
   member.education.past[school.stage] = school.network
   if (school.stage === 'cursinho') {
-    member.education.points += BALANCE.college.prep.points
-    openAfterSchoolChoice(draft, rng, member, events)
+    // O cursinho soma os pontos no ENEM seguinte, sem novo sorteio: a nota não cai.
+    const { points } = BALANCE.college.prep
+    const previous = member.education.enem
+    member.education.points += points
+    if (previous === null) openAfterSchoolChoice(draft, rng, member, events)
+    else openAfterSchoolChoice(draft, rng, member, events, Math.min(1000, previous + points))
     return
   }
   const formation: Formation | null =

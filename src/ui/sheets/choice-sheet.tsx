@@ -1,6 +1,6 @@
 'use client'
 
-import { BookOpen, Briefcase, Check, GraduationCap, Landmark, School } from 'lucide-react'
+import { BookOpen, Briefcase, Check, GraduationCap, Info, Landmark, School } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { BALANCE } from '@/content/balance'
 import { careerLevel, PUBLIC_CAREER } from '@/content/careers'
@@ -25,6 +25,7 @@ import {
 import { useGameStore } from '@/game/store'
 import { formatMoney, formatRate } from '@/lib/format'
 import { PersonAvatar } from '../avatar/person-avatar'
+import { MemberStats } from '../member-stats'
 import { ageLabel, careerLine, formationLabel, levelTitle, lowerFirst, schoolName } from '../labels'
 import { button, card } from '../styles'
 import { Sheet } from './sheet'
@@ -469,7 +470,7 @@ function describeGroup(
     case 'cursinho':
       return {
         title: 'Cursinho',
-        detail: `1 ano e o ENEM de novo, com +${BALANCE.college.prep.points} na nota (hoje ${choice.enem})`,
+        detail: `1 ano de estudo, e o próximo ENEM vem com ${Math.min(1000, choice.enem + BALANCE.college.prep.points)} (hoje ${choice.enem})`,
         value: `${formatMoney(BALANCE.college.prep.fee)}/mês`,
         expense: true,
       }
@@ -540,20 +541,32 @@ function ChoiceCard({
   label: string
   children: ReactNode
 }) {
+  const [showStats, setShowStats] = useState(false)
   return (
     <section>
       <div className="flex items-center gap-3">
-        <PersonAvatar
-          person={member}
-          day={game.clock.day}
-          size={48}
-          className="shrink-0 rounded-full"
-        />
+        <button
+          type="button"
+          onClick={() => setShowStats(!showStats)}
+          aria-expanded={showStats}
+          aria-label={`${showStats ? 'Esconder' : 'Ver'} a nota de ${member.firstName}`}
+          className="relative shrink-0 rounded-full transition active:scale-95"
+        >
+          <PersonAvatar person={member} day={game.clock.day} size={48} className="rounded-full" />
+          <span className="bg-leaf ring-surface absolute -right-0.5 -bottom-0.5 grid size-5 place-items-center rounded-full text-white ring-2">
+            <Info size={12} aria-hidden="true" />
+          </span>
+        </button>
         <div className="min-w-0">
           <p className="truncate text-[16px] font-extrabold">{heading}</p>
           <p className="text-ink-soft text-[14px]">{question}</p>
         </div>
       </div>
+      {showStats ? (
+        <div className="mt-3">
+          <MemberStats game={game} member={member} />
+        </div>
+      ) : null}
       <div role="radiogroup" aria-label={label} className="mt-3 space-y-2">
         {children}
       </div>

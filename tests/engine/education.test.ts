@@ -31,6 +31,7 @@ import {
   marryMember,
   play,
   setMember,
+  untilParentAge,
   withAdultChild,
   withAptitude,
   withChild,
@@ -146,7 +147,7 @@ describe('matrículas', () => {
 
   it('deixar com os avós só aparece com avô ou avó aposentado vivo', () => {
     const { state: adult, childId } = withAdultChild(5)
-    const married = marryMember(adult, childId)
+    const married = untilParentAge(marryMember(adult, childId))
     const withGrandchild = (state: GameState) => {
       const born = expectOk(applyAction(state, { type: 'haveChild', parentId: childId })).state
       return advance(born, years(1)).state.choices.find(
@@ -326,6 +327,7 @@ describe('matrículas', () => {
       past: {},
       formation: null,
       enem: null,
+      tutorSince: null,
     })
     expect(migrated.members[first.id].education.formation).toEqual({ level: 'medio' })
   })

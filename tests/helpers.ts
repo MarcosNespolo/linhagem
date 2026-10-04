@@ -121,6 +121,14 @@ export function withAdultChild(seed = 1): { state: GameState; childId: string } 
   return { state: withMoney(grown, 1_000_000), childId }
 }
 
+/**
+ * Avança até o casal recém-casado poder ter filhos: quem casa aos 18 espera a
+ * idade mínima, assim como o par mais novo.
+ */
+export function untilParentAge(state: GameState): GameState {
+  return play(state, years(BALANCE.children.minParentAge - BALANCE.adultAge))
+}
+
 /** Procura par para o membro e casa com a pessoa de índice `suitorIndex`. */
 export function marryMember(state: GameState, memberId: string, suitorIndex = 0): GameState {
   const searched = expectOk(applyAction(state, { type: 'findSuitors', memberId })).state

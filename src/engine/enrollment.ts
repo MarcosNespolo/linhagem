@@ -13,6 +13,7 @@ import { isAlive } from './members'
 import type { Rng } from './rng'
 import { halfTimeCaregivers, schoolScore, stageFee, stageForAge, yearlyPoints } from './school'
 import { ageInYears, calendarDate, lastDayOfYear } from './time'
+import { canHaveTutor, settleTutor } from './tutor'
 import type {
   Choice,
   Enrollment,
@@ -40,28 +41,38 @@ export function ageThisYear(member: Member, startDate: string, day: number): num
  * os pontos do ano (e muda de rede, se o jogador pediu); quem termina o ensino
  * médio ganha a formação e faz o ENEM; quem começa uma etapa nova ganha uma
  * escolha aberta, e o relógio para até o jogador responder. Cursinho, técnico e
- * faculdade andam um ano. Altera o rascunho.
+ * faculdade andam um ano. Os pontos do professor particular entram antes, e ele
+ * vai embora com quem sai da escola. Altera o rascunho.
  */
 export function processEnrollment(draft: GameState, rng: Rng, events: GameEvent[]): void {
   const day = draft.clock.day
   for (const member of Object.values(draft.members)) {
     if (member.deathDay !== null) continue
-    const school = member.education.school
-    if (school && isHigherStage(school.stage)) {
-      advanceHigherEducation(draft, rng, member, school, events)
-      continue
+    settleTutor(member, day)
+    enrollMember(draft, rng, member, events)
+    if (member.education.tutorSince !== null && !canHaveTutor(member)) {
+      member.education.tutorSince = null
     }
-    const stage = stageForAge(ageThisYear(member, draft.startDate, day))
-    if (!stage) {
-      if (school) finishSchool(draft, rng, member, school, events)
-      continue
-    }
-    if (school?.stage === stage) {
-      continueSchool(member, school, stage, day, events)
-      continue
-    }
-    openSchoolChoice(draft, rng, member, stage)
   }
+}
+
+function enrollMember(draft: GameState, rng: Rng, member: Member, events: GameEvent[]): void {
+  const day = draft.clock.day
+  const school = member.education.school
+  if (school && isHigherStage(school.stage)) {
+    advanceHigherEducation(draft, rng, member, school, events)
+    return
+  }
+  const stage = stageForAge(ageThisYear(member, draft.startDate, day))
+  if (!stage) {
+    if (school) finishSchool(draft, rng, member, school, events)
+    return
+  }
+  if (school?.stage === stage) {
+    continueSchool(member, school, stage, day, events)
+    return
+  }
+  openSchoolChoice(draft, rng, member, stage)
 }
 
 function finishSchool(

@@ -8,7 +8,7 @@
  *
  * O exemplo passa pelas ações principais do jogo: dois filhos que fizeram a
  * escola com as matrículas sugeridas. O mais velho faz Direito numa faculdade
- * particular, casou e tem um filho na creche. O mais novo acabou o médio e
+ * particular e casou. O mais novo teve professor particular no médio, acabou e
  * estuda para concurso, com o resultado da primeira prova aberto. A fundadora
  * pagou o curso e chegou ao 4º nível da carreira, e o fundador tem o curso
  * dele para pagar. A família tem dois kitnets e um apartamento alugados, e as
@@ -85,11 +85,12 @@ const law = afterSchool.options.findIndex(
     option.path === 'faculdade' && option.network === 'particular' && option.degree === 'direito',
 )
 state = act(state, { type: 'choose', picks: [{ memberId: afterSchool.memberId, option: law }] })
-// Já com 18, casa e tem um filho, que entra na creche.
+// O mais novo, no médio, ganha um professor particular até o fim da escola.
+state = act(state, { type: 'setTutor', memberId: 'm4', active: true })
+// Já com 18, o mais velho casa.
 state = play(state, year)
 state = act(state, { type: 'findSuitors', memberId: 'm3' })
 state = act(state, { type: 'marry', memberId: 'm3', suitorIndex: 0 })
-state = act(state, { type: 'haveChild', parentId: 'm3' })
 // No janeiro em que o mais novo faz 18, ele vai trabalhar e escolhe estudar para concurso.
 state = play(state, 2 * year, 'afterSchool')
 state = act(state, {

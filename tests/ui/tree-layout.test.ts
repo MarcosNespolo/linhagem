@@ -3,12 +3,14 @@ import { BALANCE } from '@/content/balance'
 import { applyAction, type GameState } from '@/engine'
 import { buildFamilyTree, layoutFamilyTree, TREE_METRICS } from '@/ui/tree/layout'
 import {
+  days,
   expectOk,
   founders,
   makeGame,
   marryMember,
   play,
   setMember,
+  untilParentAge,
   withMoney,
   years,
 } from '../helpers'
@@ -19,11 +21,11 @@ function bigFamily(): GameState {
   const [mother] = founders(state)
   for (let i = 0; i < 3; i++) {
     state = expectOk(applyAction(state, { type: 'haveChild', parentId: mother.id })).state
-    state = play(state, years(1))
+    state = play(state, days(BALANCE.children.cooldownDays))
   }
   state = play(state, years(BALANCE.adultAge))
   const firstChild = Object.values(state.members).find((member) => member.generation === 1)!
-  state = marryMember(state, firstChild.id)
+  state = untilParentAge(marryMember(state, firstChild.id))
   state = expectOk(applyAction(state, { type: 'haveChild', parentId: firstChild.id })).state
   return state
 }

@@ -42,11 +42,15 @@ export function incomeOf(
 
 /**
  * Despesa por mês: crianças custam mais conforme crescem, quem estuda em
- * escola particular paga a mensalidade, e quem estuda para concurso, o cursinho.
+ * escola particular paga a mensalidade, quem tem professor particular paga o
+ * professor, e quem estuda para concurso, o cursinho.
  */
 export function memberExpense(member: Member, day: number): number {
   if (!isAlive(member)) return 0
-  const fee = schoolFee(member.education.school) + (member.concurso ? BALANCE.concurso.fee : 0)
+  const fee =
+    schoolFee(member.education.school) +
+    (member.education.tutorSince !== null ? BALANCE.school.tutor.fee : 0) +
+    (member.concurso ? BALANCE.concurso.fee : 0)
   const age = ageOf(member, day)
   if (age >= BALANCE.adultAge) return fee
   return BALANCE.children.expenseBase + BALANCE.children.expensePerYear * age + fee

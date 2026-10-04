@@ -20,6 +20,7 @@ import {
 } from './promotions'
 import { buyProperty as applyPurchase, checkBuyProperty } from './properties'
 import { createRng } from './rng'
+import { canHaveTutor, setTutor as applyTutor } from './tutor'
 import type { GameEvent, GameState, MemberId } from './types'
 
 export type { ActionError }
@@ -49,6 +50,8 @@ export type Action =
   | { type: 'drawMissions'; date: string }
   /** Pega a recompensa de uma missão cumprida. */
   | { type: 'claimMission'; missionId: MissionId }
+  /** Contrata ou dispensa o professor particular de quem está na escola ou no médio. */
+  | { type: 'setTutor'; memberId: MemberId; active: boolean }
 
 export type ActionResult = { ok: true; state: GameState; events: GameEvent[] } | Refusal
 
@@ -84,6 +87,8 @@ export function applyAction(state: GameState, action: Action): ActionResult {
       return newMissions(state, action.date)
     case 'claimMission':
       return claimMission(state, action.missionId)
+    case 'setTutor':
+      return setTutor(state, action.memberId, action.active)
   }
 }
 
@@ -264,6 +269,17 @@ function claimMission(state: GameState, id: MissionId): ActionResult {
   const draft = draftOf(state)
   const target = draft.missions?.list.find((candidate) => candidate.id === id)
   if (target) claimReward(draft, target)
+  return done(draft)
+}
+
+function setTutor(state: GameState, memberId: MemberId, active: boolean): ActionResult {
+  const member = state.members[memberId]
+  if (!member) return refuse('memberNotFound')
+  if (!isAlive(member)) return refuse('memberDeceased')
+  if (active && !canHaveTutor(member)) return refuse('notStudying')
+
+  const draft = draftOf(state)
+  applyTutor(draft.members[memberId], draft.clock.day, active)
   return done(draft)
 }
 
