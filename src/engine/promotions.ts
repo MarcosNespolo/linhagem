@@ -85,10 +85,14 @@ export function promote(member: Worker, day: number): GameEvent {
  * Na virada do dia, sobe quem completou o tempo num nível que não pede curso.
  * Altera o rascunho e devolve true quando alguém subiu.
  */
-export function promoteByTime(draft: GameState, events: GameEvent[]): boolean {
+export function promoteByTime(
+  draft: GameState,
+  events: GameEvent[],
+  members: readonly Member[] = Object.values(draft.members),
+): boolean {
   const day = draft.clock.day
   let promoted = false
-  for (const member of Object.values(draft.members)) {
+  for (const member of members) {
     if (!isWorker(member, day) || needsCourse(member.career)) continue
     const due = promotionDay(member.career)
     if (due === null || day < due) continue

@@ -36,8 +36,8 @@ Jogue em [linhagem.vercel.app](https://linhagem.vercel.app).
 - Voltar ao jogo e ver o resumo do que aconteceu enquanto esteve fora
 - Entrar com e-mail, sem senha, para guardar a família na nuvem e continuar em outro aparelho
 
-Filhos e casamentos ficam mais caros conforme a família viva cresce, para que ela se estabilize
-num tamanho que a renda sustenta.
+Filhos e casamentos ficam 6% mais caros a cada pessoa viva, para que a família se estabilize num
+tamanho que a renda sustenta: na simulação de 10 horas, entre 80 e 145 pessoas vivas.
 
 ## Stack
 
@@ -67,9 +67,9 @@ Abra http://localhost:3000.
 | ---------------------- | ------------------------------------------------------------------ |
 | `npm run dev`          | servidor de desenvolvimento                                        |
 | `npm run build`        | build de produção                                                  |
-| `npm test`             | testes da engine, do save, da árvore e dos avatares                |
+| `npm test`             | testes da engine, do save, da interface e a simulação de 1 hora    |
 | `npm run check`        | tipos, lint, formatação e testes, como no CI                       |
-| `npm run sim`          | simula horas de jogo casando todo mundo e imprime a evolução       |
+| `npm run sim`          | joga 10 horas com o jogador automático e confere os limites        |
 | `npm run gallery`      | gera um HTML com avatares em várias idades, para revisar o desenho |
 | `npm run fixture:save` | grava um save de exemplo antes de criar uma migração nova          |
 | `npm run icons`        | gera os PNGs do app a partir dos SVGs em `public/icons`            |
@@ -80,6 +80,7 @@ Abra http://localhost:3000.
 app/              rotas do Next.js, manifest da PWA e ícones
 src/engine/       simulação pura em TypeScript: estado, relógio, economia, casamento, save
 src/content/      carreiras, escolas, nomes, aparência e números de balanceamento
+src/sim/          jogador automático e limites da simulação de balanceamento
 src/game/         store, loop do jogo, save local e sincronização com a nuvem
 src/ui/           interface: HUD, abas, painéis e avisos
 src/ui/avatar/    avatares procedurais que mudam com a idade
@@ -165,9 +166,9 @@ forma chega sempre ao mesmo estado. Os testes conferem isso.
 
 ## Imóveis
 
-São nove tipos, do kitnet ao shopping (`src/content/properties.ts`), cada um de 3 a 4,5 vezes mais
+São nove tipos, do kitnet ao shopping (`src/content/properties.ts`), cada um de 3 a 6 vezes mais
 caro que o anterior. O primeiro de cada tipo se paga em 10 anos do jogo, no kitnet, até 32, no
-shopping. Cada imóvel a mais do mesmo tipo custa 15% mais que o anterior, com o mesmo aluguel, e o
+shopping. Cada imóvel a mais do mesmo tipo custa 20% mais que o anterior, com o mesmo aluguel, e o
 tipo seguinte libera com a primeira compra do anterior. A compra é de um em um, sem venda nem
 financiamento por enquanto.
 
@@ -189,6 +190,33 @@ renda líquida na hora de pegar, ou a renda em dobro por 5 anos do jogo; outro b
 que falta. O bônus conta o tempo de jogo andando, então para nas pausas e nas escolhas, e o fim
 dele é um ponto de corte do relógio, como a virada do dia. Recompensas não pegas somem com as
 missões quando o dia vira. As regras ficam em `src/engine/missions.ts` e `src/engine/boost.ts`.
+
+## Balanceamento
+
+Os números ficam em `src/content/balance.ts` e foram ajustados com uma simulação de 10 horas de
+jogo (`npm run sim`). Um jogador automático (`src/sim/autoplay.ts`) casa todos e tem até 4 filhos
+por casal, põe os filhos no colégio particular quando a renda cobre, tenta a federal e paga a
+faculdade particular quando não passa, escolhe a vaga de maior salário, paga os cursos e pega as
+recompensas das missões. Metade de tudo o que entra fica guardada para o imóvel que se paga mais
+rápido, e a outra metade vai para a família; o dia das missões vira a cada hora, como quem joga uma
+hora por dia.
+
+A simulação confere sete limites (`src/sim/limits.ts`) e sai com erro se algum falhar:
+
+| Limite        | Valor                                                                         |
+| ------------- | ----------------------------------------------------------------------------- |
+| Números       | dinheiro e renda finitos e abaixo de 10^15                                    |
+| Ritmo         | depois dos 5 primeiros minutos, nunca mais de 2 minutos sem nada para comprar |
+| Crescimento   | a renda por mês no fim de cada hora sobe, no máximo 10 vezes, sem o bônus     |
+| Família       | entre 60 e 150 pessoas vivas depois das 3 primeiras horas                     |
+| Save          | abaixo de 1 MB, o limite de cada save na nuvem                                |
+| Relógio       | cada segundo de jogo custa menos de 2 ms com a família do fim                 |
+| Volta ao jogo | 5 anos de progresso offline em menos de 200 ms                                |
+
+Com as seeds de 1 a 4, a renda vai de cerca de R$ 700 mil por mês na primeira hora a R$ 25 milhões
+na décima, o save fica perto de 600 KB, e cada segundo de jogo custa menos de 1 ms. O CI roda uma
+versão de 1 hora com duas seeds (`tests/sim/balance.test.ts`), com os limites que já valem nesse
+tempo.
 
 ## Avatares
 

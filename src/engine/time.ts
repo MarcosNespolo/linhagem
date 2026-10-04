@@ -57,6 +57,12 @@ export function lastDayOfYear(startDate: string, day: number): number {
 
 /** Data do calendário (AAAA-MM-DD) que corresponde a um dia do jogo. */
 export function calendarDate(startDate: string, day: number): string {
+  if (lastDate.day === day && lastDate.startDate === startDate) return lastDate.date
   const start = Date.parse(`${startDate}T00:00:00Z`)
-  return new Date(start + day * 86_400_000).toISOString().slice(0, 10)
+  const date = new Date(start + day * 86_400_000).toISOString().slice(0, 10)
+  lastDate = { startDate, day, date }
+  return date
 }
+
+/** A última data calculada: a virada do dia pergunta a mesma data várias vezes. */
+let lastDate = { startDate: '', day: Number.NaN, date: '' }

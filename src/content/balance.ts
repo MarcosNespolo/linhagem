@@ -42,9 +42,11 @@ export const BALANCE = {
    * Filhos e casamentos ficam mais caros conforme a família viva cresce: cada
    * membro vivo multiplica esses custos por este fator. A renda cresce em linha
    * reta com a família e os custos em curva, então a família se estabiliza num
-   * tamanho que a renda sustenta, em vez de crescer sem parar.
+   * tamanho que a renda sustenta, em vez de crescer sem parar. Com 6%, a
+   * simulação de 10 horas fica entre 80 e 145 pessoas vivas depois das 3
+   * primeiras horas, mesmo com a renda dos imóveis crescendo.
    */
-  familySizeGrowth: 1.03,
+  familySizeGrowth: 1.06,
 
   children: {
     /** Os dois membros do casal precisam estar nesta faixa de idade. */
@@ -101,9 +103,10 @@ export const BALANCE = {
   /**
    * Imóveis rendem aluguel todo mês para a família. Cada imóvel do mesmo tipo
    * custa este fator vezes o anterior, e o aluguel fica igual: o décimo kitnet
-   * custa cerca de 3,5 vezes o primeiro e demora 3,5 vezes mais para se pagar.
+   * custa cerca de 5 vezes o primeiro e demora 5 vezes mais para se pagar. Com
+   * 20%, o aluguel cresce a cada hora sem disparar a renda.
    */
-  properties: { priceGrowth: 1.15 },
+  properties: { priceGrowth: 1.2 },
 
   /** Missões do dia: quantas aparecem, todas de tipos diferentes. */
   missions: { perDay: 3 },

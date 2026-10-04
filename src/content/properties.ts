@@ -1,6 +1,6 @@
 /** Tipos de imóvel, do mais barato ao mais caro. Cada um libera depois da primeira compra do anterior. */
 export const PROPERTY_TYPES = [
-  { id: 'kitnet', name: 'Kitnet', gender: 'm', price: 120_000, rentPerMonth: 1_000 },
+  { id: 'kitnet', name: 'Kitnet', gender: 'm', price: 80_000, rentPerMonth: 670 },
   { id: 'apartamento', name: 'Apartamento', gender: 'm', price: 450_000, rentPerMonth: 3_200 },
   { id: 'casa', name: 'Casa', gender: 'f', price: 1_500_000, rentPerMonth: 9_400 },
   { id: 'sala', name: 'Sala comercial', gender: 'f', price: 5_000_000, rentPerMonth: 27_500 },

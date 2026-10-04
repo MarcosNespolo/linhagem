@@ -121,9 +121,12 @@ export function schoolScore(member: Pick<Member, 'aptitude' | 'education'>): num
 }
 
 /** Quem trabalha meio período porque cuida em casa de um filho na idade da creche. */
-export function halfTimeCaregivers(state: GameState): Set<MemberId> {
+export function halfTimeCaregivers(
+  state: GameState,
+  members: readonly Member[] = Object.values(state.members),
+): Set<MemberId> {
   const caregivers = new Set<MemberId>()
-  for (const member of Object.values(state.members)) {
+  for (const member of members) {
     const school = member.education.school
     if (member.deathDay === null && school?.network === 'casa' && school.caregiverId) {
       caregivers.add(school.caregiverId)

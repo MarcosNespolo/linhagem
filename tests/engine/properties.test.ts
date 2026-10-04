@@ -26,21 +26,21 @@ function buy(state: GameState, ...ids: PropertyId[]): GameState {
 }
 
 describe('imóveis', () => {
-  it('são nove tipos, cada um de 3 a 4,5 vezes o anterior, que se pagam de 10 a 32 anos', () => {
+  it('são nove tipos, cada um de 3 a 6 vezes o anterior, que se pagam de 10 a 32 anos', () => {
     const state = makeGame()
     expect(PROPERTY_TYPES).toHaveLength(9)
     const paybacks = PROPERTY_TYPES.map((type) => paybackYears(state, type.id))
-    expect(paybacks[0]).toBeCloseTo(10)
+    expect(Math.round(paybacks[0])).toBe(10)
     expect(Math.round(paybacks.at(-1)!)).toBe(32)
     for (let i = 1; i < PROPERTY_TYPES.length; i++) {
       const ratio = PROPERTY_TYPES[i].price / PROPERTY_TYPES[i - 1].price
       expect(ratio).toBeGreaterThanOrEqual(3)
-      expect(ratio).toBeLessThanOrEqual(4.5)
+      expect(ratio).toBeLessThanOrEqual(6)
       expect(paybacks[i]).toBeGreaterThan(paybacks[i - 1])
     }
   })
 
-  it('cada imóvel do mesmo tipo custa 15% mais que o anterior', () => {
+  it('cada imóvel do mesmo tipo custa 20% mais que o anterior', () => {
     let state = withMoney(makeGame(), 1e9)
     const prices: number[] = []
     for (let i = 0; i < 10; i++) {
@@ -49,8 +49,8 @@ describe('imóveis', () => {
     }
     expect(prices[0]).toBe(PROPERTY_TYPES[0].price)
     expect(prices[1]).toBe(Math.round(PROPERTY_TYPES[0].price * BALANCE.properties.priceGrowth))
-    // O décimo kitnet custa cerca de R$ 420 mil.
-    expect(Math.round(prices[9] / 10_000)).toBe(42)
+    // O décimo kitnet custa cerca de R$ 410 mil, 5 vezes o primeiro.
+    expect(Math.round(prices[9] / 10_000)).toBe(41)
     expect(ownedCount(state, 'kitnet')).toBe(10)
     expect(state.money).toBe(1e9 - prices.reduce((sum, price) => sum + price, 0))
   })

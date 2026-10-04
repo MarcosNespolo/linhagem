@@ -85,6 +85,17 @@ describe('advance', () => {
     expect(state).toEqual(copy)
   })
 
+  it('o histórico cresce numa lista nova, sem mexer no do estado recebido', () => {
+    const start = makeGame()
+    const [first] = founders(start)
+    // No próximo aniversário, a fundadora morre, e a morte entra no histórico.
+    const state = setMember(start, first.id, { lifespan: ageOf(first, 0) + 1 })
+    const before = state.log.length
+    const { state: next } = advance(state, years(1))
+    expect(next.log.length).toBe(before + 1)
+    expect(state.log).toHaveLength(before)
+  })
+
   it('não copia quem já morreu, que continua o mesmo objeto no estado novo', () => {
     const start = makeGame(2)
     const [first, second] = founders(start)

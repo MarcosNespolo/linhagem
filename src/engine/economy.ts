@@ -69,15 +69,19 @@ export type Rates = {
 
 /**
  * Renda, despesa e saldo da família por mês. O aluguel entra na renda, e a
- * renda inteira dobra enquanto vale o bônus das missões.
+ * renda inteira dobra enquanto vale o bônus das missões. `members` pode trazer
+ * só as pessoas vivas, para não passar pelos antepassados.
  */
-export function familyRates(state: GameState): Rates {
-  const caregivers = halfTimeCaregivers(state)
+export function familyRates(
+  state: GameState,
+  members: readonly Member[] = Object.values(state.members),
+): Rates {
+  const caregivers = halfTimeCaregivers(state, members)
   const factor = isBoosted(state) ? 2 : 1
   const rent = rentPerMonth(state) * factor
   let income = 0
   let expense = 0
-  for (const member of Object.values(state.members)) {
+  for (const member of members) {
     income += incomeOf(state, member, caregivers)
     expense += memberExpense(member, state.clock.day)
   }
