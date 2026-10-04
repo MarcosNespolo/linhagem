@@ -42,7 +42,7 @@ export type SetupDraft = { seed: number; now: number }
 
 /** Família da nuvem diferente da deste aparelho, esperando o jogador escolher qual continuar. */
 export type CloudConflict = {
-  /** Família salva na nuvem, já na versão atual do save. */
+  /** Família salva na nuvem, já na versão atual do save e avançada até o momento do conflito. */
   cloud: GameState
   revision: number
   /** Instante da gravação na nuvem (ISO 8601). */
@@ -373,8 +373,10 @@ async function syncOnce(api: CloudApi, user: CloudUser): Promise<void> {
       const cloudGame = readCloudGame(saved.value.state)
       if (typeof cloudGame === 'string') return setCloud({ problem: cloudGame })
       if (step === 'adopt') return adopt(cloudGame, saved.value.revision, user)
+      // A versão da nuvem aparece como estaria agora, para comparar com a deste aparelho.
+      const { state } = advanceTo(cloudGame, Date.now())
       const { revision, savedAt } = saved.value
-      return setCloud({ conflict: { cloud: cloudGame, revision, savedAt }, conflictHidden: false })
+      return setCloud({ conflict: { cloud: state, revision, savedAt }, conflictHidden: false })
     }
 
     if (!game) return

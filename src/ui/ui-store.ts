@@ -8,6 +8,7 @@ export type Sheet =
   | { kind: 'partner'; memberId: MemberId }
   | { kind: 'rename' }
   | { kind: 'confirmNewFamily' }
+  | { kind: 'cloudLogin' }
 
 type UiStore = {
   tab: Tab

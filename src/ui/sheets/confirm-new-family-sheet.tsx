@@ -9,10 +9,12 @@ import { Sheet } from './sheet'
 export function ConfirmNewFamilySheet({ game }: { game: GameState }) {
   const closeSheet = useUiStore((store) => store.closeSheet)
   const openSetup = useGameStore((store) => store.openSetup)
+  const signedIn = useGameStore((store) => store.cloud.mode === 'signedIn')
   return (
     <Sheet title="Começar outra família?" onClose={closeSheet}>
       <p className="text-ink-soft mt-2 text-[15px]">
-        A família {game.familyName} será substituída neste aparelho quando a nova começar. Não dá
+        A família {game.familyName} será substituída{' '}
+        {signedIn ? 'neste aparelho e na nuvem' : 'neste aparelho'} quando a nova começar. Não dá
         para voltar atrás.
       </p>
       <div className="mt-5 flex flex-col gap-2">

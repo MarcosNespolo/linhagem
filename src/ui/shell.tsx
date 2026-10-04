@@ -7,7 +7,9 @@ import { showMember } from './flows'
 import { generationLabel } from './labels'
 import { loveActions, nodeActions, type LoveActions } from './selectors'
 import { AwaySheet } from './sheets/away-sheet'
+import { CloudLoginSheet } from './sheets/cloud-login-sheet'
 import { ConfirmNewFamilySheet } from './sheets/confirm-new-family-sheet'
+import { ConflictSheet } from './sheets/conflict-sheet'
 import { MemberSheet } from './sheets/member-sheet'
 import { PartnerSheet } from './sheets/partner-sheet'
 import { RenameSheet } from './sheets/rename-sheet'
@@ -26,6 +28,7 @@ export function Shell({ game }: { game: GameState }) {
   const sheet = useUiStore((store) => store.sheet)
   const showDeceased = useUiStore((store) => store.showDeceased)
   const away = useGameStore((store) => store.away)
+  const cloud = useGameStore((store) => store.cloud)
 
   const actions = loveActions(game)
   const net = familyRates(game).net
@@ -62,7 +65,9 @@ export function Shell({ game }: { game: GameState }) {
       </main>
       <BottomNav loveBadge={actions.ready} />
       <Toasts game={game} />
-      {sheet ? (
+      {cloud.conflict && !cloud.conflictHidden ? (
+        <ConflictSheet game={game} conflict={cloud.conflict} />
+      ) : sheet ? (
         <SheetHost game={game} sheet={sheet} />
       ) : away ? (
         <AwaySheet game={game} away={away} />
@@ -85,6 +90,8 @@ function SheetHost({ game, sheet }: { game: GameState; sheet: Sheet }) {
       return <RenameSheet game={game} />
     case 'confirmNewFamily':
       return <ConfirmNewFamilySheet game={game} />
+    case 'cloudLogin':
+      return <CloudLoginSheet />
   }
 }
 
