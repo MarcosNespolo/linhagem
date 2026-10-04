@@ -1,0 +1,1 @@
+-- Sem dados iniciais: o conteúdo do jogo (carreiras, nomes, balanceamento) fica em src/content.
