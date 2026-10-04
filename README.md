@@ -24,6 +24,8 @@ Jogue em [linhagem.vercel.app](https://linhagem.vercel.app).
 - Casar quem fez 18 anos, escolhendo entre pessoas sugeridas, cada uma com formação e emprego; o
   cônjuge entra na família e trabalha
 - Comprar imóveis, do kitnet ao shopping, que rendem aluguel todo mês na aba Imóveis
+- Cumprir as três missões do dia, que valem até a meia-noite, e pegar a recompensa: meses de renda
+  ou a renda em dobro por 5 anos do jogo
 - Acompanhar o dinheiro em reais, com salários, aluguel e despesas por mês e o 13º salário em
   dezembro
 - Ver a família numa árvore com zoom e arrasto, com quem já morreu esmaecido
@@ -164,6 +166,21 @@ financiamento por enquanto.
 O aluguel entra na renda da família todo mês, sem depender de quem está vivo: os imóveis são da
 família e ficam quando as pessoas morrem. O resumo da volta ao jogo mostra quanto veio de aluguel.
 As regras ficam em `src/engine/properties.ts`, e o crescimento do preço em `BALANCE.properties`.
+
+## Missões e bônus
+
+Todo dia o jogo sorteia três missões de tipos diferentes, entre oito (`src/content/missions.ts`),
+que valem até a meia-noite do aparelho. O sorteio usa a seed da família e a data, e não o gerador
+do jogo, então o mesmo dia dá as mesmas missões em qualquer aparelho com o mesmo save. A data vem
+da store, porque a engine não conhece o relógio do aparelho, e o sorteio acontece depois de
+simular o tempo fora, para que o jogo fechado não cumpra missões sozinho.
+
+Cada missão só aparece quando a família consegue cumpri-la, como Formatura, que pede alguém na
+faculdade ou no técnico, e conta só o que acontece depois que aparece. A recompensa vale meses da
+renda líquida na hora de pegar, ou a renda em dobro por 5 anos do jogo; outro bônus soma 5 anos ao
+que falta. O bônus conta o tempo de jogo andando, então para nas pausas e nas escolhas, e o fim
+dele é um ponto de corte do relógio, como a virada do dia. Recompensas não pegas somem com as
+missões quando o dia vira. As regras ficam em `src/engine/missions.ts` e `src/engine/boost.ts`.
 
 ## Avatares
 
