@@ -4,10 +4,7 @@ import {
   applyAction,
   migrate,
   OFFLINE_CAP_MS,
-  rentPerMonth,
   SaveError,
-  TICKS_PER_DAY,
-  ticksToMonths,
   type Action,
   type ActionResult,
   type GameEvent,
@@ -109,6 +106,19 @@ type GameStore = {
 
 let nextToastId = 1
 
+/**
+ * Sorteia as missões quando o dia do aparelho vira. O sorteio vem depois de
+ * avançar o tempo fora, então o que aconteceu com o jogo fechado não conta.
+ * Não marca o save como mudado: o mesmo dia dá as mesmas missões em qualquer
+ * aparelho.
+ */
+function withTodaysMissions(game: GameState, now: number): GameState {
+  const date = localDate(now)
+  if (game.missions?.date === date) return game
+  const result = applyAction(game, { type: 'drawMissions', date })
+  return result.ok ? result.state : game
+}
+
 function newDraft(): SetupDraft {
   return { seed: randomSeed(), now: Date.now() }
 }
@@ -147,8 +157,9 @@ export const useGameStore = create<GameStore>()((set, get) => ({
     const now = Date.now()
     const start = loaded.state
     const { state, events } = advanceTo(start, now)
-    set({ game: state, notice: loaded.notice, ...catchUp(get(), start, state, events, now) })
-    writeSave(state)
+    const game = withTodaysMissions(state, now)
+    set({ game, notice: loaded.notice, ...catchUp(get(), start, state, events, now) })
+    writeSave(game)
   },
 
   tick: () => {
@@ -156,7 +167,7 @@ export const useGameStore = create<GameStore>()((set, get) => ({
     if (!game) return
     const now = Date.now()
     const { state, events } = advanceTo(game, now)
-    set({ game: state, ...catchUp(get(), game, state, events, now) })
+    set({ game: withTodaysMissions(state, now), ...catchUp(get(), game, state, events, now) })
   },
 
   dispatch: (action) => {
@@ -272,7 +283,7 @@ function catchUp(
       away: {
         days: after.clock.day - before.clock.day,
         earned: after.stats.totalEarned - before.stats.totalEarned,
-        rent: rentEarned(before, after),
+        rent: after.stats.rentEarned - before.stats.rentEarned,
         events,
         capped: !waiting && now - before.lastSimulatedAt > OFFLINE_CAP_MS,
         waiting,
@@ -285,17 +296,6 @@ function catchUp(
   if (worthShowing.length === 0) return {}
   const added = worthShowing.map((event) => ({ id: nextToastId++, event }))
   return { toasts: [...store.toasts, ...added].slice(-TOAST_LIMIT) }
-}
-
-/**
- * Aluguel que entrou entre dois estados. Imóveis só se compram com o relógio
- * parado numa ação, então o aluguel por mês é o mesmo o tempo todo.
- */
-function rentEarned(before: GameState, after: GameState): number {
-  const ticks =
-    (after.clock.day - before.clock.day) * TICKS_PER_DAY +
-    (after.clock.tickOfDay - before.clock.tickOfDay)
-  return rentPerMonth(before) * ticksToMonths(ticks)
 }
 
 const QUIET_EVENTS = new Set<GameEvent['type']>([

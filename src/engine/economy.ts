@@ -1,5 +1,6 @@
 import { BALANCE } from '../content/balance'
 import { careerLevel, PUBLIC_CAREER } from '../content/careers'
+import { isBoosted } from './boost'
 import { ageOf, isAlive } from './members'
 import { rentPerMonth } from './properties'
 import { halfTimeCaregivers, schoolFee } from './school'
@@ -41,11 +42,15 @@ export function incomeOf(
 
 /**
  * Despesa por mês: crianças custam mais conforme crescem, quem estuda em
- * escola particular paga a mensalidade, e quem estuda para concurso, o cursinho.
+ * escola particular paga a mensalidade, quem tem professor particular paga o
+ * professor, e quem estuda para concurso, o cursinho.
  */
 export function memberExpense(member: Member, day: number): number {
   if (!isAlive(member)) return 0
-  const fee = schoolFee(member.education.school) + (member.concurso ? BALANCE.concurso.fee : 0)
+  const fee =
+    schoolFee(member.education.school) +
+    (member.education.tutorSince !== null ? BALANCE.school.tutor.fee : 0) +
+    (member.concurso ? BALANCE.concurso.fee : 0)
   const age = ageOf(member, day)
   if (age >= BALANCE.adultAge) return fee
   return BALANCE.children.expenseBase + BALANCE.children.expensePerYear * age + fee
@@ -62,15 +67,20 @@ export type Rates = {
   net: number
 }
 
-/** Renda, despesa e saldo da família por mês. O aluguel entra na renda. */
+/**
+ * Renda, despesa e saldo da família por mês. O aluguel entra na renda, e a
+ * renda inteira dobra enquanto vale o bônus das missões.
+ */
 export function familyRates(state: GameState): Rates {
   const caregivers = halfTimeCaregivers(state)
-  const rent = rentPerMonth(state)
-  let income = rent
+  const factor = isBoosted(state) ? 2 : 1
+  const rent = rentPerMonth(state) * factor
+  let income = 0
   let expense = 0
   for (const member of Object.values(state.members)) {
     income += incomeOf(state, member, caregivers)
     expense += memberExpense(member, state.clock.day)
   }
+  income = income * factor + rent
   return { income, rent, expense, net: income - expense }
 }

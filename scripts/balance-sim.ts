@@ -7,9 +7,10 @@
  * médio e a vaga de maior salário), a família paga os cursos de promoção que
  * cabem no dinheiro, quem é adulto casa assim que dá (com a pessoa de maior
  * salário entre as sugeridas), todo casal tem filho sempre que pode, até o
- * limite de filhos por casal, e o que sobra além do próximo casamento vai para
- * o imóvel que se paga mais rápido. As escolhas são respondidas na hora, então
- * o relógio quase não fica parado.
+ * limite de filhos por casal, o que sobra além do próximo casamento vai para
+ * o imóvel que se paga mais rápido, e as recompensas das missões são pegas
+ * assim que saem. As escolhas são respondidas na hora, então o relógio quase
+ * não fica parado. O dia das missões vira a cada 24 horas reais simuladas.
  *
  * Uso: npm run sim -- --minutos 120 --seed 7 --filhos 4
  */
@@ -22,6 +23,8 @@ import {
   checkHaveChild,
   checkSeekPartner,
   childrenOf,
+  claimableMissions,
+  isBoosted,
   familyRates,
   isPropertyUnlocked,
   livingMembers,
@@ -64,6 +67,13 @@ let births = 0
 let weddings = 0
 let deaths = 0
 let courses = 0
+let rewards = 0
+
+/** Data das missões no dia real simulado: começa em 1º de janeiro de 2026. */
+function missionDate(elapsedMs: number): string {
+  const day = Math.floor(elapsedMs / 86_400_000)
+  return new Date(Date.UTC(2026, 0, 1 + day)).toISOString().slice(0, 10)
+}
 const rows: Record<string, string | number>[] = []
 
 const snapshot = (elapsedMs: number) => {
@@ -80,6 +90,8 @@ const snapshot = (elapsedMs: number) => {
     cursos: courses,
     imóveis: totalProperties(state),
     aluguel: formatRate(rentPerMonth(state)),
+    'renda ×2': isBoosted(state) ? 'sim' : '',
+    recompensas: rewards,
     'próx. casamento': formatMoney(weddingCost(state)),
   })
 }
@@ -107,6 +119,13 @@ for (let elapsed = STEP_MS; elapsed <= minutes * 60_000; elapsed += STEP_MS) {
     left -= clockMs(state) - before
     if (state.choices.length === 0) break
     if (!tryAct({ type: 'choose', picks: suggestedPicks(state) })) break
+  }
+
+  if (state.missions?.date !== missionDate(elapsed)) {
+    tryAct({ type: 'drawMissions', date: missionDate(elapsed) })
+  }
+  for (const mission of claimableMissions(state)) {
+    if (tryAct({ type: 'claimMission', missionId: mission.id })) rewards += 1
   }
 
   const paid = applyAction(state, { type: 'payAllCourses' })

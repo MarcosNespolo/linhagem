@@ -12,6 +12,7 @@ import { CloudLoginSheet } from './sheets/cloud-login-sheet'
 import { ConfirmNewFamilySheet } from './sheets/confirm-new-family-sheet'
 import { ConflictSheet } from './sheets/conflict-sheet'
 import { MemberSheet } from './sheets/member-sheet'
+import { MissionsSheet } from './sheets/missions-sheet'
 import { PartnerSheet } from './sheets/partner-sheet'
 import { RenameSheet } from './sheets/rename-sheet'
 import { button } from './styles'
@@ -113,6 +114,8 @@ function SheetHost({ game, sheet }: { game: GameState; sheet: Sheet }) {
       return <ConfirmNewFamilySheet game={game} />
     case 'cloudLogin':
       return <CloudLoginSheet />
+    case 'missions':
+      return <MissionsSheet game={game} />
   }
 }
 

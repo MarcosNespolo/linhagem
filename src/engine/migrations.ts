@@ -6,7 +6,7 @@ import { ageInYears, lastDayOfYear } from './time'
 import type { GameState } from './types'
 
 /** Versão atual do formato do save. Sobe a cada migração nova. */
-export const CURRENT_SCHEMA_VERSION = 7
+export const CURRENT_SCHEMA_VERSION = 9
 
 export type SaveErrorCode = 'corrupt' | 'futureVersion' | 'missingMigration'
 
@@ -184,6 +184,33 @@ function careerSince(career: unknown, day: number): unknown {
 const toVersion7: Migration = (save) => ({ ...save, properties: {} })
 
 /**
+ * Versão 7 para 8: entram as missões do dia, ainda sem sorteio, a renda em
+ * dobro, sem bônus, e o total que veio de aluguel, que conta a partir daqui.
+ */
+const toVersion8: Migration = (save) => {
+  const stats = isRecord(save.stats) ? save.stats : {}
+  return {
+    ...save,
+    missions: null,
+    boosts: { incomeUntil: 0 },
+    stats: { ...stats, rentEarned: 0 },
+  }
+}
+
+/** Versão 8 para 9: entra o professor particular, com ninguém tendo um ainda. */
+const toVersion9: Migration = (save) => {
+  const members = isRecord(save.members) ? save.members : {}
+  const upgraded: RawSave = {}
+  for (const [id, member] of Object.entries(members)) {
+    upgraded[id] =
+      isRecord(member) && isRecord(member.education)
+        ? { ...member, education: { ...member.education, tutorSince: null } }
+        : member
+  }
+  return { ...save, members: upgraded }
+}
+
+/**
  * Migrações, indexadas pela versão de origem. São sempre aditivas: criam
  * campos novos com valores padrão e nunca apagam dados do jogador; uma troca
  * de unidade, como a do dinheiro na versão 3, converte o valor sem perder
@@ -198,6 +225,8 @@ export const MIGRATIONS: Readonly<Record<number, Migration>> = {
   4: toVersion5,
   5: toVersion6,
   6: toVersion7,
+  7: toVersion8,
+  8: toVersion9,
 }
 
 /** Valida um save lido de JSON e o leva até a versão atual. */
@@ -246,6 +275,9 @@ function assertGameState(save: RawSave): asserts save is RawSave & GameState {
     isRecord(save.suitors) &&
     Array.isArray(save.choices) &&
     isRecord(save.properties) &&
+    (save.missions === null || isRecord(save.missions)) &&
+    isRecord(save.boosts) &&
+    typeof save.boosts.incomeUntil === 'number' &&
     Array.isArray(save.log) &&
     isRecord(clock) &&
     typeof clock.day === 'number' &&

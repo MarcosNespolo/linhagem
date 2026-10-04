@@ -1,4 +1,5 @@
 import type { CareerId } from '../content/careers'
+import type { MissionId } from '../content/missions'
 import type { PropertyId } from '../content/properties'
 import type { DegreeId, Network, SchoolStage, Stage, TechCourseId } from '../content/schools'
 
@@ -58,6 +59,11 @@ export type Education = {
   formation: Formation | null
   /** Nota do último ENEM, ou null para quem não fez. */
   enem: number | null
+  /**
+   * Dia do jogo desde quando os pontos do professor particular estão contando,
+   * ou null sem professor. Os pontos entram em janeiro e quando ele é dispensado.
+   */
+  tutorSince: number | null
 }
 
 /**
@@ -221,6 +227,28 @@ export type GameStats = {
   simulatedMs: number
   totalEarned: number
   totalSpent: number
+  /** A parte do que entrou que veio do aluguel dos imóveis. */
+  rentEarned: number
+}
+
+/** Missão do dia, com o progresso desde que apareceu. */
+export type MissionState = {
+  id: MissionId
+  /** Meta: quantos acontecimentos ou, no Pé-de-meia, quanto dinheiro juntar. */
+  goal: number
+  /** Quanto já foi feito desde o sorteio, até a meta. */
+  progress: number
+  /** Ponto de partida das missões que comparam com o sorteio: pessoas vivas ou dinheiro. */
+  base: number
+  /** A recompensa já foi pega. */
+  claimed: boolean
+}
+
+/** Missões sorteadas para um dia do aparelho. Somem quando o dia vira. */
+export type Missions = {
+  /** Data do aparelho (AAAA-MM-DD) do sorteio. */
+  date: string
+  list: MissionState[]
 }
 
 export type GameState = {
@@ -244,6 +272,12 @@ export type GameState = {
   choices: Choice[]
   /** Quantos imóveis de cada tipo a família tem. São da família e ficam quando as pessoas morrem. */
   properties: Partial<Record<PropertyId, number>>
+  /** Missões do dia, ou null antes do primeiro sorteio. */
+  missions: Missions | null
+  boosts: {
+    /** Posição do relógio, em unidades desde o dia 0, até a qual a renda fica em dobro. */
+    incomeUntil: number
+  }
   /** Últimos acontecimentos da família, do mais antigo para o mais novo. */
   log: LogEvent[]
   stats: GameStats

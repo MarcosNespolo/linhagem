@@ -1,7 +1,8 @@
+import { boostTicksLeft, isBoosted } from './boost'
 import { processNewDay } from './day'
 import { draftOf } from './draft'
 import { familyRates, type Rates } from './economy'
-import { appendLog } from './log'
+import { recordEvents } from './log'
 import { createRng } from './rng'
 import { msToTicks, OFFLINE_CAP_MS, TICKS_PER_DAY, TICKS_PER_MS, ticksToMonths } from './time'
 import type { GameEvent, GameState } from './types'
@@ -28,7 +29,8 @@ export function isWaiting(state: GameState): boolean {
  *
  * Quando uma virada de dia abre uma escolha, o relógio para ali e o resto do
  * tempo é descartado, como na pausa. O dia da escolha é mais um ponto de corte,
- * então avançar de uma vez ou aos poucos continua dando o mesmo resultado.
+ * então avançar de uma vez ou aos poucos continua dando o mesmo resultado. O
+ * fim da renda em dobro também é um ponto de corte: as taxas mudam ali.
  *
  * Função pura: não altera `state` e devolve um estado novo.
  */
@@ -41,10 +43,20 @@ export function advance(state: GameState, ms: number): AdvanceResult {
   const rng = createRng(draft.rngState)
   const events: GameEvent[] = []
   let rates = familyRates(draft)
+  let boosted = isBoosted(draft)
   let remaining = ticks
 
   while (remaining > 0) {
     const untilNextDay = TICKS_PER_DAY - draft.clock.tickOfDay
+    const untilBoostEnds = boostTicksLeft(draft)
+    if (untilBoostEnds > 0 && untilBoostEnds < Math.min(remaining, untilNextDay)) {
+      accrue(draft, rates, untilBoostEnds)
+      draft.clock.tickOfDay += untilBoostEnds
+      remaining -= untilBoostEnds
+      rates = familyRates(draft)
+      boosted = false
+      continue
+    }
     if (remaining < untilNextDay) {
       accrue(draft, rates, remaining)
       draft.clock.tickOfDay += remaining
@@ -55,14 +67,19 @@ export function advance(state: GameState, ms: number): AdvanceResult {
     remaining -= untilNextDay
     draft.clock.day += 1
     draft.clock.tickOfDay = 0
-    if (processNewDay(draft, rng, events)) rates = familyRates(draft)
+    const changed = processNewDay(draft, rng, events)
+    // O bônus pode acabar bem na virada do dia.
+    if (changed || (boosted && !isBoosted(draft))) {
+      rates = familyRates(draft)
+      boosted = isBoosted(draft)
+    }
     if (draft.choices.length > 0) break
   }
 
   draft.rngState = rng.state
   // Parado numa escolha, conta só o tempo que passou, em milissegundos inteiros.
   draft.stats.simulatedMs += remaining > 0 ? Math.round((ticks - remaining) / TICKS_PER_MS) : ms
-  appendLog(draft, events)
+  recordEvents(draft, events)
   return { state: draft, events }
 }
 
@@ -90,4 +107,5 @@ function accrue(draft: GameState, rates: Rates, ticks: number): void {
   draft.money = balance + unpaid
   draft.stats.totalEarned += earned
   draft.stats.totalSpent += owed - unpaid
+  draft.stats.rentEarned += rates.rent * months
 }

@@ -1,5 +1,6 @@
 'use client'
 
+import { BALANCE } from '@/content/balance'
 import { isHigherStage, techCourseName, type Stage } from '@/content/schools'
 import {
   ageOf,
@@ -25,12 +26,18 @@ const SECTIONS: { stage: Stage; title: string }[] = [
   { stage: 'creche', title: 'Creche' },
 ]
 
+/** Mensalidade da escola mais o professor particular, por mês. */
+function studyFee(member: Member): number {
+  const tutor = member.education.tutorSince !== null ? BALANCE.school.tutor.fee : 0
+  return schoolFee(member.education.school) + tutor
+}
+
 /** Aba Estudos: quem estuda, onde, quanto custa e a nota de cada um. */
 export function StudiesTab({ game }: { game: GameState }) {
   const students = livingMembers(game)
     .filter((member) => member.education.school !== null)
     .sort((a, b) => a.birthDay - b.birthDay)
-  const fees = students.reduce((sum, member) => sum + schoolFee(member.education.school), 0)
+  const fees = students.reduce((sum, member) => sum + studyFee(member), 0)
 
   if (students.length === 0) {
     return (
@@ -57,7 +64,7 @@ export function StudiesTab({ game }: { game: GameState }) {
         </p>
         <p className="text-ink-soft mt-2 text-[13px]">
           As matrículas são todo janeiro, e as formaturas também. Toque em alguém da escola para
-          trocar de rede no ano seguinte.
+          trocar de rede no ano seguinte ou contratar um professor particular.
         </p>
       </section>
 
@@ -83,7 +90,8 @@ function StudentRow({ game, member }: { game: GameState; member: Member }) {
   const school = member.education.school
   if (!school) return null
   const day = game.clock.day
-  const fee = schoolFee(school)
+  const fee = studyFee(member)
+  const tutor = member.education.tutorSince !== null
   const grade = schoolYearLabel(school, ageThisYear(member, game.startDate, day))
   const higher = isHigherStage(school.stage)
   // No técnico e na faculdade, o curso já está no ano ("3º ano de Direito").
@@ -106,6 +114,11 @@ function StudentRow({ game, member }: { game: GameState; member: Member }) {
             {formatAge(ageOf(member, day))} · {grade}
           </span>
           <span className="block truncate text-[14px] font-semibold">{place}</span>
+          {tutor ? (
+            <span className="text-leaf-strong block text-[12px] font-bold">
+              Com professor particular
+            </span>
+          ) : null}
         </span>
         <span className="shrink-0 text-right">
           <span

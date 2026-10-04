@@ -62,7 +62,7 @@ export function schoolFee(school: Enrollment | null): number {
 
 /** Vida escolar de quem nasce ou chega à família sem ter estudado no jogo. */
 export function newEducation(formation: Education['formation'] = null): Education {
-  return { school: null, points: 0, past: {}, formation, enem: null }
+  return { school: null, points: 0, past: {}, formation, enem: null, tutorSince: null }
 }
 
 /** A formação mais alta entre duas: faculdade, depois técnico, depois ensino médio. */

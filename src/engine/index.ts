@@ -15,6 +15,7 @@ export {
 } from './actions'
 export { advance, advanceTo, isWaiting, type AdvanceResult } from './advance'
 export { inheritAppearance, rollAppearance } from './appearance'
+export { boostTicksLeft, clockPosition, isBoosted } from './boost'
 export { optionCount, suggestedPicks, type ChoicePick } from './choices'
 export { rollEnem } from './college'
 export {
@@ -51,6 +52,7 @@ export {
   rollJobOffers,
 } from './jobs'
 export { isLogEvent, isMemberEvent, LOG_LIMIT } from './log'
+export { claimableMissions, incomeReward, isMissionDone } from './missions'
 export { checkMarry, checkSeekPartner, weddingCost, type MarriageCheck } from './marriage'
 export { ageOf, childrenOf, isAdult, isAlive, isRetired, livingMembers, partnerOf } from './members'
 export {
@@ -85,6 +87,7 @@ export {
 } from './promotions'
 export { createRng, hashString, pickWeighted, type Rng } from './rng'
 export { deserialize, serialize } from './save'
+export { canHaveTutor, tutorPoints } from './tutor'
 export {
   aptitudeOf,
   halfTimeCaregivers,

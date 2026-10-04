@@ -102,6 +102,7 @@ describe('imóveis', () => {
     const withRent = advance(state, years(1)).state
     const withoutRent = advance({ ...state, properties: {} }, years(1)).state
     expectClose(withRent.money - withoutRent.money, rent * 12)
+    expectClose(withRent.stats.rentEarned - state.stats.rentEarned, rent * 12)
   })
 
   it('os imóveis ficam com a família quando as pessoas morrem', () => {
