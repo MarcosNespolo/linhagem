@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 1,
+  "seed": 20261003,
+  "rngState": 460273082,
+  "familyName": "Exemplo",
+  "startDate": "2026-10-03",
+  "clock": {
+    "day": 1295,
+    "tickOfDay": 0,
+    "paused": false
+  },
+  "lastSimulatedAt": 1760000000000,
+  "money": 100444.93150685586,
+  "members": {
+    "m1": {
+      "id": "m1",
+      "firstName": "Lorena",
+      "gender": "f",
+      "birthDay": -9728,
+      "deathDay": null,
+      "lifespan": 82,
+      "generation": 0,
+      "parentIds": [],
+      "partnerId": "m2",
+      "career": {
+        "id": "educacao",
+        "level": 0,
+        "xp": 0
+      },
+      "lastChildDay": 1095,
+      "traits": [],
+      "avatarSeed": "mqm09j"
+    },
+    "m2": {
+      "id": "m2",
+      "firstName": "Vinícius",
+      "gender": "m",
+      "birthDay": -9558,
+      "deathDay": null,
+      "lifespan": 91,
+      "generation": 0,
+      "parentIds": [],
+      "partnerId": "m1",
+      "career": {
+        "id": "saude",
+        "level": 0,
+        "xp": 0
+      },
+      "lastChildDay": 1095,
+      "traits": [],
+      "avatarSeed": "in0fgb"
+    },
+    "m3": {
+      "id": "m3",
+      "firstName": "Antônia",
+      "gender": "f",
+      "birthDay": 1095,
+      "deathDay": null,
+      "lifespan": 85,
+      "generation": 1,
+      "parentIds": [
+        "m1",
+        "m2"
+      ],
+      "partnerId": null,
+      "career": null,
+      "lastChildDay": null,
+      "traits": [],
+      "avatarSeed": "gc6xoh"
+    }
+  },
+  "nextMemberId": 4,
+  "stats": {
+    "simulatedMs": 42575.34246575343,
+    "totalEarned": 851.5068493150532,
+    "totalSpent": 406.5753424657487
+  }
+}
