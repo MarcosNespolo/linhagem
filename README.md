@@ -12,6 +12,9 @@ Jogue em [linhagem.vercel.app](https://linhagem.vercel.app).
 
 - Criar uma família a partir de um casal fundador sorteado e dar o sobrenome
 - Ter filhos, que herdam o tom de pele, a cor do cabelo e dos olhos dos pais
+- Matricular os filhos todo janeiro: creche, escola e ensino médio, na rede pública, num colégio
+  particular ou no instituto federal, para quem passa na prova
+- Ver na aba Estudos quem estuda, onde, a mensalidade e a nota de cada um
 - Escolher o primeiro emprego de quem faz 18 anos, entre três vagas; o tempo para até a escolha
 - Casar quem fez 18 anos, escolhendo entre pessoas sugeridas; o cônjuge entra na família e
   trabalha
@@ -64,7 +67,7 @@ Abra http://localhost:3000.
 ```text
 app/              rotas do Next.js, manifest da PWA e ícones
 src/engine/       simulação pura em TypeScript: estado, relógio, economia, casamento, save
-src/content/      carreiras, nomes, aparência e números de balanceamento
+src/content/      carreiras, escolas, nomes, aparência e números de balanceamento
 src/game/         store, loop do jogo, save local e sincronização com a nuvem
 src/ui/           interface: HUD, abas, painéis e avisos
 src/ui/avatar/    avatares procedurais que mudam com a idade
@@ -90,6 +93,12 @@ dia do jogo.
 Quando alguém precisa de uma escolha, como o primeiro emprego aos 18 anos, o relógio para até o
 jogador decidir. As escolhas abertas ficam no save (`choices`), e a sugestão de cada uma já vem
 marcada no painel.
+
+Como no Brasil, as matrículas são em janeiro. Quem começa a creche (no ano em que faz 1), a escola
+(4) ou o ensino médio (15) ganha uma escolha, e todas aparecem juntas numa pausa só. A escola
+particular cobra mensalidade e soma pontos na nota, que é a aptidão de cada um mais esses pontos; o
+instituto federal é gratuito, pede nota 550 na prova e forma técnico. As regras ficam em
+`src/engine/enrollment.ts` e `src/engine/school.ts`, e os valores em `BALANCE.school`.
 
 Com o jogo fechado ou a aba escondida, o relógio não anda. Ao voltar, o tempo fora é simulado de
 uma vez, com limite de 5 anos do jogo (`BALANCE.offlineCapYears`), e para na primeira escolha que
