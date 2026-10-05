@@ -18,29 +18,9 @@ export function isAlive(member: Member): boolean {
   return member.deathDay === null
 }
 
-/** Dia em que a pessoa chega à expectativa de vida. */
-export function lifeEndDay(member: Pick<Member, 'birthDay' | 'lifespan'>): number {
-  return member.birthDay + member.lifespan * BALANCE.daysPerYear
-}
-
-/**
- * Saiu de casa para formar a própria família e ainda vive, fora das contas:
- * até chegar à expectativa de vida.
- */
-export function livesAway(member: Member, day: number): boolean {
-  return member.leftHome && day < lifeEndDay(member)
-}
-
-/**
- * Idade no dia informado. Para quem já morreu, a idade com que morreu. Quem
- * saiu de casa continua envelhecendo até a expectativa de vida.
- */
-export function ageOf(
-  member: Pick<Member, 'birthDay' | 'deathDay' | 'leftHome' | 'lifespan'>,
-  day: number,
-): number {
-  const end = member.leftHome ? Math.min(day, lifeEndDay(member)) : (member.deathDay ?? day)
-  return ageInYears(member.birthDay, end)
+/** Idade no dia informado. Para quem já morreu, a idade com que morreu. */
+export function ageOf(member: Pick<Member, 'birthDay' | 'deathDay'>, day: number): number {
+  return ageInYears(member.birthDay, member.deathDay ?? day)
 }
 
 export function isAdult(member: Member, day: number): boolean {
@@ -130,7 +110,6 @@ export function addMember(draft: GameState, rng: Rng, input: NewMember): Member 
     gender: input.gender,
     birthDay: input.birthDay,
     deathDay: null,
-    leftHome: false,
     lifespan,
     generation: input.generation,
     origin: input.origin,

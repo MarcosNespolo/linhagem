@@ -1,5 +1,6 @@
 import { boostTicksLeft, isBoosted } from './boost'
 import { processNewDay } from './day'
+import { checkDebt } from './debt'
 import { draftOf } from './draft'
 import { familyRates, type Rates } from './economy'
 import { recordEvents } from './log'
@@ -12,9 +13,9 @@ export type AdvanceResult = {
   events: GameEvent[]
 }
 
-/** O relógio está parado: pausado pelo jogador ou esperando uma escolha. */
+/** O relógio está parado: pausado pelo jogador, esperando uma escolha ou depois da falência. */
 export function isWaiting(state: GameState): boolean {
-  return state.clock.paused || state.choices.length > 0
+  return state.clock.paused || state.choices.length > 0 || state.bankruptDay !== null
 }
 
 /**
@@ -27,10 +28,11 @@ export function isWaiting(state: GameState): boolean {
  * chamada deixa o relógio igual a avançar 60 vezes um segundo, e o dinheiro
  * igual a menos de arredondamento.
  *
- * Quando uma virada de dia abre uma escolha, o relógio para ali e o resto do
- * tempo é descartado, como na pausa. O dia da escolha é mais um ponto de corte,
- * então avançar de uma vez ou aos poucos continua dando o mesmo resultado. O
- * fim da renda em dobro também é um ponto de corte: as taxas mudam ali.
+ * Quando uma virada de dia abre uma escolha, deixa o saldo negativo ou leva à
+ * falência, o relógio para ali e o resto do tempo é descartado, como na pausa.
+ * O dia da parada é mais um ponto de corte, então avançar de uma vez ou aos
+ * poucos continua dando o mesmo resultado. O fim da renda em dobro também é um
+ * ponto de corte: as taxas mudam ali.
  *
  * Função pura: não altera `state` e devolve um estado novo.
  */
@@ -76,7 +78,7 @@ export function advance(state: GameState, ms: number): AdvanceResult {
       rates = familyRates(draft, living)
       boosted = isBoosted(draft)
     }
-    if (draft.choices.length > 0) break
+    if (checkDebt(draft, events) || draft.choices.length > 0) break
   }
 
   draft.rngState = rng.state
@@ -99,16 +101,16 @@ export function advanceTo(state: GameState, now: number): AdvanceResult {
   return { state: { ...result.state, lastSimulatedAt: now }, events: result.events }
 }
 
-/** Soma a renda e desconta a despesa de um intervalo com taxas constantes. */
+/**
+ * Soma a renda e desconta a despesa de um intervalo com taxas constantes. O
+ * saldo pode ficar negativo: a virada do dia confere a dívida.
+ */
 function accrue(draft: GameState, rates: Rates, ticks: number): void {
   const months = ticksToMonths(ticks)
   const earned = rates.income * months
   const owed = rates.expense * months
-  const balance = draft.money + earned - owed
-  // O saldo nunca fica negativo: a despesa que não cabe no caixa não é cobrada.
-  const unpaid = balance < 0 ? -balance : 0
-  draft.money = balance + unpaid
+  draft.money += earned - owed
   draft.stats.totalEarned += earned
-  draft.stats.totalSpent += owed - unpaid
+  draft.stats.totalSpent += owed
   draft.stats.rentEarned += rates.rent * months
 }

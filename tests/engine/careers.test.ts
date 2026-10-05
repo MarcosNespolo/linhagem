@@ -42,7 +42,8 @@ const yearDays = (n: number) => n * BALANCE.daysPerYear
 
 /** Partida em que o casal fundador começa a trabalhar no dia 0, no 1º nível. */
 function beginners(seed: number): GameState {
-  let state = makeGame(seed)
+  // Com dinheiro guardado, o salário de começo não leva a família ao vermelho.
+  let state = withMoney(makeGame(seed), 1_000_000)
   for (const founder of founders(state)) {
     state = setMember(state, founder.id, {
       career: { id: founder.career!.id, level: 0, levelSince: 0 },

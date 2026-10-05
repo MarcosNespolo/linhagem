@@ -52,17 +52,11 @@ describe('arquivo da árvore', () => {
     for (const founder of founders(state)) expect(after.members[founder.id]).toBeDefined()
   })
 
-  it('ficam quem tem filho na árvore, quem vive fora de casa, quem está no histórico e o par de quem fica', () => {
+  it('ficam quem tem filho na árvore, quem está vivo, quem está no histórico e o par de quem fica', () => {
     let state = withGone(makeGame(1), CAP + 20)
-    const day = state.clock.day
-    // m3 é mãe de m4; m5 saiu de casa e ainda vive; m6 aparece no histórico; m7 é viúvo de m1, viva.
+    // m3 é mãe de m4; m5 está vivo; m6 aparece no histórico; m7 é viúvo de m1, viva.
     state = setMember(state, 'm4', { parentIds: ['m3'] })
-    state = setMember(state, 'm5', {
-      leftHome: true,
-      birthDay: day - 30 * BALANCE.daysPerYear,
-      deathDay: day,
-      lifespan: 80,
-    })
+    state = setMember(state, 'm5', { deathDay: null })
     state = { ...state, log: [{ type: 'retired', day: 0, memberId: 'm6' }] }
     state = setMember(state, 'm7', { partnerId: 'm1' })
     // m8 e m9 são um casal que terminou: saem juntos.

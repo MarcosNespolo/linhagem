@@ -7,6 +7,7 @@ import {
   applyAction,
   bestOffer,
   calendarDate,
+  daysToBankruptcy,
   familyRates,
   isEnrollmentDay,
   isWaiting,
@@ -275,16 +276,47 @@ describe('advance', () => {
     )
   })
 
-  it('nunca deixa o saldo negativo e só registra a despesa paga', () => {
-    let start = withChild(makeGame(10))
-    for (const member of founders(start)) start = setMember(start, member.id, { career: null })
-    start = withMoney(start, 90)
+  it('sem renda para as despesas, o saldo fica negativo e o relógio para no dia em que entra no vermelho', () => {
+    const start = broke()
+    const { state, events } = advance(start, days(60))
+    expect(state.money).toBeLessThan(0)
+    expect(state.clock.day).toBeLessThan(60)
+    expect(state.debtSince).toBe(state.clock.day)
+    expect(state.clock.paused).toBe(true)
+    expect(events.at(-1)).toEqual({ type: 'inDebt', day: state.clock.day })
+    expect(daysToBankruptcy(state)).toBe(BALANCE.debt.graceDays)
+    expectClose(state.stats.totalSpent - start.stats.totalSpent, 90 - state.money)
+  })
 
-    const { state } = advance(start, days(60))
-    expect(state.money).toBe(0)
-    expectClose(state.stats.totalSpent - start.stats.totalSpent, 90)
+  it('um ano no vermelho leva à falência, e depois dela o relógio não anda mais', () => {
+    const red = advance(broke(), days(60)).state
+    // O jogador continua e responde as matrículas do filho, sem dinheiro entrando.
+    const state = play(red, years(2))
+    const day = red.debtSince! + BALANCE.debt.graceDays
+    expect(state.bankruptDay).toBe(day)
+    expect(state.clock.day).toBe(day)
+    expect(state.log.at(-1)).toEqual({ type: 'bankrupt', day })
+    expect(isWaiting(state)).toBe(true)
+    const again = expectOk(applyAction(state, { type: 'resume' })).state
+    expect(advance(again, years(1)).state.clock.day).toBe(day)
+  })
+
+  it('voltando ao azul antes do prazo, o prazo some', () => {
+    const red = advance(broke(), days(60)).state
+    const saved = withMoney(expectOk(applyAction(red, { type: 'resume' })).state, 1_000_000)
+    const { state, events } = advance(saved, days(1))
+    expect(state.debtSince).toBeNull()
+    expect(daysToBankruptcy(state)).toBeNull()
+    expect(events).toContainEqual({ type: 'outOfDebt', day: state.clock.day })
   })
 })
+
+/** Família sem renda, com um filho e R$ 90 no caixa: entra no vermelho no primeiro dia. */
+function broke() {
+  let state = withChild(makeGame(10))
+  for (const member of founders(state)) state = setMember(state, member.id, { career: null })
+  return withMoney(state, 90)
+}
 
 describe('advanceTo', () => {
   it('simula o tempo real desde a última simulação', () => {

@@ -3,37 +3,40 @@ import { MISSION_IDS, missionInfo, type MissionId } from '../content/missions'
 import { addBoost } from './boost'
 import { familyRates } from './economy'
 import { ageOf, livingMembers } from './members'
-import { freePlaces, totalProperties } from './properties'
+import { totalProperties } from './properties'
 import { createRng, hashString, type Rng } from './rng'
 import type { GameEvent, GameState, MissionState } from './types'
 
 /**
  * A meta se ajusta ao momento da família: cada missão só aparece quando dá
  * para cumprir. Formatura pede alguém na faculdade ou no técnico; Investidor,
- * o primeiro imóvel; e Chá de bebê e Casa cheia, lugar em casa para mais gente.
+ * o primeiro imóvel; Chá de bebê, um casal na idade de ter filhos; e Casa
+ * cheia, um casal assim ou alguém para casar.
  */
 function isEligible(state: GameState, id: MissionId): boolean {
   const day = state.clock.day
   const living = livingMembers(state)
-  switch (id) {
-    case 'chaDeBebe': {
-      if (freePlaces(state) < 1) return false
-      const { minParentAge, maxParentAge } = BALANCE.children
-      const fertile = (age: number) => age >= minParentAge && age <= maxParentAge
-      return living.some((member) => {
-        const partner = member.partnerId ? state.members[member.partnerId] : undefined
-        return (
-          partner?.deathDay === null && fertile(ageOf(member, day)) && fertile(ageOf(partner, day))
-        )
-      })
-    }
-    case 'casorio':
-      return living.some(
-        (member) =>
-          member.partnerId === null &&
-          member.origin !== 'married' &&
-          ageOf(member, day) >= BALANCE.adultAge - 2,
+  const { minParentAge, maxParentAge } = BALANCE.children
+  const fertile = (age: number) => age >= minParentAge && age <= maxParentAge
+  const couple = () =>
+    living.some((member) => {
+      const partner = member.partnerId ? state.members[member.partnerId] : undefined
+      return (
+        partner?.deathDay === null && fertile(ageOf(member, day)) && fertile(ageOf(partner, day))
       )
+    })
+  const single = () =>
+    living.some(
+      (member) =>
+        member.partnerId === null &&
+        member.origin !== 'married' &&
+        ageOf(member, day) >= BALANCE.adultAge - 2,
+    )
+  switch (id) {
+    case 'chaDeBebe':
+      return couple()
+    case 'casorio':
+      return single()
     case 'carteira':
       return living.some((member) => {
         const age = ageOf(member, day)
@@ -57,7 +60,7 @@ function isEligible(state: GameState, id: MissionId): boolean {
     case 'investidor':
       return totalProperties(state) > 0
     case 'casaCheia':
-      return freePlaces(state) >= 1
+      return couple() || single()
     case 'peDeMeia':
       return familyRates(state).net > 0
   }

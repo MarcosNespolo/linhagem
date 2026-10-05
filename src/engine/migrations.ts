@@ -8,7 +8,7 @@ import { ageInYears, lastDayOfYear } from './time'
 import type { GameState } from './types'
 
 /** Versão atual do formato do save. Sobe a cada migração nova. */
-export const CURRENT_SCHEMA_VERSION = 13
+export const CURRENT_SCHEMA_VERSION = 14
 
 export type SaveErrorCode = 'corrupt' | 'futureVersion' | 'missingMigration'
 
@@ -276,6 +276,35 @@ const toVersion13: Migration = (save) => {
 }
 
 /**
+ * Versão 14: ninguém sai mais de casa por falta de lugar, e o saldo pode
+ * ficar negativo, com prazo para a falência. Quem tinha saído para formar a
+ * própria família volta para ela, se ainda estiver vivo; quem já passou da
+ * expectativa de vida fica como falecido nesse dia.
+ */
+const toVersion14: Migration = (save) => {
+  const members = isRecord(save.members) ? save.members : {}
+  const day = isRecord(save.clock) && typeof save.clock.day === 'number' ? save.clock.day : 0
+  const upgraded: RawSave = {}
+  for (const [id, member] of Object.entries(members)) {
+    if (!isRecord(member)) {
+      upgraded[id] = member
+      continue
+    }
+    const { leftHome, ...rest } = member
+    if (
+      leftHome === true &&
+      typeof rest.birthDay === 'number' &&
+      typeof rest.lifespan === 'number'
+    ) {
+      const end = rest.birthDay + rest.lifespan * BALANCE.daysPerYear
+      rest.deathDay = day < end ? null : end
+    }
+    upgraded[id] = rest
+  }
+  return { ...save, members: upgraded, debtSince: null, bankruptDay: null }
+}
+
+/**
  * Migrações, indexadas pela versão de origem. São sempre aditivas: criam
  * campos novos com valores padrão e nunca apagam dados do jogador; uma troca
  * de unidade, como a do dinheiro na versão 3, converte o valor sem perder
@@ -296,6 +325,7 @@ export const MIGRATIONS: Readonly<Record<number, Migration>> = {
   10: toVersion11,
   11: toVersion12,
   12: toVersion13,
+  13: toVersion14,
 }
 
 /** Valida um save lido de JSON e o leva até a versão atual. */

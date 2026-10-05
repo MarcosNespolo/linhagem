@@ -34,6 +34,8 @@ export function newGame({ seed, now, startDate, familyName }: NewGameOptions): G
     clock: { day: 0, tickOfDay: 0, paused: false },
     lastSimulatedAt: now,
     money: BALANCE.startingMoney,
+    debtSince: null,
+    bankruptDay: null,
     members: {},
     nextMemberId: 1,
     suitors: {},

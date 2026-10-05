@@ -8,6 +8,7 @@ import {
   type GameState,
 } from '@/engine'
 import { useGameStore } from '@/game/store'
+import { formatMoney } from '@/lib/format'
 import { BottomNav } from './bottom-nav'
 import { showMember } from './flows'
 import { generationLabel } from './labels'
@@ -17,6 +18,7 @@ import { ChoiceSheet } from './sheets/choice-sheet'
 import { CloudLoginSheet } from './sheets/cloud-login-sheet'
 import { ConfirmNewFamilySheet } from './sheets/confirm-new-family-sheet'
 import { ConflictSheet } from './sheets/conflict-sheet'
+import { DebtSheet } from './sheets/debt-sheet'
 import { MemberSheet } from './sheets/member-sheet'
 import { MissionsSheet } from './sheets/missions-sheet'
 import { PartnerSheet } from './sheets/partner-sheet'
@@ -45,12 +47,20 @@ export function Shell({ game }: { game: GameState }) {
   const showDeceased = useUiStore((store) => store.showDeceased)
   const hiddenChoices = useUiStore((store) => store.hiddenChoices)
   const hideChoices = useUiStore((store) => store.hideChoices)
+  const debtSeen = useUiStore((store) => store.debtSeen)
   const away = useGameStore((store) => store.away)
   const cloud = useGameStore((store) => store.cloud)
 
   const actions = loveActions(game)
   const net = familyRates(game).net
   const ended = livingMembers(game).length === 0
+  const bankrupt = game.bankruptDay !== null
+  // O aviso abre no dia em que a família entra no vermelho, com o tempo parado.
+  const debtWarning =
+    !bankrupt &&
+    game.clock.paused &&
+    game.debtSince === game.clock.day &&
+    debtSeen !== game.debtSince
   const selectedId = sheet?.kind === 'member' ? sheet.memberId : null
   const openChoices = choicesKey(game)
 
@@ -59,7 +69,9 @@ export function Shell({ game }: { game: GameState }) {
       <Hud game={game} net={net} />
       <NoticeBanner />
       <main className="relative min-h-0 flex-1 overflow-hidden">
-        {tab === 'family' ? (
+        {bankrupt && tab !== 'settings' ? (
+          <Bankrupt game={game} />
+        ) : tab === 'family' ? (
           <div className="flex h-full flex-col">
             <ViewSwitch views={FAMILY_VIEWS} value={familyView} onChange={setFamilyView} />
             <div className="relative min-h-0 flex-1">
@@ -119,6 +131,8 @@ export function Shell({ game }: { game: GameState }) {
         <AwaySheet game={game} away={away} />
       ) : openChoices && hiddenChoices !== openChoices ? (
         <ChoiceSheet game={game} onHide={() => hideChoices(openChoices)} />
+      ) : debtWarning ? (
+        <DebtSheet game={game} />
       ) : null}
     </div>
   )
@@ -217,6 +231,28 @@ function FamilyEnded({ game }: { game: GameState }) {
             : `Foram ${generations} gerações`}{' '}
           e {members.length} pessoas. Para a linhagem continuar, os filhos precisam casar e ter
           filhos.
+        </p>
+        <button type="button" className={`${button.primary} mt-5`} onClick={openSetup}>
+          Começar outra família
+        </button>
+      </div>
+    </div>
+  )
+}
+
+/** Fim da partida por falência: a família ficou um ano no vermelho. */
+function Bankrupt({ game }: { game: GameState }) {
+  const openSetup = useGameStore((store) => store.openSetup)
+  const members = Object.values(game.members)
+  const generations = Math.max(...members.map((member) => member.generation)) + 1
+  return (
+    <div className="grid h-full place-items-center px-6">
+      <div className="max-w-sm text-center">
+        <p className="text-2xl font-extrabold">A família {game.familyName} faliu</p>
+        <p className="tabular text-ink-soft mt-2 text-[16px]">
+          Um ano no vermelho, com {formatMoney(game.money)} no fim.{' '}
+          {generations === 1 ? 'Uma geração' : `${generations} gerações`} e {members.length}{' '}
+          pessoas.
         </p>
         <button type="button" className={`${button.primary} mt-5`} onClick={openSetup}>
           Começar outra família

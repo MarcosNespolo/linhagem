@@ -14,7 +14,6 @@ import { BALANCE } from '@/content/balance'
 import { careerLevel } from '@/content/careers'
 import { isHigherStage, techCourseName, type Network } from '@/content/schools'
 import {
-  ageOf,
   ageThisYear,
   aptitudeOf,
   canHaveTutor,
@@ -27,7 +26,6 @@ import {
   incomeOf,
   isRetired,
   isUnemployed,
-  livesAway,
   livingCost,
   memberExpense,
   nextExamDay,
@@ -71,7 +69,6 @@ export function MemberSheet({ game, member }: { game: GameState; member: Member 
   const closeSheet = useUiStore((store) => store.closeSheet)
   const day = game.clock.day
   const alive = member.deathDay === null
-  const away = livesAway(member, day)
   const partner = partnerOf(game, member)
   const parents = member.parentIds.map((id) => game.members[id]).filter(Boolean)
   const children = childrenOf(game, member.id)
@@ -80,9 +77,7 @@ export function MemberSheet({ game, member }: { game: GameState; member: Member 
   const formation = member.education.formation
   const choice = game.choices.find((open) => open.memberId === member.id)
   const career = member.career
-  // Quem mora com a própria família continua trabalhando, mas fora das contas e das promoções.
-  const working =
-    (alive && !isRetired(member, day)) || (away && ageOf(member, day) < BALANCE.retirementAge)
+  const working = alive && !isRetired(member, day)
   const promotion = alive && working && career ? promotionStatus(member, day) : null
   const course = alive ? courseFor(member, day) : null
 
@@ -93,16 +88,14 @@ export function MemberSheet({ game, member }: { game: GameState; member: Member 
           person={member}
           day={day}
           size={88}
-          className={`ring-canvas shrink-0 rounded-full ring-4 ${alive || away ? '' : 'opacity-60 grayscale'}`}
+          className={`ring-canvas shrink-0 rounded-full ring-4 ${alive ? '' : 'opacity-60 grayscale'}`}
         />
         <div className="min-w-0">
           <h2 className="truncate text-2xl font-extrabold">{member.firstName}</h2>
           <p className="text-ink-soft text-[15px]">
             {ageLabel(member, day)}
-            {alive || away ? (
-              <span className="text-ink block font-semibold">
-                {alive ? roleLabel(member, day) : 'Mora com a própria família'}
-              </span>
+            {alive ? (
+              <span className="text-ink block font-semibold">{roleLabel(member, day)}</span>
             ) : null}
           </p>
         </div>
@@ -124,14 +117,6 @@ export function MemberSheet({ game, member }: { game: GameState; member: Member 
             <span className="tabular">{formatMoney(livingCost(member, day))}/mês</span>
             <span className="text-ink-soft block text-[13px] font-normal">
               {livingCostLine(member, day)}
-            </span>
-          </Fact>
-        ) : null}
-        {member.leftHome && member.deathDay !== null ? (
-          <Fact label="Saiu de casa">
-            {formatMonthYear(calendarDate(game.startDate, member.deathDay))}
-            <span className="text-ink-soft block text-[13px] font-normal">
-              Casou sem lugar em casa e foi formar a própria família
             </span>
           </Fact>
         ) : null}
@@ -471,7 +456,7 @@ function PersonChip({ game, person }: { game: GameState; person: Member }) {
         person={person}
         day={game.clock.day}
         size={26}
-        className={`shrink-0 rounded-full ${person.deathDay === null || livesAway(person, game.clock.day) ? '' : 'opacity-60 grayscale'}`}
+        className={`shrink-0 rounded-full ${person.deathDay === null ? '' : 'opacity-60 grayscale'}`}
       />
       <span className="truncate text-[14px]">{person.firstName}</span>
     </button>

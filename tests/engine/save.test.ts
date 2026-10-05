@@ -1,5 +1,6 @@
 import { readdirSync, readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
+import { BALANCE } from '@/content/balance'
 import { PROPERTY_TYPES } from '@/content/properties'
 import {
   advance,
@@ -109,19 +110,42 @@ describe('save', () => {
     expect(state.clock).toEqual(v2.clock)
     expect(state.choices).toEqual([])
     for (const [id, member] of Object.entries(state.members)) {
-      const { education, concurso, career, aptitude, leftHome, unemployedUntil, ...rest } = member
+      const { education, concurso, career, aptitude, unemployedUntil, ...rest } = member
       const { career: before, ...restBefore } = v2.members[id]
       expect(rest).toEqual(restBefore)
       expect(education.formation).toEqual({ level: 'medio' })
       expect(concurso).toBeNull()
       expect(aptitude).toBe(baseAptitude(member.avatarSeed, id))
-      expect(leftHome).toBe(false)
       expect(unemployedUntil).toBeNull()
       // A carreira fica no mesmo nível, com o tempo contando a partir da migração.
       expect(career).toEqual(
         before && { id: before.id, level: before.level, levelSince: v2.clock.day },
       )
     }
+  })
+
+  it('a versão 13 traz de volta quem saiu de casa e começa no azul', () => {
+    const v13 = JSON.parse(readFileSync(new URL('save-v13.json', FIXTURES), 'utf8')) as GameState
+    const day = v13.clock.day
+    const [first, second] = Object.keys(v13.members)
+    const away = (id: string, lifespan: number) => ({
+      ...v13.members[id],
+      leftHome: true,
+      deathDay: day - 10,
+      birthDay: day - 40 * BALANCE.daysPerYear,
+      lifespan,
+    })
+    const save = {
+      ...v13,
+      members: { ...v13.members, [first]: away(first, 80), [second]: away(second, 30) },
+    }
+    const state = deserialize(JSON.stringify(save))
+    expect(state.members[first].deathDay).toBeNull()
+    expect(state.members[second].deathDay).toBe(day - 10 * BALANCE.daysPerYear)
+    for (const member of Object.values(state.members)) expect('leftHome' in member).toBe(false)
+    expect(state.debtSince).toBeNull()
+    expect(state.bankruptDay).toBeNull()
+    expect(state.money).toBe(v13.money)
   })
 
   it('a versão 12 ganha os lotes do bairro, nos primeiros de cada tipo', () => {
@@ -146,13 +170,13 @@ describe('save', () => {
     expect(state.money).toBe(v11.money)
   })
 
-  it('a versão 10 ganha quem saiu de casa, o desemprego e o arquivo da árvore, sem mudar o resto', () => {
+  it('a versão 10 ganha o desemprego e o arquivo da árvore, sem mudar o resto', () => {
     const json = readFileSync(new URL('save-v10.json', FIXTURES), 'utf8')
     const v10 = JSON.parse(json) as GameState
     const state = deserialize(json)
     expect(state.stats).toEqual({ ...v10.stats, archived: 0 })
     for (const [id, member] of Object.entries(state.members)) {
-      expect(member).toEqual({ ...v10.members[id], leftHome: false, unemployedUntil: null })
+      expect(member).toEqual({ ...v10.members[id], unemployedUntil: null })
     }
     expect(state.properties).toEqual(v10.properties)
     expect(state.money).toBe(v10.money)

@@ -6,6 +6,7 @@ import {
   boostTicksLeft,
   calendarDate,
   claimableMissions,
+  daysToBankruptcy,
   isMissionDone,
   TICKS_PER_DAY,
   type GameState,
@@ -16,7 +17,8 @@ import { useUiStore } from './ui-store'
 
 /**
  * Barra do topo: nome da família, data, missões do dia, dinheiro, renda por
- * mês, pausa e Ajustes. Com a renda em dobro, uma faixa mostra o tempo que falta.
+ * mês, pausa e Ajustes. Uma faixa embaixo mostra as escolhas abertas, o prazo
+ * para a falência no vermelho, o tempo pausado ou o que falta da renda em dobro.
  */
 export function Hud({ game, net }: { game: GameState; net: number }) {
   const dispatch = useGameStore((store) => store.dispatch)
@@ -27,6 +29,8 @@ export function Hud({ game, net }: { game: GameState; net: number }) {
   const paused = game.clock.paused
   const waiting = waitingText(game)
   const boostLeft = boostTicksLeft(game)
+  const debtLeft = daysToBankruptcy(game)
+  const ended = game.bankruptDay !== null
 
   return (
     <header className="border-line bg-surface z-20 shrink-0 border-b px-4 pt-[max(env(safe-area-inset-top),0.75rem)] pb-3">
@@ -48,8 +52,14 @@ export function Hud({ game, net }: { game: GameState; net: number }) {
           </div>
         </div>
         <div className="shrink-0 text-right">
-          <p className="tabular flex items-baseline justify-end gap-1 text-[24px] leading-7 font-black">
-            <span className="text-gold text-[16px] font-extrabold">R$</span>
+          <p
+            className={`tabular flex items-baseline justify-end gap-1 text-[24px] leading-7 font-black ${game.money < 0 ? 'text-expense' : ''}`}
+          >
+            <span
+              className={`text-[16px] font-extrabold ${game.money < 0 ? 'text-expense' : 'text-gold'}`}
+            >
+              R$
+            </span>
             {formatAmount(game.money)}
           </p>
           <p
@@ -58,20 +68,22 @@ export function Hud({ game, net }: { game: GameState; net: number }) {
             {formatRate(net)}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => dispatch({ type: paused ? 'resume' : 'pause' })}
-          aria-label={paused ? 'Continuar o tempo' : 'Pausar o tempo'}
-          className={`grid size-11 shrink-0 place-items-center rounded-full transition active:scale-95 ${
-            paused ? 'bg-gold text-white' : 'bg-leaf-soft text-leaf-strong'
-          }`}
-        >
-          {paused ? (
-            <Play size={20} fill="currentColor" />
-          ) : (
-            <Pause size={20} fill="currentColor" />
-          )}
-        </button>
+        {ended ? null : (
+          <button
+            type="button"
+            onClick={() => dispatch({ type: paused ? 'resume' : 'pause' })}
+            aria-label={paused ? 'Continuar o tempo' : 'Pausar o tempo'}
+            className={`grid size-11 shrink-0 place-items-center rounded-full transition active:scale-95 ${
+              paused ? 'bg-gold text-white' : 'bg-leaf-soft text-leaf-strong'
+            }`}
+          >
+            {paused ? (
+              <Play size={20} fill="currentColor" />
+            ) : (
+              <Pause size={20} fill="currentColor" />
+            )}
+          </button>
+        )}
         <button
           type="button"
           onClick={() => setTab(tab === 'settings' ? 'family' : 'settings')}
@@ -95,7 +107,12 @@ export function Hud({ game, net }: { game: GameState; net: number }) {
             Escolher
           </button>
         </div>
-      ) : paused ? (
+      ) : debtLeft !== null && !ended ? (
+        <p className="bg-rose-soft text-expense mx-auto mt-2 max-w-3xl rounded-xl px-3 py-1.5 text-center text-[13px] font-bold">
+          No vermelho: falência em {formatGameSpan(debtLeft, BALANCE.daysPerYear)}
+          {paused ? ' · tempo pausado' : ''}
+        </p>
+      ) : paused && !ended ? (
         <p className="bg-gold-soft text-gold mx-auto mt-2 max-w-3xl rounded-xl px-3 py-1.5 text-center text-[13px] font-bold">
           Tempo pausado. Ninguém envelhece e o dinheiro não entra.
         </p>

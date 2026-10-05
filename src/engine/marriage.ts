@@ -3,7 +3,6 @@ import { rollAppearance } from './appearance'
 import { refuse, type Refusal } from './errors'
 import { rollSuitorBackground } from './jobs'
 import { addMember, ageOf, isAlive, rollAvatarSeed, rollFirstName, rollLifespan } from './members'
-import { freePlaces } from './properties'
 import type { Rng } from './rng'
 import { newEducation, suitorAptitude } from './school'
 import type { GameState, Member, MemberId, Suitor } from './types'
@@ -26,12 +25,8 @@ export function checkSeekPartner(state: GameState, memberId: MemberId): { ok: tr
   return { ok: true }
 }
 
-/**
- * Resultado da checagem de casamento. `leavesHome`: a família não tem lugar
- * para o par, então o casal vai formar a própria família.
- */
-export type MarriageCheck =
-  { ok: true; cost: number; suitor: Suitor; leavesHome: boolean } | Refusal
+/** Resultado da checagem de casamento. Sem lugar em casa, o par mora de aluguel. */
+export type MarriageCheck = { ok: true; cost: number; suitor: Suitor } | Refusal
 
 /** Diz se o membro pode casar agora com a pessoa sugerida de índice `suitorIndex`. */
 export function checkMarry(
@@ -45,7 +40,7 @@ export function checkMarry(
   if (!suitor) return refuse('suitorNotFound')
   const cost = weddingCost()
   if (state.money < cost) return refuse('notEnoughMoney')
-  return { ok: true, cost, suitor, leavesHome: freePlaces(state) < 1 }
+  return { ok: true, cost, suitor }
 }
 
 /** Sorteia as pessoas sugeridas como par para o membro, sem nomes repetidos. */
@@ -119,23 +114,4 @@ export function joinFamily(draft: GameState, rng: Rng, member: Member, suitor: S
   member.marriedDay = day
   spouse.marriedDay = day
   return spouse
-}
-
-/**
- * O casal vai formar a própria família: os dois saem da simulação no dia de
- * hoje e ficam na árvore como um ramo. Altera o rascunho.
- */
-export function leaveHome(draft: GameState, member: Member, spouse: Member): void {
-  const day = draft.clock.day
-  for (const person of [member, spouse]) {
-    person.deathDay = day
-    person.leftHome = true
-    person.concurso = null
-    person.unemployedUntil = null
-    person.education.tutorSince = null
-  }
-  draft.choices = draft.choices.filter(
-    (choice) => choice.memberId !== member.id && choice.memberId !== spouse.id,
-  )
-  delete draft.suitors[member.id]
 }

@@ -16,7 +16,6 @@ import {
 import { BALANCE } from '@/content/balance'
 import { PROPERTY_TYPES, type PropertyId, type PropertyType } from '@/content/properties'
 import {
-  homePlaces,
   homesInUse,
   housingCost,
   isPropertyUnlocked,
@@ -76,15 +75,12 @@ function NeighborhoodView({ game }: { game: GameState }) {
     <div className="mx-auto w-full max-w-md space-y-3 px-4 pt-4 pb-8">
       <div className="grid grid-cols-2 gap-3">
         <section className={`${card} p-3`}>
-          <p className="text-ink-soft text-[13px] font-semibold">Lugares em casa</p>
-          <p className="tabular text-[20px] leading-7 font-black">
-            {living} de {homePlaces(game)}
+          <p className="text-ink-soft text-[13px] font-semibold">Moradia</p>
+          <p className="tabular text-expense text-[20px] leading-7 font-black">
+            {housing > 0 ? formatRate(-housing) : 'Nenhuma'}
           </p>
           <p className="tabular text-ink-soft text-[13px]">
-            Moradia{' '}
-            <span className="whitespace-nowrap">
-              {housing > 0 ? formatRate(-housing) : 'sem custo'}
-            </span>
+            {rentersLine(rentedPlaces(game, living))}
           </p>
         </section>
         <section className={`${card} p-3`}>
@@ -147,28 +143,20 @@ function PropertiesList({ game }: { game: GameState }) {
   const living = livingCount(game)
   const rent = rentPerMonth(game, living)
   const total = totalProperties(game)
-  const places = homePlaces(game)
   const rented = rentedPlaces(game, living)
   const housing = housingCost(game, living)
-  const { rentPerPlace, rentedPlaces: maxRented } = BALANCE.housing
 
   return (
     <div className="mx-auto w-full max-w-md space-y-5 px-4 pt-5 pb-8">
       <section className={`${card} p-4`}>
-        <p className="text-ink-soft text-[14px] font-semibold">Lugares em casa</p>
-        <p className="tabular text-[24px] leading-8 font-black">
-          {living} de {places}
+        <p className="text-ink-soft text-[14px] font-semibold">Moradia</p>
+        <p className="tabular text-expense text-[24px] leading-8 font-black">
+          {housing > 0 ? formatRate(-housing) : 'Nenhuma'}
         </p>
-        <p className="tabular text-ink-soft text-[14px]">
-          {rented > 0
-            ? `Moradia: ${formatRate(-housing)}, com ${rented === 1 ? '1 lugar alugado' : `${rented} lugares alugados`}`
-            : `Moradia: ${formatRate(-housing)} de contas das casas da família`}
-        </p>
+        <p className="tabular text-ink-soft text-[14px]">{rentersLine(rented)}</p>
         <p className="text-ink-soft mt-2 text-[13px]">
-          Cada pessoa precisa de um lugar: kitnet tem 2, apartamento 4 e casa 6. Quem não cabe nos
-          imóveis da família mora de aluguel, a {formatMoney(rentPerPlace)} por lugar por mês, até{' '}
-          {maxRented} lugares. Sem lugar livre, não dá para ter filho, e quem casa vai formar a
-          própria família.
+          Quem não cabe nos imóveis da família paga aluguel:{' '}
+          {formatMoney(BALANCE.housing.rentPerPlace)} por pessoa por mês.
         </p>
       </section>
 
@@ -287,4 +275,10 @@ function PropertyCard({
       )}
     </li>
   )
+}
+
+/** Quantas pessoas da família moram de aluguel. */
+function rentersLine(rented: number): string {
+  if (rented === 0) return 'Todos em imóveis da família'
+  return rented === 1 ? '1 pessoa de aluguel' : `${rented} pessoas de aluguel`
 }

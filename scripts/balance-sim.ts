@@ -15,9 +15,9 @@ import { parseArgs } from 'node:util'
 import { BALANCE } from '../src/content/balance'
 import {
   familyRates,
-  homePlaces,
   isBoosted,
   livingMembers,
+  rentedPlaces,
   rentPerMonth,
   serialize,
   totalProperties,
@@ -49,7 +49,7 @@ const snapshot = ({ state, counters, elapsedMs }: Autoplay) => {
     renda: formatRate(familyRates(state).income),
     saldo: formatRate(familyRates(state).net),
     vivos: livingMembers(state).length,
-    lugares: homePlaces(state),
+    'de aluguel': rentedPlaces(state),
     total: Object.keys(state.members).length,
     casamentos: counters.weddings,
     nascimentos: counters.births,
@@ -59,7 +59,8 @@ const snapshot = ({ state, counters, elapsedMs }: Autoplay) => {
     aluguel: formatRate(rentPerMonth(state)),
     '×2': isBoosted(state) ? 'sim' : '',
     recompensas: counters.rewards,
-    saíram: counters.leftHome,
+    vermelho: counters.debts,
+    faliu: counters.bankrupt ? 'sim' : '',
   })
 }
 

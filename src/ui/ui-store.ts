@@ -32,6 +32,8 @@ type UiStore = {
    * `choicesKey`. Uma escolha nova muda a chave e o painel volta a abrir.
    */
   hiddenChoices: string | null
+  /** Dia em que a família entrou no vermelho e o jogador já viu o aviso. */
+  debtSeen: number | null
   setTab: (tab: Tab) => void
   setFamilyView: (view: FamilyView) => void
   setPropertiesView: (view: PropertiesView) => void
@@ -39,6 +41,7 @@ type UiStore = {
   closeSheet: () => void
   setShowDeceased: (value: boolean) => void
   hideChoices: (key: string) => void
+  setDebtSeen: (day: number) => void
   /** Fecha o painel aberto e mostra as escolhas que esperam o jogador. */
   showChoices: () => void
 }
@@ -73,6 +76,7 @@ export const useUiStore = create<UiStore>()((set) => ({
   sheet: null,
   showDeceased: false,
   hiddenChoices: null,
+  debtSeen: null,
   setTab: (tab) => set({ tab, sheet: null }),
   setFamilyView: (familyView) => set({ familyView }),
   setPropertiesView: (propertiesView) => set({ propertiesView }),
@@ -83,6 +87,7 @@ export const useUiStore = create<UiStore>()((set) => ({
     set({ showDeceased })
   },
   hideChoices: (key) => set({ hiddenChoices: key }),
+  setDebtSeen: (debtSeen) => set({ debtSeen }),
   showChoices: () => set({ sheet: null, hiddenChoices: null }),
 }))
 

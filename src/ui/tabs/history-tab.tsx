@@ -16,6 +16,7 @@ import {
   School,
   Stethoscope,
   Sun,
+  TrendingDown,
   TrendingUp,
 } from 'lucide-react'
 import type { ReactNode } from 'react'
@@ -43,6 +44,9 @@ const ICONS: Record<LogEvent['type'], ReactNode> = {
   schoolFinished: <GraduationCap size={17} />,
   enem: <FileText size={16} />,
   propertyBought: <Building2 size={16} />,
+  inDebt: <TrendingDown size={16} />,
+  outOfDebt: <TrendingUp size={16} />,
+  bankrupt: <TrendingDown size={16} />,
 }
 
 const TONES: Record<LogEvent['type'], string> = {
@@ -64,6 +68,9 @@ const TONES: Record<LogEvent['type'], string> = {
   schoolFinished: 'bg-gold-soft text-gold',
   enem: 'bg-leaf-soft text-leaf-strong',
   propertyBought: 'bg-gold-soft text-gold',
+  inDebt: 'bg-rose-soft text-expense',
+  outOfDebt: 'bg-leaf-soft text-leaf-strong',
+  bankrupt: 'bg-rose-soft text-expense',
 }
 
 /** Aba Histórico: os acontecimentos da família, do mais recente para o mais antigo. */
@@ -99,7 +106,7 @@ export function HistoryTab({ game }: { game: GameState }) {
           <ul className={`${card} divide-line mt-2 divide-y`}>
             {items.map(({ event, date }, index) => (
               <li
-                key={`${event.type}-${'memberId' in event ? event.memberId : event.propertyId}-${event.day}-${index}`}
+                key={`${event.type}-${'memberId' in event ? event.memberId : 'propertyId' in event ? event.propertyId : 'familia'}-${event.day}-${index}`}
                 className="flex items-center gap-3 px-3 py-2.5"
               >
                 <span

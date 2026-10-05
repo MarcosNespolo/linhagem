@@ -5,6 +5,7 @@ import {
   checkHaveChild,
   childCooldownDaysLeft,
   childCost,
+  rentedPlaces,
   FAMILY_NAME_MAX_LENGTH,
   type GameState,
 } from '@/engine'
@@ -57,19 +58,15 @@ describe('ter filho', () => {
     expect(childCost()).toBe(BALANCE.children.birthCost)
   })
 
-  it('precisa de lugar em casa: a casa alugada tem 4, e cada imóvel de moradia soma os dele', () => {
+  it('não precisa de lugar em casa: quem não cabe nos imóveis da família paga aluguel', () => {
     let state = withMoney(makeGame(2), 1_000_000)
-    for (let i = 0; i < 2; i++) {
+    for (let i = 0; i < 4; i++) {
       state = expectOk(haveChild(state)).state
       state = play(state, days(BALANCE.children.cooldownDays))
     }
-    expect(Object.keys(state.members)).toHaveLength(BALANCE.housing.rentedPlaces)
-    expect(haveChild(state)).toEqual({ ok: false, error: 'noRoom' })
-
-    expect(haveChild(withHomes(state, { kitnet: 1 })).ok).toBe(true)
-    const child = lastMember(state)
-    const lessOne = setMember(state, child.id, { deathDay: state.clock.day })
-    expect(haveChild(lessOne).ok).toBe(true)
+    expect(Object.keys(state.members)).toHaveLength(6)
+    expect(rentedPlaces(state)).toBe(6)
+    expect(haveChild(state).ok).toBe(true)
   })
 
   it('respeita o intervalo entre filhos', () => {

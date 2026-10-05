@@ -95,8 +95,9 @@ export const workPolicy: Policy = (state) =>
 
 /**
  * Avança `ms` como um jogador que responde cada escolha (com a sugestão, ou
- * com `answer`) e segue jogando. Com `stopAt`, para na primeira escolha desse
- * tipo e a deixa aberta.
+ * com `answer`) e segue jogando: no vermelho, o jogo pausa para avisar e ele
+ * continua. Com `stopAt`, para na primeira escolha desse tipo e a deixa
+ * aberta; na falência, para ali.
  */
 export function play(
   state: GameState,
@@ -116,6 +117,8 @@ export function play(
       const picks = answer(current)
       current = expectOk(applyAction(current, { type: 'choose', picks })).state
     }
+    if (current.bankruptDay !== null) return current
+    if (current.clock.paused) current = expectOk(applyAction(current, { type: 'resume' })).state
   }
   return current
 }

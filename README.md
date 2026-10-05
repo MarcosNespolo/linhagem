@@ -25,27 +25,27 @@ Jogue em [linhagem.vercel.app](https://linhagem.vercel.app).
 - Acompanhar na aba Trabalho as carreiras, os níveis e as promoções, e pagar os cursos que levam
   ao 4º e ao 5º nível
 - Casar quem fez 18 anos, escolhendo entre pessoas sugeridas, cada uma com formação e emprego; o
-  cônjuge entra na família e trabalha. Sem lugar em casa, o casal sai para formar a própria
-  família e continua na árvore como um ramo
+  cônjuge entra na família e trabalha. Sem lugar em casa, o casal paga aluguel
 - Comprar imóveis na aba Imóveis, que mostra o bairro desenhado: kitnets, apartamentos e casas
   dão lugar para a família morar, e os que ela não usa, como os comerciais, rendem aluguel todo
   mês
 - Cumprir as três missões do dia, que valem até a meia-noite, e pegar a recompensa: meses de renda
   ou a renda em dobro por 5 anos do jogo
-- Acompanhar o dinheiro em reais, com salários, aluguel, custo de vida (mercado, plano de saúde,
-  transporte e moradia) e o 13º salário em dezembro, e passar por imprevistos: demissão, cirurgia
-  e conserto do carro
+- Acompanhar o dinheiro em reais, a partir do zero, com salários, aluguel, custo de vida (mercado,
+  plano de saúde, transporte e moradia) e o 13º salário em dezembro, e passar por imprevistos:
+  demissão, cirurgia e conserto do carro
+- Perder o jogo: um ano no vermelho leva a família à falência
 - Ver a família numa árvore com zoom e arrasto, com quem já morreu esmaecido
 - Ver o histórico na aba Família: nascimentos, casamentos, estudos, empregos, promoções,
   imprevistos e mortes
 - Voltar ao jogo e ver o resumo do que aconteceu enquanto esteve fora
 - Entrar com e-mail, sem senha, para guardar a família na nuvem e continuar em outro aparelho
 
-Os preços são fixos: um filho custa R$ 15 mil, um casamento, R$ 30 mil, e cada imóvel, sempre o
-mesmo. O que limita a família é o lugar em casa: cada pessoa precisa de um, e o bairro tem 10
-kitnets, 10 apartamentos e 10 casas à venda. O que limita o aluguel é haver poucos imóveis
-comerciais à venda de cada vez. Na simulação de 10 horas, a família chega a cerca de 120 pessoas
-vivas.
+A família começa com R$ 0. Os preços são fixos: um filho custa R$ 15 mil, um casamento, R$ 30 mil,
+e cada imóvel, sempre o mesmo. O que limita a família é o dinheiro: quem não cabe nos imóveis
+dela paga aluguel, e para ter mais filhos é preciso ganhar mais. Se o saldo fica negativo, o jogo
+para e avisa, e a família tem um ano do jogo para voltar ao azul antes da falência. O que limita o
+aluguel que ela recebe é haver poucos imóveis comerciais à venda de cada vez.
 
 ## Stack
 
@@ -189,15 +189,25 @@ calendário exatamente igual.
 Todo sorteio usa um gerador com seed guardada no save, então a mesma partida avançada da mesma
 forma chega sempre ao mesmo estado. Os testes conferem isso.
 
+## Dinheiro e falência
+
+A família começa com R$ 0, e o saldo pode ficar negativo (`src/engine/debt.ts`, com o prazo em
+`BALANCE.debt`). Na virada do dia em que o saldo fica negativo, o relógio para e um aviso mostra o
+saldo, a renda e as despesas; o topo passa a mostrar quanto falta para a falência. Se a família
+voltar ao azul, o prazo some. Se ficar um ano do jogo no vermelho, ela vai à falência: a partida
+acaba, o relógio não anda mais e o jogo oferece começar outra família. Com o jogo fechado, o
+relógio também para ao entrar no vermelho, mas o prazo já iniciado continua correndo. Imprevistos
+continuam cobrando só o que cabe no caixa, para a falência vir das escolhas, e não do azar.
+
 ## Moradia e imóveis
 
 Cada pessoa da família precisa de um lugar em casa. Kitnet tem 2 lugares, apartamento 4 e casa 6,
 e o bairro tem 10 de cada, com preço fixo: R$ 80 mil, R$ 450 mil e R$ 1,5 milhão. Quem não cabe nos
-imóveis da família mora de aluguel, a R$ 350 por lugar, até 4 lugares. Sem lugar livre, o casal não
-pode ter filho, e quem casa sai de casa com o par para formar a própria família: os dois continuam
-na árvore como um ramo, envelhecendo até a expectativa de vida, mas saem das contas. A família mora
-primeiro nos imóveis que rendem menos aluguel por lugar (kitnets, depois apartamentos e casas) e
-paga as contas deles, de condomínio, IPTU e manutenção; os outros ficam alugados.
+imóveis da família mora de aluguel, a R$ 600 por pessoa por mês, sem limite: ninguém sai da
+família por falta de lugar. A família mora primeiro nos imóveis que rendem menos aluguel por
+lugar (kitnets, depois apartamentos e casas) e paga as contas deles, de condomínio, IPTU e
+manutenção; os outros ficam alugados. Em saves antigos, quem tinha saído de casa por falta de
+lugar volta para a família.
 
 Os comerciais, da sala comercial ao shopping, também têm preço fixo, mas ficam à venda poucos de
 cada vez: até 2 de cada tipo, e um novo aparece num calendário fixo, a cada 2 anos do jogo na sala
@@ -248,10 +258,11 @@ Os números ficam em `src/content/balance.ts` e foram ajustados com uma simulaç
 jogo (`npm run sim`). Um jogador automático (`src/sim/autoplay.ts`) casa todos e tem até 4 filhos
 por casal; põe os filhos no colégio particular quando sobra renda depois de guardar um quarto dela,
 tenta a federal e paga a faculdade particular quando não passa; escolhe a vaga de maior salário,
-paga os cursos e pega as recompensas das missões. Filhos e casamentos vêm primeiro: quando falta
-lugar em casa para eles, o dinheiro vai para o imóvel de moradia com o lugar mais barato, e quando
-o bairro não tem mais imóvel de moradia, quem casa sai de casa. O resto vai para o imóvel que se
-paga mais rápido. O dia das missões vira a cada hora, como quem joga uma hora por dia.
+paga os cursos e pega as recompensas das missões. Filhos e casamentos vêm primeiro, mas a
+estratégia guarda 3 meses de despesa e só tem mais um filho com folga de R$ 2 mil na renda, para
+não ir à falência. O resto vai para o imóvel que se paga mais rápido; os de moradia contam o
+aluguel que a família deixa de pagar morando neles. O dia das missões vira a cada hora, como quem
+joga uma hora por dia.
 
 A simulação confere sete limites (`src/sim/limits.ts`) e sai com erro se algum falhar:
 

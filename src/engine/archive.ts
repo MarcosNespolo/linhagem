@@ -1,22 +1,19 @@
 import { BALANCE } from '../content/balance'
-import { lifeEndDay, livesAway } from './members'
 import type { GameState, Member, MemberId } from './types'
 
 /**
  * Tira da árvore guardada os ramos antigos que já terminaram, para o save não
  * crescer sem limite. Quando a árvore passa de `BALANCE.archive.maxMembers`
- * pessoas, saem as que só apareciam com "Mostrar quem já faleceu": quem morreu,
- * ou saiu de casa e já passou da expectativa de vida, sem filhos na árvore,
- * sem acontecimento no histórico e com o par na mesma situação. O casal sai
- * junto, e sai primeiro quem se foi há mais tempo. Altera o rascunho e devolve
- * quantas pessoas saíram.
+ * pessoas, saem as que só apareciam com "Mostrar quem já faleceu": quem morreu
+ * sem filhos na árvore, sem acontecimento no histórico e com o par na mesma
+ * situação. O casal sai junto, e sai primeiro quem morreu há mais tempo.
+ * Altera o rascunho e devolve quantas pessoas saíram.
  */
 export function archiveMembers(draft: GameState): number {
   const members = draft.members
   const excess = Object.keys(members).length - BALANCE.archive.maxMembers
   if (excess <= 0) return 0
 
-  const day = draft.clock.day
   const kept = new Set<MemberId>()
   for (const member of Object.values(members)) {
     for (const parentId of member.parentIds) kept.add(parentId)
@@ -25,8 +22,7 @@ export function archiveMembers(draft: GameState): number {
     if ('memberId' in event) kept.add(event.memberId)
     if ('partnerId' in event) kept.add(event.partnerId)
   }
-  const ended = (member: Member) =>
-    member.deathDay !== null && !livesAway(member, day) && !kept.has(member.id)
+  const ended = (member: Member) => member.deathDay !== null && !kept.has(member.id)
 
   const candidates = Object.values(members)
     .filter((member) => {
@@ -34,7 +30,7 @@ export function archiveMembers(draft: GameState): number {
       const partner = member.partnerId ? members[member.partnerId] : undefined
       return partner === undefined || ended(partner)
     })
-    .sort((a, b) => endDay(a) - endDay(b) || idNumber(a) - idNumber(b))
+    .sort((a, b) => (a.deathDay ?? 0) - (b.deathDay ?? 0) || idNumber(a) - idNumber(b))
 
   let removed = 0
   for (const member of candidates) {
@@ -49,11 +45,6 @@ export function archiveMembers(draft: GameState): number {
   }
   draft.stats.archived += removed
   return removed
-}
-
-/** Dia em que a pessoa deixou de aparecer na árvore: o da morte ou o fim da vida fora de casa. */
-function endDay(member: Member): number {
-  return member.leftHome ? lifeEndDay(member) : (member.deathDay ?? 0)
 }
 
 function idNumber(member: Member): number {

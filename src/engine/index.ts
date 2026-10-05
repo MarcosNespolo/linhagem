@@ -64,8 +64,6 @@ export {
   isAdult,
   isAlive,
   isRetired,
-  lifeEndDay,
-  livesAway,
   livingCount,
   livingMembers,
   partnerOf,
@@ -83,8 +81,6 @@ export { newGame, type NewGameOptions } from './new-game'
 export {
   affordableProperties,
   checkBuyProperty,
-  freePlaces,
-  homePlaces,
   homesInUse,
   housingCost,
   initialMarket,
@@ -113,6 +109,7 @@ export {
   promotionDay,
   type CourseOffer,
 } from './promotions'
+export { daysToBankruptcy } from './debt'
 export { createRng, hashString, hashUnit, mix32, pickWeighted, type Rng } from './rng'
 export { deserialize, serialize } from './save'
 export { canHaveTutor, tutorPoints } from './tutor'
