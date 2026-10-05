@@ -8,7 +8,7 @@ import { ageInYears, lastDayOfYear } from './time'
 import type { GameState } from './types'
 
 /** Versão atual do formato do save. Sobe a cada migração nova. */
-export const CURRENT_SCHEMA_VERSION = 15
+export const CURRENT_SCHEMA_VERSION = 16
 
 export type SaveErrorCode = 'corrupt' | 'futureVersion' | 'missingMigration'
 
@@ -321,6 +321,20 @@ const toVersion15: Migration = (save) => {
 }
 
 /**
+ * Versão 16: fora do serviço público, cada nível vem de um curso pago por mês,
+ * e não mais do tempo. Ninguém está fazendo curso ainda; quem esperava um curso
+ * pago para o 4º ou o 5º nível começa um quando quiser.
+ */
+const toVersion16: Migration = (save) => {
+  const members = isRecord(save.members) ? save.members : {}
+  const upgraded: RawSave = {}
+  for (const [id, member] of Object.entries(members)) {
+    upgraded[id] = isRecord(member) ? { ...member, course: null } : member
+  }
+  return { ...save, members: upgraded }
+}
+
+/**
  * Migrações, indexadas pela versão de origem. São sempre aditivas: criam
  * campos novos com valores padrão e nunca apagam dados do jogador; uma troca
  * de unidade, como a do dinheiro na versão 3, converte o valor sem perder
@@ -343,6 +357,7 @@ export const MIGRATIONS: Readonly<Record<number, Migration>> = {
   12: toVersion13,
   13: toVersion14,
   14: toVersion15,
+  15: toVersion16,
 }
 
 /** Valida um save lido de JSON e o leva até a versão atual. */

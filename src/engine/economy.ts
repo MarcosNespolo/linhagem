@@ -71,15 +71,16 @@ export function hasCar(member: Member, day: number): boolean {
 
 /**
  * Despesa por mês da pessoa: o custo de vida, a mensalidade da escola
- * particular, o professor particular e o cursinho de quem estuda para
- * concurso. A moradia é da família inteira (`housingCost`).
+ * particular, o professor particular, o cursinho de quem estuda para concurso e
+ * o curso de promoção. A moradia é da família inteira (`housingCost`).
  */
 export function memberExpense(member: Member, day: number): number {
   if (!isAlive(member)) return 0
   const fee =
     schoolFee(member.education.school) +
     (member.education.tutorSince !== null ? BALANCE.school.tutor.fee : 0) +
-    (member.concurso ? BALANCE.concurso.fee : 0)
+    (member.concurso ? BALANCE.concurso.fee : 0) +
+    (member.course?.fee ?? 0)
   return livingCost(member, day) + fee
 }
 

@@ -4,10 +4,11 @@
  */
 import {
   advance,
-  affordableCourses,
   applyAction,
   checkBuyProperty,
   checkHaveChild,
+  courseCandidates,
+  courseOffer,
   daysToMs,
   familyRates,
   livingMembers,
@@ -43,11 +44,16 @@ export const LIMITS = {
 } as const
 
 /**
- * Se a família consegue comprar alguma coisa agora: um filho, um curso de
- * promoção ou um imóvel. O casamento vem no pedido, depois do namoro.
+ * Se a família consegue comprar alguma coisa agora: um filho, um imóvel ou um
+ * curso de promoção cuja mensalidade cabe na renda. O casamento vem no pedido,
+ * depois do namoro.
  */
 export function canBuySomething(state: GameState): boolean {
-  if (affordableCourses(state).length > 0) return true
+  const { net } = familyRates(state)
+  const day = state.clock.day
+  if (courseCandidates(state).some((member) => courseOffer(member, day, false)!.fee <= net)) {
+    return true
+  }
   if (visiblePropertyTypes(state).some((type) => checkBuyProperty(state, type.id).ok)) return true
   for (const member of livingMembers(state)) {
     if (member.partnerId && checkHaveChild(state, member.id).ok) return true

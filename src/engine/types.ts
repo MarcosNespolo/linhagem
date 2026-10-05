@@ -17,6 +17,21 @@ export type CareerState = {
   levelSince: number
 }
 
+/**
+ * Curso de promoção em andamento: ao terminar, a pessoa sobe um nível. Com
+ * dedicação, dura a metade e a mensalidade dobra, e a pessoa não conhece
+ * ninguém nem tem filho até terminar.
+ */
+export type CareerCourse = {
+  /** Dia do jogo em que começou. */
+  since: number
+  /** Dia do jogo em que termina e a pessoa sobe de nível. */
+  until: number
+  dedicated: boolean
+  /** Mensalidade, em reais por mês, fixada no começo. */
+  fee: number
+}
+
 /** Quem estuda para concurso: não trabalha, paga o cursinho e faz uma prova a cada três meses. */
 export type ConcursoStudy = {
   /** Dia do jogo em que começou a estudar. A nota sobe com os meses desde então. */
@@ -207,6 +222,8 @@ export type Member = {
   /** Namoro em andamento, de quem é solteiro, ou null. */
   dating: Dating | null
   career: CareerState | null
+  /** Curso de promoção em andamento, ou null. */
+  course: CareerCourse | null
   /** Desempregado depois de uma demissão: sem salário até este dia do jogo, ou null. */
   unemployedUntil: number | null
   /** Estudo para concurso, ou null para quem não está estudando. */

@@ -127,17 +127,22 @@ export const BALANCE = {
 
   careers: {
     /**
-     * Anos no nível para subir ao seguinte: do 1º para o 2º, do 2º para o 3º, do
-     * 3º para o 4º e do 4º para o 5º.
+     * Fora do serviço público, cada nível pede um curso, feito enquanto a pessoa
+     * trabalha: anos de cada curso no ritmo normal, do 1º para o 2º nível, do 2º
+     * para o 3º, do 3º para o 4º e do 4º para o 5º. Com dedicação, o curso dura a
+     * metade e a mensalidade dobra.
+     */
+    courseYears: [1, 2, 3, 4],
+    /** Mensalidade do curso no ritmo normal: esta parte do aumento que ele traz. */
+    courseFeeShare: 0.5,
+    /**
+     * Serviço público: anos no nível para subir ao seguinte, só com o tempo. Quem
+     * chega de fora da família, o casal fundador e quem casa, também tem o nível
+     * dos anos que já trabalhou, com estes tempos, até `backgroundMaxLevel`.
      */
     yearsToPromote: [3, 5, 8, 12],
-    /**
-     * Primeiro nível (índice) que pede um curso pago: o 4º. Até o 3º, a pessoa
-     * sobe sozinha com o tempo. O serviço público sobe sempre só com o tempo.
-     */
-    courseLevel: 3,
-    /** O curso custa tantos meses do aumento, e se paga no mesmo tempo. */
-    courseMonths: 24,
+    /** Nível (índice) até onde chega pelo tempo quem vem de fora da família: o 3º. */
+    backgroundMaxLevel: 2,
   },
 
   /**

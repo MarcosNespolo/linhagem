@@ -102,11 +102,9 @@ export {
   type PropertyCheck,
 } from './properties'
 export {
-  affordableCourses,
-  availableCourses,
-  courseCost,
-  courseFor,
-  needsCourse,
+  courseCandidates,
+  courseOffer,
+  promotesByTime,
   promotionDay,
   type CourseOffer,
 } from './promotions'

@@ -25,6 +25,8 @@ import {
   applyAction,
   checkHaveChild,
   claimableMissions,
+  courseCandidates,
+  courseOffer,
   familyRates,
   isPropertyUnlocked,
   livingMembers,
@@ -212,8 +214,9 @@ const CHILD_MARGIN = 2_000
 
 /**
  * Gasta o dinheiro na ordem da estratégia: recompensas das missões, cursos,
- * filhos, casamentos e, por último, os imóveis que se pagam mais rápido,
- * sempre guardando `RESERVE_MONTHS` meses de despesa.
+ * filhos e, por último, os imóveis que se pagam mais rápido, sempre guardando
+ * `RESERVE_MONTHS` meses de despesa. Os cursos começam quando a mensalidade
+ * deixa a folga de `CHILD_MARGIN` na renda.
  */
 export function spend(play: Autoplay): void {
   const date = missionDate(play)
@@ -222,10 +225,13 @@ export function spend(play: Autoplay): void {
     if (act(play, { type: 'claimMission', missionId: mission.id })) play.counters.rewards += 1
   }
 
-  const paid = applyAction(play.state, { type: 'payAllCourses' })
-  if (paid.ok) {
-    play.state = paid.state
-    play.counters.courses += paid.events.length
+  // Cursos no ritmo normal, enquanto a mensalidade deixa folga na renda.
+  for (const member of courseCandidates(play.state)) {
+    const offer = courseOffer(member, play.state.clock.day, false)
+    if (!offer || familyRates(play.state).net - offer.fee < CHILD_MARGIN) continue
+    if (act(play, { type: 'startCourse', memberId: member.id, dedicated: false })) {
+      play.counters.courses += 1
+    }
   }
 
   const reserve = () => RESERVE_MONTHS * familyRates(play.state).expense

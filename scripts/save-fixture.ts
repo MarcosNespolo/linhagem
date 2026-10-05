@@ -11,12 +11,12 @@
  * velho faz Direito numa faculdade particular e casou com quem conheceu e
  * namorou, depois de a família comprar um kitnet para ter lugar em casa. O mais
  * novo teve professor particular no médio, acabou, estudou para concurso e
- * passou; agora namora, com o pedido de casamento aberto. A fundadora pagou o
- * curso e chegou ao 4º nível da carreira, e o fundador tem o curso dele para
- * pagar. A família tem mais um kitnet e um apartamento alugados, e as missões
- * do dia sorteadas: cumpriu a Investidor, com três kitnets a mais, e está com
- * a renda em dobro. Nos anos do exemplo, a família passa pelos imprevistos que
- * a seed sorteia.
+ * passou; agora namora, com o pedido de casamento aberto. A fundadora faz o
+ * curso do próximo nível no ritmo normal, e o fundador acabou de começar o dele
+ * com dedicação. A família tem mais um kitnet e um apartamento alugados, e as
+ * missões do dia sorteadas: cumpriu a Investidor, com três kitnets a mais, e
+ * está com a renda em dobro. Nos anos do exemplo, a família passa pelos
+ * imprevistos que a seed sorteia.
  */
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { BALANCE } from '../src/content/balance'
@@ -112,8 +112,8 @@ state = act(state, {
   type: 'choose',
   picks: [{ memberId: job.memberId, option: job.offers.length }],
 })
-// A fundadora paga o curso e sobe para o 4º nível; o do fundador fica para depois.
-state = act(state, { type: 'payCourse', memberId: 'm1' })
+// A fundadora começa o curso do próximo nível, no ritmo normal.
+state = act(state, { type: 'startCourse', memberId: 'm1', dedicated: false })
 // A família compra mais um kitnet e um apartamento para alugar.
 state = act(state, { type: 'buyProperty', propertyId: 'kitnet' })
 state = act(state, { type: 'buyProperty', propertyId: 'apartamento' })
@@ -140,6 +140,8 @@ state = play(state, 5 * year, 'propose')
 if (state.choices.length !== 1 || state.choices[0].type !== 'propose') {
   throw new Error('O exemplo devia terminar com o pedido de casamento aberto')
 }
+// Com o pedido aberto, o fundador começa o curso dele com dedicação.
+state = act(state, { type: 'startCourse', memberId: 'm2', dedicated: true })
 
 mkdirSync('tests/fixtures', { recursive: true })
 writeFileSync(path, `${JSON.stringify(state, null, 2)}\n`)

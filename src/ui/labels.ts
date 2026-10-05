@@ -1,5 +1,5 @@
 import { BALANCE } from '@/content/balance'
-import { careerLevel, getCareer, PUBLIC_CAREER, type CareerId } from '@/content/careers'
+import { careerLevel, getCareer, PUBLIC_CAREER, topLevel, type CareerId } from '@/content/careers'
 import { propertyType, type PropertyId } from '@/content/properties'
 import {
   degree,
@@ -15,12 +15,11 @@ import {
   ageOf,
   calendarDate,
   childCooldownDaysLeft,
-  courseFor,
+  courseOffer,
   daysToSeconds,
   hasCar,
   isAlive,
   isUnemployed,
-  needsCourse,
   nextListingDay,
   promotionDay,
   type ChildCheck,
@@ -57,9 +56,14 @@ export function levelTitle(
   return careerLevel(careerId, level).title[member?.gender ?? 'f']
 }
 
-/** Nome do curso pago para subir ao nível, para o meio da frase: curso de gestão para o 4º, MBA para o 5º. */
+/**
+ * Nome do curso que leva ao nível, para o meio da frase: capacitação para o 2º,
+ * especialização para o 3º, pós-graduação para o 4º e MBA para o 5º.
+ */
 export function courseName(level: number): string {
-  return level >= 4 ? 'MBA' : 'curso de gestão'
+  return ['curso de capacitação', 'curso de especialização', 'pós-graduação', 'MBA'][
+    Math.min(Math.max(level - 1, 0), 3)
+  ]
 }
 
 /** Primeira letra maiúscula, para começar uma linha. */
@@ -78,18 +82,21 @@ export function careerLine(careerId: CareerId, level: number): string {
 }
 
 /**
- * Situação da próxima promoção de quem trabalha: quando vem, se o curso já
- * está disponível, ou se chegou ao topo. Null para quem não trabalha mais.
+ * Situação da próxima promoção de quem trabalha: o curso em andamento, o curso
+ * que dá para começar, a promoção do serviço público ou o topo. Null para quem
+ * não trabalha mais.
  */
 export function promotionStatus(member: Member, day: number): string | null {
   const career = member.career
   if (!career || !isAlive(member) || ageOf(member, day) >= BALANCE.retirementAge) return null
+  const span = (until: number) => formatGameSpan(Math.max(1, until - day), BALANCE.daysPerYear)
+  if (member.course) {
+    return `${member.course.dedicated ? 'Curso com dedicação' : 'Curso'}: falta ${span(member.course.until)}`
+  }
+  if (career.level >= topLevel(career.id)) return 'Topo da carreira'
   const due = promotionDay(career)
-  if (due === null) return 'Topo da carreira'
-  const course = courseFor(member, day)
-  if (course) return `Curso disponível: ${formatMoney(course.cost)}`
-  const wait = formatGameSpan(Math.max(1, due - day), BALANCE.daysPerYear)
-  return needsCourse(career) ? `Curso em ${wait}` : `Promoção em ${wait}`
+  if (due !== null) return `Promoção em ${span(due)}`
+  return courseOffer(member, day, false) ? 'Curso disponível' : null
 }
 
 /** O que a pessoa é ou faz hoje: "Bebê", "Estudante de Direito", "Enfermeira", "Aposentado". */
@@ -377,6 +384,8 @@ export function childStatus(
     }
     case 'notEnoughMoney':
       return `Custa ${formatMoney(cost)}, faltam ${formatMoney(cost - state.money)}`
+    case 'dedicated':
+      return 'Curso com dedicação até terminar'
     default:
       return ''
   }

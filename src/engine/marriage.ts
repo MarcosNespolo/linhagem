@@ -13,8 +13,9 @@ export function weddingCost(): number {
 }
 
 /**
- * Pode conhecer alguém: vivo, adulto, solteiro, sem namoro e sem outra escolha
- * aberta. Quem entrou na família pelo casamento não casa de novo.
+ * Pode conhecer alguém: vivo, adulto, solteiro, sem namoro, sem curso com
+ * dedicação e sem outra escolha aberta. Quem entrou na família pelo casamento
+ * não casa de novo.
  */
 export function canMeet(state: GameState, member: Member): boolean {
   return (
@@ -22,6 +23,7 @@ export function canMeet(state: GameState, member: Member): boolean {
     member.partnerId === null &&
     member.origin !== 'married' &&
     member.dating === null &&
+    !member.course?.dedicated &&
     ageOf(member, state.clock.day) >= BALANCE.adultAge &&
     !state.choices.some((choice) => choice.memberId === member.id)
   )

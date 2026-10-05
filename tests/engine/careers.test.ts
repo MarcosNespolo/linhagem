@@ -11,15 +11,16 @@ import {
 import { degree } from '@/content/schools'
 import {
   advance,
-  affordableCourses,
   applyAction,
-  availableCourses,
   bestOffer,
-  courseFor,
+  canMeet,
+  checkHaveChild,
+  courseCandidates,
+  courseOffer,
   createRng,
   deserialize,
+  familyRates,
   formationCareer,
-  isMemberEvent,
   memberIncome,
   rollJobOffers,
   rollSuitor,
@@ -28,6 +29,7 @@ import {
   type Member,
 } from '@/engine'
 import {
+  days,
   expectOk,
   founders,
   makeGame,
@@ -117,6 +119,11 @@ describe('vagas por formação', () => {
   })
 })
 
+/** Começa o curso do próximo nível do membro. */
+function study(state: GameState, memberId: string, dedicated = false): GameState {
+  return expectOk(applyAction(state, { type: 'startCourse', memberId, dedicated })).state
+}
+
 describe('promoções', () => {
   it('o casal fundador começa com as promoções dos anos que já trabalhou desde os 18', () => {
     const [toSecond, toThird] = BALANCE.careers.yearsToPromote
@@ -130,102 +137,155 @@ describe('promoções', () => {
           level,
           levelSince: -Math.floor(inLevel * BALANCE.daysPerYear),
         })
+        expect(founder.course).toBeNull()
       }
     }
   })
 
-  it('sobe sozinho com 3 e com 5 anos no nível, e para no 3º nível', () => {
-    const start = beginners(11)
-    const [first] = founders(start)
-    const careerId = first.career!.id
+  it('fora do serviço público, ninguém sobe só com o tempo', () => {
+    const { state, events } = advance(beginners(11), years(20))
+    for (const founder of founders(state)) expect(founder.career?.level).toBe(0)
+    expect(events.some((event) => event.type === 'promoted')).toBe(false)
+  })
 
-    const after3 = advance(start, years(3))
-    expect(after3.state.members[first.id].career).toEqual({
+  it('o curso no ritmo normal leva 1 ano para o 2º nível, custa meio aumento por mês e sobe no fim', () => {
+    const state = beginners(11)
+    const [first] = founders(state)
+    const careerId = first.career!.id
+    const raise = salary(careerId, 1) - salary(careerId, 0)
+    expect(courseOffer(first, 0, false)).toEqual({
+      memberId: first.id,
+      level: 1,
+      dedicated: false,
+      days: yearDays(1),
+      fee: raise / 2,
+    })
+
+    const studying = study(state, first.id)
+    expect(studying.members[first.id].course).toEqual({
+      since: 0,
+      until: yearDays(1),
+      dedicated: false,
+      fee: raise / 2,
+    })
+    expect(familyRates(studying).expense).toBeCloseTo(familyRates(state).expense + raise / 2)
+
+    const almost = advance(studying, days(yearDays(1) - 1)).state
+    expect(almost.members[first.id].career?.level).toBe(0)
+    const { state: done, events } = advance(almost, days(1))
+    expect(done.members[first.id].career).toEqual({
       id: careerId,
       level: 1,
-      levelSince: yearDays(3),
+      levelSince: yearDays(1),
     })
-    expect(after3.events).toContainEqual({
+    expect(done.members[first.id].course).toBeNull()
+    expect(events).toContainEqual({
       type: 'promoted',
-      day: yearDays(3),
+      day: yearDays(1),
       memberId: first.id,
       careerId,
       level: 1,
     })
-
-    const after8 = advance(after3.state, years(5)).state
-    expect(after8.members[first.id].career?.level).toBe(2)
-    const after20 = advance(after8, years(12)).state
-    expect(after20.members[first.id].career?.level).toBe(2)
+    expect(familyRates(done).expense).toBeLessThan(familyRates(almost).expense)
   })
 
-  it('o curso do 4º nível sai depois de 8 anos no 3º, custa 24 meses do aumento e promove na hora', () => {
-    const before = advance(beginners(11), years(16) - 1).state
-    const [first] = founders(before)
-    const careerId = first.career!.id
-    expect(courseFor(first, before.clock.day)).toBeNull()
+  it('com dedicação, o curso dura a metade e custa o dobro por mês, e o casal não tem filho', () => {
+    const state = beginners(12)
+    const [first, second] = founders(state)
+    const raise = salary(first.career!.id, 1) - salary(first.career!.id, 0)
+    const fast = courseOffer(first, 0, true)!
+    expect(fast).toMatchObject({
+      level: 1,
+      dedicated: true,
+      days: Math.round(yearDays(1) / 2),
+      fee: raise,
+    })
 
-    const state = advance(before, 1).state
-    const member = state.members[first.id]
-    const cost = BALANCE.careers.courseMonths * (salary(careerId, 3) - salary(careerId, 2))
-    expect(courseFor(member, state.clock.day)).toEqual({ memberId: first.id, level: 3, cost })
-
-    const short = applyAction(withMoney(state, cost - 1), { type: 'payCourse', memberId: first.id })
-    expect(short).toEqual({ ok: false, error: 'notEnoughMoney' })
-
-    const paid = expectOk(
-      applyAction(withMoney(state, cost), { type: 'payCourse', memberId: first.id }),
-    )
-    const day = state.clock.day
-    expect(paid.state.money).toBe(0)
-    expect(paid.state.members[first.id].career).toEqual({ id: careerId, level: 3, levelSince: day })
-    expect(paid.events).toEqual([{ type: 'promoted', day, memberId: first.id, careerId, level: 3 }])
-    expect(paid.state.log.at(-1)).toEqual(paid.events[0])
-    // O 5º nível pede mais 12 anos e outro curso.
-    expect(courseFor(paid.state.members[first.id], day)).toBeNull()
-    const later = advance(paid.state, years(12)).state
-    expect(later.members[first.id].career?.level).toBe(3)
-    expect(courseFor(later.members[first.id], later.clock.day)?.level).toBe(4)
+    const studying = study(state, first.id, true)
+    expect(checkHaveChild(studying, first.id)).toEqual({ ok: false, error: 'dedicated' })
+    expect(checkHaveChild(studying, second.id)).toEqual({ ok: false, error: 'dedicated' })
+    const done = advance(studying, days(fast.days)).state
+    expect(done.members[first.id].career?.level).toBe(1)
+    expect(checkHaveChild(done, first.id)).toMatchObject({ ok: true })
   })
 
-  it('pagar todos os cursos paga do mais barato ao mais caro enquanto houver dinheiro', () => {
-    const state = advance(beginners(11), years(16)).state
-    const courses = availableCourses(state)
-    expect(courses).toHaveLength(2)
-    expect(courses[0].cost).toBeLessThanOrEqual(courses[1].cost)
-    const both = courses[0].cost + courses[1].cost
+  it('com dedicação, quem é solteiro não conhece ninguém até terminar', () => {
+    const { state, childId } = withAdultChild(5)
+    const studying = study(state, childId, true)
+    expect(canMeet(studying, studying.members[childId])).toBe(false)
+    const until = studying.members[childId].course!.until
+    const done = advance(studying, days(until - studying.clock.day)).state
+    expect(done.members[childId].course).toBeNull()
+    expect(canMeet(done, done.members[childId])).toBe(true)
+  })
 
-    const some = withMoney(state, both - 1)
-    expect(affordableCourses(some)).toEqual([courses[0]])
-    const one = expectOk(applyAction(some, { type: 'payAllCourses' }))
-    expect(one.events.filter(isMemberEvent).map((event) => event.memberId)).toEqual([
-      courses[0].memberId,
-    ])
-    expect(one.state.money).toBe(courses[1].cost - 1)
+  it('cada nível pede o seu curso, mais longo, até o topo', () => {
+    let state = beginners(13)
+    const [first] = founders(state)
+    BALANCE.careers.courseYears.forEach((duration, level) => {
+      const offer = courseOffer(state.members[first.id], state.clock.day, false)!
+      expect(offer).toMatchObject({ level: level + 1, days: yearDays(duration) })
+      state = advance(study(state, first.id), days(offer.days)).state
+      expect(state.members[first.id].career?.level).toBe(level + 1)
+    })
+    expect(courseOffer(state.members[first.id], state.clock.day, false)).toBeNull()
+    expect(
+      applyAction(state, { type: 'startCourse', memberId: first.id, dedicated: false }),
+    ).toEqual({ ok: false, error: 'noCourse' })
+  })
 
-    const all = expectOk(applyAction(withMoney(state, both), { type: 'payAllCourses' }))
-    expect(all.events).toHaveLength(2)
-    expect(all.state.money).toBe(0)
-    expect(applyAction(all.state, { type: 'payAllCourses' })).toEqual({
+  it('parar o curso acaba com a mensalidade, sem subir de nível', () => {
+    const state = beginners(14)
+    const [first] = founders(state)
+    const stopped = expectOk(
+      applyAction(study(state, first.id), { type: 'stopCourse', memberId: first.id }),
+    ).state
+    expect(stopped.members[first.id].course).toBeNull()
+    expect(familyRates(stopped).expense).toBeCloseTo(familyRates(state).expense)
+    expect(advance(stopped, years(2)).state.members[first.id].career?.level).toBe(0)
+    expect(applyAction(stopped, { type: 'stopCourse', memberId: first.id })).toEqual({
       ok: false,
       error: 'noCourse',
     })
-    expect(applyAction(withMoney(state, 0), { type: 'payAllCourses' })).toEqual({
-      ok: false,
-      error: 'notEnoughMoney',
-    })
   })
 
-  it('quem se aposentou não sobe mais', () => {
-    const start = makeGame(12)
+  it('um curso por vez, e só para quem trabalha fora do serviço público', () => {
+    const state = beginners(15)
+    const [first, second] = founders(state)
+    const studying = study(state, first.id)
+    expect(
+      applyAction(studying, { type: 'startCourse', memberId: first.id, dedicated: true }),
+    ).toEqual({ ok: false, error: 'noCourse' })
+    expect(courseCandidates(studying).map((member) => member.id)).toEqual([second.id])
+
+    const offer = (patch: Partial<Member>) =>
+      courseOffer(setMember(state, second.id, patch).members[second.id], 0, false)
+    expect(offer({ career: null })).toBeNull()
+    expect(offer({ career: { id: PUBLIC_CAREER, level: 0, levelSince: 0 } })).toBeNull()
+    expect(offer({ unemployedUntil: yearDays(1) })).toBeNull()
+  })
+
+  it('quem é demitido no meio do curso continua pagando e sobe no fim', () => {
+    const state = beginners(16)
+    const [first] = founders(state)
+    const laidOff = setMember(study(state, first.id), first.id, { unemployedUntil: yearDays(2) })
+    expect(familyRates(laidOff).expense).toBeCloseTo(
+      familyRates(state).expense + courseOffer(first, 0, false)!.fee,
+    )
+    expect(advance(laidOff, years(1)).state.members[first.id].career?.level).toBe(1)
+  })
+
+  it('quem se aposenta no meio do curso perde o curso e não sobe', () => {
+    const start = withMoney(makeGame(12), 1_000_000)
     const [first] = founders(start)
-    const retired = setMember(start, first.id, {
-      birthDay: -yearDays(BALANCE.retirementAge),
+    const almostRetired = setMember(start, first.id, {
+      birthDay: -yearDays(BALANCE.retirementAge) + 180,
       career: { id: 'comercio', level: 0, levelSince: -yearDays(10) },
     })
-    const later = advance(retired, years(1)).state
+    const later = advance(study(almostRetired, first.id), years(1)).state
+    expect(later.members[first.id].course).toBeNull()
     expect(later.members[first.id].career?.level).toBe(0)
-    expect(courseFor(later.members[first.id], later.clock.day)).toBeNull()
+    expect(courseOffer(later.members[first.id], later.clock.day, false)).toBeNull()
   })
 
   it('no serviço público, sobe só com o tempo até o topo, e a aposentadoria paga 70%', () => {
@@ -237,7 +297,7 @@ describe('promoções', () => {
     const later = advance(servant, years(3 + 5 + 8 + 12)).state
     const member = later.members[first.id]
     expect(member.career?.level).toBe(4)
-    expect(availableCourses(later).map((course) => course.memberId)).not.toContain(first.id)
+    expect(courseOffer(member, later.clock.day, false)).toBeNull()
 
     const atRetirement = (person: Member) => person.birthDay + yearDays(BALANCE.retirementAge)
     expect(memberIncome(member, atRetirement(member))).toBe(
