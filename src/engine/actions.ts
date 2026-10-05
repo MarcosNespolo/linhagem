@@ -9,7 +9,6 @@ import { draftOf } from './draft'
 import { checkChangeSchool } from './enrollment'
 import { refuse, type ActionError, type Refusal } from './errors'
 import { recordEvents } from './log'
-import { checkMarry, checkSeekPartner, joinFamily, rollSuitors } from './marriage'
 import { addMember, ageOf, isAlive } from './members'
 import { claimReward, drawMissions, isMissionDone, trackMissions } from './missions'
 import {
@@ -31,8 +30,6 @@ export type Action =
   | { type: 'resume' }
   | { type: 'renameFamily'; name: string }
   | { type: 'haveChild'; parentId: MemberId }
-  | { type: 'findSuitors'; memberId: MemberId }
-  | { type: 'marry'; memberId: MemberId; suitorIndex: number }
   /** Responde escolhas abertas. Quando não sobra nenhuma, o relógio volta a andar. */
   | { type: 'choose'; picks: ChoicePick[] }
   /** Troca a rede da escola ou do ensino médio na próxima matrícula. A mesma rede desfaz o pedido. */
@@ -70,10 +67,6 @@ export function applyAction(state: GameState, action: Action): ActionResult {
     }
     case 'haveChild':
       return haveChild(state, action.parentId)
-    case 'findSuitors':
-      return findSuitors(state, action.memberId)
-    case 'marry':
-      return marry(state, action.memberId, action.suitorIndex)
     case 'choose':
       return choose(state, action.picks)
     case 'changeSchool':
@@ -153,37 +146,6 @@ function haveChild(state: GameState, parentId: MemberId): ActionResult {
   draft.stats.totalSpent += check.cost
   draft.rngState = rng.state
   const events: GameEvent[] = [{ type: 'born', day, memberId: child.id }]
-  recordEvents(draft, events)
-  return done(draft, events)
-}
-
-/** Sorteia novas pessoas sugeridas como par. Grátis: dá para procurar quantas vezes quiser. */
-function findSuitors(state: GameState, memberId: MemberId): ActionResult {
-  const check = checkSeekPartner(state, memberId)
-  if (!check.ok) return check
-
-  const draft = draftOf(state)
-  const rng = createRng(draft.rngState)
-  draft.suitors[memberId] = rollSuitors(draft, rng, draft.members[memberId])
-  draft.rngState = rng.state
-  return done(draft)
-}
-
-function marry(state: GameState, memberId: MemberId, suitorIndex: number): ActionResult {
-  const check = checkMarry(state, memberId, suitorIndex)
-  if (!check.ok) return check
-
-  const draft = draftOf(state)
-  const rng = createRng(draft.rngState)
-  const member = draft.members[memberId]
-  const spouse = joinFamily(draft, rng, member, check.suitor)
-  delete draft.suitors[memberId]
-  draft.money -= check.cost
-  draft.stats.totalSpent += check.cost
-  draft.rngState = rng.state
-  const events: GameEvent[] = [
-    { type: 'married', day: draft.clock.day, memberId, partnerId: spouse.id },
-  ]
   recordEvents(draft, events)
   return done(draft, events)
 }

@@ -3,8 +3,8 @@
 Idle game de família para web e celular. Toda a progressão vem de jogar: sem anúncios, sem
 compras, sem moeda premium.
 
-O jogador começa com um casal, tem filhos, casa os filhos com pessoas de fora da família e vê a
-linhagem atravessar gerações enquanto o tempo passa, inclusive um pouco com o jogo fechado.
+O jogador começa com um casal, tem filhos, vê os filhos namorarem e casarem com quem aparece e vê
+a linhagem atravessar gerações enquanto o tempo passa, inclusive um pouco com o jogo fechado.
 
 Jogue em [linhagem.vercel.app](https://linhagem.vercel.app).
 
@@ -24,8 +24,10 @@ Jogue em [linhagem.vercel.app](https://linhagem.vercel.app).
   concurso público; o tempo para até a escolha
 - Acompanhar na aba Trabalho as carreiras, os níveis e as promoções, e pagar os cursos que levam
   ao 4º e ao 5º nível
-- Casar quem fez 18 anos, escolhendo entre pessoas sugeridas, cada uma com formação e emprego; o
-  cônjuge entra na família e trabalha. Sem lugar em casa, o casal paga aluguel
+- Namorar quem aparece: no carnaval e no dia dos namorados, cada filho solteiro com 18 anos ou
+  mais pode conhecer alguém, com formação e emprego, e o tempo para até decidir se namora. Um ano
+  depois vem o pedido: casar, esperar mais um ano ou terminar. O cônjuge entra na família e
+  trabalha; sem lugar em casa, o casal paga aluguel
 - Comprar imóveis na aba Imóveis, que mostra o bairro desenhado: kitnets, apartamentos e casas
   dão lugar para a família morar, e os que ela não usa, como os comerciais, rendem aluguel todo
   mês
@@ -36,7 +38,7 @@ Jogue em [linhagem.vercel.app](https://linhagem.vercel.app).
   demissão, cirurgia e conserto do carro
 - Perder o jogo: um ano no vermelho leva a família à falência
 - Ver a família numa árvore com zoom e arrasto, com quem já morreu esmaecido
-- Ver o histórico na aba Família: nascimentos, casamentos, estudos, empregos, promoções,
+- Ver o histórico na aba Família: nascimentos, namoros, casamentos, estudos, empregos, promoções,
   imprevistos e mortes
 - Voltar ao jogo e ver o resumo do que aconteceu enquanto esteve fora
 - Entrar com e-mail, sem senha, para guardar a família na nuvem e continuar em outro aparelho
@@ -122,7 +124,7 @@ particular cobra mensalidade e soma pontos na nota, que é a aptidão de cada um
 instituto federal é gratuito, pede nota 550 na prova e forma técnico. Quem está na escola ou no
 médio pode ter professor particular, por R$ 800 por mês, que soma 5 pontos na nota por ano, em
 proporção ao tempo (`src/engine/tutor.ts`). Quem funda a família ou entra nela casando tem aptidão
-de 400 a 700, mais perto de 550, e a da pessoa sugerida como par aparece antes do casamento. Os
+de 400 a 700, mais perto de 550, e a de quem aparece para namorar já vem com a pessoa. Os
 filhos herdam: a aptidão fica perto da média dos pais, puxada um pouco para 550, com até 60 pontos
 para mais ou para menos (`inheritAptitude`, com os valores em `BALANCE.aptitude`). As regras ficam
 em `src/engine/enrollment.ts` e `src/engine/school.ts`, e os valores em `BALANCE.school`.
@@ -160,8 +162,23 @@ a promoção vem só com o tempo, e a aposentadoria paga 70% do último salário
 regras ficam em `src/engine/concurso.ts`, e os valores em `BALANCE.concurso`.
 
 O casal fundador, de 24 a 29 anos, começa numa carreira de ensino médio, já com as promoções dos
-anos que trabalhou desde os 18. Quem é sugerido como par chega com formação e emprego sorteados,
+anos que trabalhou desde os 18. Quem aparece para namorar chega com formação e emprego sorteados,
 também com as promoções dos anos de trabalho (`src/engine/jobs.ts`).
+
+## Namoro e casamento
+
+Ninguém escolhe o par numa lista: a pessoa aparece ao acaso (`src/engine/dating.ts`, com os valores
+em `BALANCE.dating` e `BALANCE.marriage`). No carnaval (15 de fevereiro) e no dia dos namorados (12
+de junho), cada solteiro vivo com 18 anos ou mais e sem outra escolha aberta tem 60% de chance de
+conhecer alguém: uma pessoa de outro gênero, com até 5 anos de diferença, formação, emprego e
+aptidão. O relógio para, e o jogador decide se namora; quem diz agora não pode conhecer outra pessoa
+na próxima data. Um ano depois, na mesma data do calendário, vem o pedido de casamento, que também
+para o relógio: casar (R$ 30 mil), esperar mais um ano ou terminar. Casar só dá com o dinheiro do
+casamento; com vários pedidos no mesmo painel, os casamentos marcados saem do dinheiro um depois do
+outro, e marcar casar num deles passa os outros para esperar quando não cabe tudo. Quem casa traz o
+par para a família (`src/engine/marriage.ts`), que trabalha no emprego que tinha, ganha pelo menos
+dois anos de vida pela frente e mora com a família ou de aluguel. O namoro acaba se o membro morrer.
+Quem entrou na família casando, ou ficou viúvo, não casa de novo.
 
 ## Custo de vida e imprevistos
 
@@ -255,10 +272,11 @@ missões quando o dia vira. As regras ficam em `src/engine/missions.ts` e `src/e
 ## Balanceamento
 
 Os números ficam em `src/content/balance.ts` e foram ajustados com uma simulação de 10 horas de
-jogo (`npm run sim`). Um jogador automático (`src/sim/autoplay.ts`) casa todos e tem até 4 filhos
-por casal; põe os filhos no colégio particular quando sobra renda depois de guardar um quarto dela,
-tenta a federal e paga a faculdade particular quando não passa; escolhe a vaga de maior salário,
-paga os cursos e pega as recompensas das missões. Filhos e casamentos vêm primeiro, mas a
+jogo (`npm run sim`). Um jogador automático (`src/sim/autoplay.ts`) namora quem aparece, casa no
+pedido quando o casamento cabe no dinheiro e tem até 4 filhos por casal; põe os filhos no colégio
+particular quando sobra renda depois de guardar um quarto dela, tenta a federal e paga a faculdade
+particular quando não passa; escolhe a vaga de maior salário, paga os cursos e pega as recompensas
+das missões. Filhos e casamentos vêm primeiro, mas a
 estratégia guarda 3 meses de despesa e só tem mais um filho com folga de R$ 2 mil na renda, para
 não ir à falência. O resto vai para o imóvel que se paga mais rápido; os de moradia contam o
 aluguel que a família deixa de pagar morando neles. O dia das missões vira a cada hora, como quem
@@ -275,6 +293,10 @@ A simulação confere sete limites (`src/sim/limits.ts`) e sai com erro se algum
 | Save          | abaixo de 1 MB, o limite de cada save na nuvem                                |
 | Relógio       | cada segundo de jogo custa menos de 2 ms com a família do fim                 |
 | Volta ao jogo | 5 anos de progresso offline em menos de 200 ms                                |
+
+Os resultados abaixo são de antes do aluguel sem limite (etapa 4.9) e do namoro (4.10), que deixam
+a família crescer sem teto: com a seed 1, ela passa de 1.900 pessoas vivas no ano 110 do jogo, e a
+simulação longa fica lenta. O balanceamento das regras novas (etapa 4.14) refaz os números.
 
 Com as seeds de 1 a 4, a família chega a 124 pessoas, o máximo que as casas do bairro e o aluguel
 comportam, em cerca de 1 hora e meia, e fica entre 118 e 124 dali em diante. A renda vai de cerca

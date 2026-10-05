@@ -162,7 +162,7 @@ export function FamilyTree({ game, showDeceased, actions, selectedId, onSelect }
                 rate={rate}
                 alive={member.deathDay === null}
                 look={avatarLook(member.appearance, member.gender, age, member.avatarSeed)}
-                canMarry={actions.get(person.id) === 'marry'}
+                dating={actions.get(person.id) === 'dating'}
                 selected={selectedId === person.id}
                 onSelect={onSelect}
               />
@@ -301,7 +301,8 @@ type NodeProps = {
   rate: number
   alive: boolean
   look: AvatarLook
-  canMarry: boolean
+  /** Namora: um coração no canto da foto. */
+  dating: boolean
   selected: boolean
   onSelect: (id: MemberId) => void
 }
@@ -316,7 +317,7 @@ const TreeNode = memo(
     rate,
     alive,
     look,
-    canMarry,
+    dating,
     selected,
     onSelect,
   }: NodeProps) {
@@ -343,7 +344,7 @@ const TreeNode = memo(
           >
             {age}
           </span>
-          {canMarry ? (
+          {dating ? (
             <span className="bg-rose absolute -top-1 -right-1.5 grid size-6 place-items-center rounded-full text-white ring-2 ring-white">
               <Heart size={12} fill="currentColor" />
             </span>
@@ -372,7 +373,7 @@ const TreeNode = memo(
     prev.age === next.age &&
     prev.rate === next.rate &&
     prev.alive === next.alive &&
-    prev.canMarry === next.canMarry &&
+    prev.dating === next.dating &&
     prev.selected === next.selected &&
     prev.onSelect === next.onSelect &&
     lookKey(prev.look) === lookKey(next.look),

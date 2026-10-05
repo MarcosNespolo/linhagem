@@ -57,7 +57,8 @@ export {
 } from './jobs'
 export { isLogEvent, isMemberEvent, LOG_LIMIT } from './log'
 export { claimableMissions, incomeReward, isMissionDone } from './missions'
-export { checkMarry, checkSeekPartner, weddingCost, type MarriageCheck } from './marriage'
+export { MEET_OPTIONS, PROPOSE_OPTIONS } from './dating'
+export { canMeet, rollSuitor, weddingCost } from './marriage'
 export {
   ageOf,
   childrenOf,

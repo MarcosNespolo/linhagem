@@ -8,14 +8,15 @@
  *
  * O exemplo passa pelas ações principais do jogo: dois filhos, com a aptidão
  * herdada dos pais, que fizeram a escola com as matrículas sugeridas. O mais
- * velho faz Direito numa faculdade particular e casou, depois de a família
- * comprar um kitnet para ter lugar em casa. O mais novo teve professor
- * particular no médio, acabou e estuda para concurso, com o resultado da
- * primeira prova aberto. A fundadora pagou o curso e chegou ao 4º nível da
- * carreira, e o fundador tem o curso dele para pagar. A família tem mais um
- * kitnet e um apartamento alugados, e as missões do dia sorteadas: cumpriu a
- * Investidor, com três kitnets a mais, e está com a renda em dobro. Nos anos
- * do exemplo, a família passa pelos imprevistos que a seed sorteia.
+ * velho faz Direito numa faculdade particular e casou com quem conheceu e
+ * namorou, depois de a família comprar um kitnet para ter lugar em casa. O mais
+ * novo teve professor particular no médio, acabou, estudou para concurso e
+ * passou; agora namora, com o pedido de casamento aberto. A fundadora pagou o
+ * curso e chegou ao 4º nível da carreira, e o fundador tem o curso dele para
+ * pagar. A família tem mais um kitnet e um apartamento alugados, e as missões
+ * do dia sorteadas: cumpriu a Investidor, com três kitnets a mais, e está com
+ * a renda em dobro. Nos anos do exemplo, a família passa pelos imprevistos que
+ * a seed sorteia.
  */
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { BALANCE } from '../src/content/balance'
@@ -89,11 +90,10 @@ const law = afterSchool.options.findIndex(
 state = act(state, { type: 'choose', picks: [{ memberId: afterSchool.memberId, option: law }] })
 // O mais novo, no médio, ganha um professor particular até o fim da escola.
 state = act(state, { type: 'setTutor', memberId: 'm4', active: true })
-// Já com 18, o mais velho casa. Com a casa alugada cheia, a família compra um kitnet antes.
+// Já com 18, o mais velho namora quem aparece e casa no pedido, com as sugestões. A família
+// compra um kitnet.
 state = play(state, year)
 state = act(state, { type: 'buyProperty', propertyId: 'kitnet' })
-state = act(state, { type: 'findSuitors', memberId: 'm3' })
-state = act(state, { type: 'marry', memberId: 'm3', suitorIndex: 0 })
 // No janeiro em que o mais novo faz 18, ele vai trabalhar e escolhe estudar para concurso.
 state = play(state, 2 * year, 'afterSchool')
 state = act(state, {
@@ -129,10 +129,16 @@ for (let day = 4; ; day++) {
 // Três kitnets cumprem a Investidor, e a recompensa põe a renda em dobro.
 for (let i = 0; i < 3; i++) state = act(state, { type: 'buyProperty', propertyId: 'kitnet' })
 state = act(state, { type: 'claimMission', missionId: 'investidor' })
-// Até a primeira prova, que abre o resultado do concurso.
-state = advance(state, year).state
+// Até a primeira prova, que abre o resultado do concurso, respondido com a sugestão.
+state = play(state, year, 'concurso')
 if (state.choices.length !== 1 || state.choices[0].type !== 'concurso') {
-  throw new Error('O exemplo devia terminar com o resultado do concurso aberto')
+  throw new Error('O exemplo devia parar no resultado do concurso')
+}
+state = act(state, { type: 'choose', picks: suggestedPicks(state) })
+// O mais novo namora quem aparece e o exemplo termina no pedido de casamento.
+state = play(state, 5 * year, 'propose')
+if (state.choices.length !== 1 || state.choices[0].type !== 'propose') {
+  throw new Error('O exemplo devia terminar com o pedido de casamento aberto')
 }
 
 mkdirSync('tests/fixtures', { recursive: true })

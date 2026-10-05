@@ -128,6 +128,21 @@ export type Choice =
       suggested: number
     }
   | {
+      /** Alguém que o membro solteiro conheceu: namorar (0) ou agora não (1). */
+      type: 'meet'
+      memberId: MemberId
+      day: number
+      person: Suitor
+      suggested: number
+    }
+  | {
+      /** Pedido de casamento depois do namoro: casar (0), esperar mais um ano (1) ou terminar (2). */
+      type: 'propose'
+      memberId: MemberId
+      day: number
+      suggested: number
+    }
+  | {
       /** Matrícula numa etapa nova da escola, em janeiro. */
       type: 'school'
       memberId: MemberId
@@ -189,6 +204,8 @@ export type Member = {
   partnerId: MemberId | null
   /** Dia do jogo em que casou, ou null. */
   marriedDay: number | null
+  /** Namoro em andamento, de quem é solteiro, ou null. */
+  dating: Dating | null
   career: CareerState | null
   /** Desempregado depois de uma demissão: sem salário até este dia do jogo, ou null. */
   unemployedUntil: number | null
@@ -206,7 +223,7 @@ export type Member = {
   avatarSeed: string
 }
 
-/** Pessoa de fora da família sugerida como par. Vira membro ao casar. */
+/** Pessoa de fora da família que um membro conheceu. Vira membro ao casar. */
 export type Suitor = {
   firstName: string
   gender: Gender
@@ -218,6 +235,15 @@ export type Suitor = {
   aptitude: number
   appearance: Appearance
   avatarSeed: string
+}
+
+/** Namoro de um membro solteiro com alguém de fora da família. */
+export type Dating = {
+  partner: Suitor
+  /** Dia do jogo em que começou. */
+  since: number
+  /** Dia do pedido de casamento: a mesma data, um ano depois do começo, e mais um ano a cada espera. */
+  askDay: number
 }
 
 export type Clock = {
@@ -279,8 +305,6 @@ export type GameState = {
   bankruptDay: number | null
   members: Record<MemberId, Member>
   nextMemberId: number
-  /** Pessoas sugeridas como par, por membro solteiro que procurou. */
-  suitors: Record<MemberId, Suitor[]>
   /** Escolhas abertas, na ordem em que abriram. Com alguma aberta, o relógio para. */
   choices: Choice[]
   /** Quantos imóveis de cada tipo a família tem. São da família e ficam quando as pessoas morrem. */
@@ -327,6 +351,8 @@ export type MemberEvent =
       /** Nível do cargo em que passou, ou null para quem não passou. */
       level: number | null
     }
+  | { type: 'datingStarted'; day: number; memberId: MemberId; partnerName: string }
+  | { type: 'breakup'; day: number; memberId: MemberId; partnerName: string }
   | { type: 'married'; day: number; memberId: MemberId; partnerId: MemberId }
   /**
    * Casou sem lugar em casa e foi formar a própria família, com o par. Só nos

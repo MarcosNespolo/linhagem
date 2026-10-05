@@ -1,6 +1,18 @@
 'use client'
 
-import { BookOpen, Briefcase, Check, GraduationCap, Info, Landmark, School } from 'lucide-react'
+import {
+  BookOpen,
+  Briefcase,
+  Check,
+  Clock,
+  GraduationCap,
+  Heart,
+  HeartCrack,
+  Info,
+  Landmark,
+  School,
+  X,
+} from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { BALANCE } from '@/content/balance'
 import { careerLevel, PUBLIC_CAREER } from '@/content/careers'
@@ -10,20 +22,24 @@ import {
   highestCargo,
   homeCareCost,
   homeCaregiver,
+  MEET_OPTIONS,
   offerSalary,
+  PROPOSE_OPTIONS,
   retiredGrandparents,
   schoolScore,
   stageFee,
   stagePoints,
+  weddingCost,
   type Choice,
   type ConcursoOption,
   type GameState,
   type Member,
   type PathOption,
   type SchoolOption,
+  type Suitor,
 } from '@/engine'
 import { useGameStore } from '@/game/store'
-import { formatMoney, formatRate } from '@/lib/format'
+import { formatAge, formatMoney, formatMonthYear, formatRate } from '@/lib/format'
 import { PersonAvatar } from '../avatar/person-avatar'
 import { MemberStats } from '../member-stats'
 import { ageLabel, careerLine, formationLabel, levelTitle, lowerFirst, schoolName } from '../labels'
@@ -34,6 +50,8 @@ type SchoolChoice = Extract<Choice, { type: 'school' }>
 type JobChoice = Extract<Choice, { type: 'firstJob' }>
 type PathChoice = Extract<Choice, { type: 'afterSchool' }>
 type ConcursoChoice = Extract<Choice, { type: 'concurso' }>
+type MeetChoice = Extract<Choice, { type: 'meet' }>
+type ProposeChoice = Extract<Choice, { type: 'propose' }>
 
 /** Uma escolha por tipo e pessoa: trabalhar depois do médio abre a do emprego para a mesma pessoa. */
 const keyOf = (choice: Choice) => `${choice.type}:${choice.memberId}`
@@ -45,15 +63,16 @@ const keyOf = (choice: Choice) => `${choice.type}:${choice.memberId}`
 export function ChoiceSheet({ game, onHide }: { game: GameState; onHide: () => void }) {
   const dispatch = useGameStore((store) => store.dispatch)
   const [picked, setPicked] = useState<Record<string, number>>({})
-  const optionOf = (choice: Choice) => picked[keyOf(choice)] ?? choice.suggested
+  const rows = markedOptions(game, picked)
   const select = (choice: Choice) => (option: number) =>
-    setPicked({ ...picked, [keyOf(choice)]: option })
+    setPicked(
+      choice.type === 'propose' && option === PROPOSE_OPTIONS.marry
+        ? marryFirst(game, picked, choice)
+        : { ...picked, [keyOf(choice)]: option },
+    )
 
   const confirm = () => {
-    const picks = game.choices.map((choice) => ({
-      memberId: choice.memberId,
-      option: optionOf(choice),
-    }))
+    const picks = rows.map(({ choice, option }) => ({ memberId: choice.memberId, option }))
     dispatch({ type: 'choose', picks })
     setPicked({})
   }
@@ -64,9 +83,9 @@ export function ChoiceSheet({ game, onHide }: { game: GameState; onHide: () => v
         O tempo parou até você escolher. A sugestão já vem marcada.
       </p>
       <div className="mt-4 space-y-6">
-        {game.choices.map((choice) => {
+        {rows.map(({ choice, option }) => {
           const key = keyOf(choice)
-          const common = { game, selected: optionOf(choice), onSelect: select(choice) }
+          const common = { game, selected: option, onSelect: select(choice) }
           switch (choice.type) {
             case 'school':
               return <SchoolChoiceCard key={key} {...common} choice={choice} />
@@ -76,6 +95,10 @@ export function ChoiceSheet({ game, onHide }: { game: GameState; onHide: () => v
               return <JobChoiceCard key={key} {...common} choice={choice} />
             case 'concurso':
               return <ConcursoChoiceCard key={key} {...common} choice={choice} />
+            case 'meet':
+              return <MeetChoiceCard key={key} {...common} choice={choice} />
+            case 'propose':
+              return <ProposeChoiceCard key={key} {...common} choice={choice} />
           }
         })}
       </div>
@@ -86,9 +109,44 @@ export function ChoiceSheet({ game, onHide }: { game: GameState; onHide: () => v
   )
 }
 
+/**
+ * A opção marcada em cada escolha, em ordem: a do jogador ou a sugestão. Os
+ * casamentos marcados saem do dinheiro um depois do outro, e casar só fica
+ * marcado enquanto o que sobra cobre o casamento; senão, esperar.
+ */
+function markedOptions(game: GameState, picked: Record<string, number>) {
+  let money = game.money
+  return game.choices.map((choice) => {
+    let option = picked[keyOf(choice)] ?? choice.suggested
+    if (choice.type === 'propose' && option === PROPOSE_OPTIONS.marry) {
+      if (money >= weddingCost()) money -= weddingCost()
+      else option = PROPOSE_OPTIONS.wait
+    }
+    return { choice, option }
+  })
+}
+
+/**
+ * Marca casar no pedido escolhido. Quando o dinheiro não cobre todos os
+ * casamentos marcados, os outros pedidos passam para esperar.
+ */
+function marryFirst(game: GameState, picked: Record<string, number>, chosen: Choice) {
+  const next = { ...picked, [keyOf(chosen)]: PROPOSE_OPTIONS.marry }
+  let money = game.money - weddingCost()
+  for (const choice of game.choices) {
+    if (choice === chosen || choice.type !== 'propose') continue
+    if ((next[keyOf(choice)] ?? choice.suggested) !== PROPOSE_OPTIONS.marry) continue
+    if (money >= weddingCost()) money -= weddingCost()
+    else next[keyOf(choice)] = PROPOSE_OPTIONS.wait
+  }
+  return next
+}
+
 function sheetTitle(game: GameState): string {
   const { choices } = game
   const count = (type: Choice['type']) => choices.filter((choice) => choice.type === type).length
+  const love = count('meet') + count('propose')
+  if (love === choices.length) return count('meet') === 0 ? 'Pedido de casamento' : 'Namoro'
   const jobs = count('firstJob')
   if (count('afterSchool') === choices.length) return 'Depois do ensino médio'
   if (count('concurso') === choices.length) return 'Resultado do concurso'
@@ -526,12 +584,144 @@ function CourseChip({
   )
 }
 
+/** Quem o membro conheceu: namorar ou não. */
+function MeetChoiceCard({
+  game,
+  choice,
+  selected,
+  onSelect,
+}: {
+  game: GameState
+  choice: MeetChoice
+  selected: number
+  onSelect: (option: number) => void
+}) {
+  const member = game.members[choice.memberId]
+  if (!member) return null
+  return (
+    <ChoiceCard
+      game={game}
+      member={member}
+      heading={`${member.firstName} conheceu alguém`}
+      question="Namorar?"
+      label={`Namoro de ${member.firstName}`}
+      extra={<PersonCard game={game} person={choice.person} />}
+    >
+      <OptionButton
+        active={selected === MEET_OPTIONS.date}
+        icon={<Heart size={17} />}
+        title="Namorar"
+        detail="O pedido de casamento vem em 1 ano"
+        value=""
+        onSelect={() => onSelect(MEET_OPTIONS.date)}
+      />
+      <OptionButton
+        active={selected === MEET_OPTIONS.decline}
+        icon={<X size={17} />}
+        title="Agora não"
+        detail="Outra pessoa pode aparecer depois"
+        value=""
+        onSelect={() => onSelect(MEET_OPTIONS.decline)}
+      />
+    </ChoiceCard>
+  )
+}
+
+/**
+ * Pedido de casamento depois do namoro: casar, esperar mais um ano ou terminar.
+ * Com outros pedidos abertos, casar aqui pode passar os outros para esperar.
+ */
+function ProposeChoiceCard({
+  game,
+  choice,
+  selected,
+  onSelect,
+}: {
+  game: GameState
+  choice: ProposeChoice
+  selected: number
+  onSelect: (option: number) => void
+}) {
+  const member = game.members[choice.memberId]
+  const dating = member?.dating
+  if (!member || !dating) return null
+  const cost = weddingCost()
+  const missing = cost - game.money
+  const since = formatMonthYear(calendarDate(game.startDate, dating.since), 'short')
+  return (
+    <ChoiceCard
+      game={game}
+      member={member}
+      heading={`${member.firstName} e ${dating.partner.firstName}`}
+      question={`Namoram desde ${since}. Casar?`}
+      label={`Pedido de casamento de ${member.firstName}`}
+      extra={<PersonCard game={game} person={dating.partner} />}
+    >
+      <OptionButton
+        active={selected === PROPOSE_OPTIONS.marry}
+        disabled={missing > 0}
+        icon={<Heart size={17} />}
+        title="Casar"
+        detail={
+          missing > 0
+            ? `Faltam ${formatMoney(missing)}`
+            : `${dating.partner.firstName} vem morar com a família`
+        }
+        value={formatMoney(cost)}
+        expense
+        onSelect={() => onSelect(PROPOSE_OPTIONS.marry)}
+      />
+      <OptionButton
+        active={selected === PROPOSE_OPTIONS.wait}
+        icon={<Clock size={17} />}
+        title="Esperar mais um ano"
+        detail="O pedido volta em 1 ano"
+        value=""
+        onSelect={() => onSelect(PROPOSE_OPTIONS.wait)}
+      />
+      <OptionButton
+        active={selected === PROPOSE_OPTIONS.breakUp}
+        icon={<HeartCrack size={17} />}
+        title="Terminar"
+        detail="Outra pessoa pode aparecer depois"
+        value=""
+        onSelect={() => onSelect(PROPOSE_OPTIONS.breakUp)}
+      />
+    </ChoiceCard>
+  )
+}
+
+/** Quem é de fora da família: a foto, a idade, o emprego, a formação e o salário. */
+function PersonCard({ game, person }: { game: GameState; person: Suitor }) {
+  const day = game.clock.day
+  const age = Math.floor((day - person.birthDay) / BALANCE.daysPerYear)
+  const level = careerLevel(person.career.id, person.career.level)
+  return (
+    <div className={`${card} flex items-center gap-3 p-3`}>
+      <PersonAvatar person={person} day={day} size={56} className="shrink-0 rounded-full" />
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-[16px] font-extrabold">
+          {person.firstName}, {formatAge(age)}
+        </p>
+        <p className="truncate text-[14px] font-semibold">{level.title[person.gender]}</p>
+        <p className="text-ink-soft truncate text-[13px]">
+          {formationLabel(person, person.formation)}
+        </p>
+      </div>
+      <span className="tabular text-income shrink-0 text-[14px] font-bold">
+        {formatRate(level.salaryPerMonth)}
+      </span>
+    </div>
+  )
+}
+
 function ChoiceCard({
   game,
   member,
   heading,
   question,
   label,
+  extra,
   children,
 }: {
   game: GameState
@@ -539,6 +729,8 @@ function ChoiceCard({
   heading: string
   question: string
   label: string
+  /** Mostrado entre a pergunta e as opções, como a pessoa que apareceu. */
+  extra?: ReactNode
   children: ReactNode
 }) {
   const [showStats, setShowStats] = useState(false)
@@ -567,6 +759,7 @@ function ChoiceCard({
           <MemberStats game={game} member={member} />
         </div>
       ) : null}
+      {extra ? <div className="mt-3">{extra}</div> : null}
       <div role="radiogroup" aria-label={label} className="mt-3 space-y-2">
         {children}
       </div>

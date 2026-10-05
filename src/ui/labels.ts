@@ -188,6 +188,10 @@ export function describeEvent(state: GameState, event: GameEvent): string {
       const title = lowerFirst(levelTitle(member, PUBLIC_CAREER, event.level))
       return `${name} passou no concurso para ${title}, com nota ${event.score}`
     }
+    case 'datingStarted':
+      return `${name} começou a namorar ${event.partnerName}`
+    case 'breakup':
+      return `${name} e ${event.partnerName} terminaram o namoro`
     case 'married': {
       const partner = state.members[event.partnerId]
       return `${name} casou com ${partner?.firstName ?? 'alguém'}`

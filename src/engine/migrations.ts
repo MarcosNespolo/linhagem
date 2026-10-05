@@ -8,7 +8,7 @@ import { ageInYears, lastDayOfYear } from './time'
 import type { GameState } from './types'
 
 /** Versão atual do formato do save. Sobe a cada migração nova. */
-export const CURRENT_SCHEMA_VERSION = 14
+export const CURRENT_SCHEMA_VERSION = 15
 
 export type SaveErrorCode = 'corrupt' | 'futureVersion' | 'missingMigration'
 
@@ -305,6 +305,22 @@ const toVersion14: Migration = (save) => {
 }
 
 /**
+ * Versão 15: o par aparece ao acaso, para namorar, e o casamento vem depois do
+ * namoro. Ninguém está namorando ainda, e as pessoas sugeridas pela busca
+ * antiga saem do save.
+ */
+const toVersion15: Migration = (save) => {
+  const members = isRecord(save.members) ? save.members : {}
+  const upgraded: RawSave = {}
+  for (const [id, member] of Object.entries(members)) {
+    upgraded[id] = isRecord(member) ? { ...member, dating: null } : member
+  }
+  const rest = { ...save }
+  delete rest.suitors
+  return { ...rest, members: upgraded }
+}
+
+/**
  * Migrações, indexadas pela versão de origem. São sempre aditivas: criam
  * campos novos com valores padrão e nunca apagam dados do jogador; uma troca
  * de unidade, como a do dinheiro na versão 3, converte o valor sem perder
@@ -326,6 +342,7 @@ export const MIGRATIONS: Readonly<Record<number, Migration>> = {
   11: toVersion12,
   12: toVersion13,
   13: toVersion14,
+  14: toVersion15,
 }
 
 /** Valida um save lido de JSON e o leva até a versão atual. */
@@ -371,7 +388,6 @@ function assertGameState(save: RawSave): asserts save is RawSave & GameState {
     typeof save.money === 'number' &&
     Number.isFinite(save.money) &&
     typeof save.nextMemberId === 'number' &&
-    isRecord(save.suitors) &&
     Array.isArray(save.choices) &&
     isRecord(save.properties) &&
     (save.missions === null || isRecord(save.missions)) &&

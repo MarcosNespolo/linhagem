@@ -1,11 +1,11 @@
 import { BALANCE } from '../content/balance'
 import { rollAppearance } from './appearance'
-import { refuse, type Refusal } from './errors'
 import { rollSuitorBackground } from './jobs'
 import { addMember, ageOf, isAlive, rollAvatarSeed, rollFirstName, rollLifespan } from './members'
 import type { Rng } from './rng'
 import { newEducation, suitorAptitude } from './school'
-import type { GameState, Member, MemberId, Suitor } from './types'
+import { ageInYears } from './time'
+import type { GameState, Member, Suitor } from './types'
 
 /** Custo de um casamento: festa e cartório, sempre o mesmo. */
 export function weddingCost(): number {
@@ -13,58 +13,25 @@ export function weddingCost(): number {
 }
 
 /**
- * Diz se o membro pode procurar um par: precisa estar vivo, ser adulto e
- * nunca ter casado. Não olha o dinheiro, que só é cobrado no casamento.
+ * Pode conhecer alguém: vivo, adulto, solteiro, sem namoro e sem outra escolha
+ * aberta. Quem entrou na família pelo casamento não casa de novo.
  */
-export function checkSeekPartner(state: GameState, memberId: MemberId): { ok: true } | Refusal {
-  const member = state.members[memberId]
-  if (!member) return refuse('memberNotFound')
-  if (!isAlive(member)) return refuse('memberDeceased')
-  if (member.partnerId !== null || member.origin === 'married') return refuse('alreadyMarried')
-  if (ageOf(member, state.clock.day) < BALANCE.adultAge) return refuse('tooYoung')
-  return { ok: true }
-}
-
-/** Resultado da checagem de casamento. Sem lugar em casa, o par mora de aluguel. */
-export type MarriageCheck = { ok: true; cost: number; suitor: Suitor } | Refusal
-
-/** Diz se o membro pode casar agora com a pessoa sugerida de índice `suitorIndex`. */
-export function checkMarry(
-  state: GameState,
-  memberId: MemberId,
-  suitorIndex: number,
-): MarriageCheck {
-  const seek = checkSeekPartner(state, memberId)
-  if (!seek.ok) return seek
-  const suitor = state.suitors[memberId]?.[suitorIndex]
-  if (!suitor) return refuse('suitorNotFound')
-  const cost = weddingCost()
-  if (state.money < cost) return refuse('notEnoughMoney')
-  return { ok: true, cost, suitor }
-}
-
-/** Sorteia as pessoas sugeridas como par para o membro, sem nomes repetidos. */
-export function rollSuitors(state: GameState, rng: Rng, member: Member): Suitor[] {
-  const taken = new Set<string>()
-  const suitors: Suitor[] = []
-  for (let i = 0; i < BALANCE.marriage.suitorsPerSearch; i++) {
-    const suitor = rollSuitor(state, rng, member, taken)
-    taken.add(suitor.firstName)
-    suitors.push(suitor)
-  }
-  return suitors
+export function canMeet(state: GameState, member: Member): boolean {
+  return (
+    isAlive(member) &&
+    member.partnerId === null &&
+    member.origin !== 'married' &&
+    member.dating === null &&
+    ageOf(member, state.clock.day) >= BALANCE.adultAge &&
+    !state.choices.some((choice) => choice.memberId === member.id)
+  )
 }
 
 /**
  * Pessoa de outro gênero, adulta, com idade até `maxAgeGapYears` de diferença,
  * com formação e emprego sorteados.
  */
-function rollSuitor(
-  state: GameState,
-  rng: Rng,
-  member: Member,
-  taken: ReadonlySet<string>,
-): Suitor {
+export function rollSuitor(state: GameState, rng: Rng, member: Member): Suitor {
   const { daysPerYear, adultAge } = BALANCE
   const gender = member.gender === 'f' ? 'm' : 'f'
   const day = state.clock.day
@@ -73,7 +40,7 @@ function rollSuitor(
   const youngest = Math.max(adultAge * daysPerYear, memberAgeDays - gap)
   const oldest = Math.max(youngest, memberAgeDays + gap)
   const ageDays = rng.int(youngest, oldest)
-  const firstName = rollFirstName(state, rng, gender, taken)
+  const firstName = rollFirstName(state, rng, gender)
   const lifespan = Math.max(rollLifespan(rng), Math.floor(ageDays / daysPerYear) + 2)
   const birthDay = day - ageDays
   const { formation, career } = rollSuitorBackground(rng, birthDay, day)
@@ -92,8 +59,12 @@ function rollSuitor(
   }
 }
 
-/** Traz a pessoa sugerida para a família como cônjuge do membro. Altera o rascunho. */
+/**
+ * Traz quem o membro namora para a família, como cônjuge. Quem namorou por
+ * muitos anos ainda chega com pelo menos dois anos de vida. Altera o rascunho.
+ */
 export function joinFamily(draft: GameState, rng: Rng, member: Member, suitor: Suitor): Member {
+  const age = ageInYears(suitor.birthDay, draft.clock.day)
   const spouse = addMember(draft, rng, {
     gender: suitor.gender,
     birthDay: suitor.birthDay,
@@ -103,7 +74,7 @@ export function joinFamily(draft: GameState, rng: Rng, member: Member, suitor: S
     appearance: suitor.appearance,
     firstName: suitor.firstName,
     career: suitor.career,
-    lifespan: suitor.lifespan,
+    lifespan: Math.max(suitor.lifespan, age + 2),
     avatarSeed: suitor.avatarSeed,
     education: newEducation(suitor.formation),
     aptitude: suitor.aptitude,

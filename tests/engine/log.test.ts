@@ -8,14 +8,22 @@ import {
   LOG_LIMIT,
   type MemberEvent,
 } from '@/engine'
-import { expectOk, founders, makeGame, withAdultChild, withMoney, years } from '../helpers'
+import {
+  expectOk,
+  founders,
+  makeGame,
+  marryMember,
+  withAdultChild,
+  withMoney,
+  years,
+} from '../helpers'
 
 describe('histórico', () => {
   it('começa vazio', () => {
     expect(makeGame().log).toEqual([])
   })
 
-  it('guarda nascimentos, casamentos e o que acontece com o tempo, em ordem', () => {
+  it('guarda nascimentos, namoros, casamentos e o que acontece com o tempo, em ordem', () => {
     const { state, childId } = withAdultChild(3)
     const people = state.log.filter(isMemberEvent)
     const own = people.filter((event) => event.memberId === childId)
@@ -35,11 +43,8 @@ describe('histórico', () => {
     expect(others.some((event) => event.type === 'promoted')).toBe(true)
     expect(others.every((event) => meanwhile.has(event.type))).toBe(true)
 
-    const searched = expectOk(applyAction(state, { type: 'findSuitors', memberId: childId })).state
-    const married = expectOk(
-      applyAction(searched, { type: 'marry', memberId: childId, suitorIndex: 0 }),
-    ).state
-    expect(married.log.at(-1)?.type).toBe('married')
+    const married = marryMember(state, childId)
+    expect(married.log.slice(-2).map((event) => event.type)).toEqual(['datingStarted', 'married'])
   })
 
   it('o histórico do estado inclui os eventos devolvidos por advance, menos o 13º', () => {
