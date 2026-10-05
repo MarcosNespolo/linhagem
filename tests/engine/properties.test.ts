@@ -4,6 +4,7 @@ import { BALANCE } from '@/content/balance'
 import { PROPERTY_TYPES, type PropertyId } from '@/content/properties'
 import {
   advance,
+  affordableProperties,
   applyAction,
   deserialize,
   familyRates,
@@ -11,9 +12,11 @@ import {
   homePlaces,
   homesInUse,
   housingCost,
+  initialMarket,
   isPropertyUnlocked,
   isRenting,
   livingCost,
+  nextListingDay,
   ownedCount,
   paybackYears,
   propertiesLeft,
@@ -24,10 +27,12 @@ import {
   type GameState,
 } from '@/engine'
 import {
+  days,
   expectClose,
   expectOk,
   founders,
   makeGame,
+  play,
   setMember,
   withChild,
   withHomes,
@@ -47,7 +52,7 @@ describe('imóveis', () => {
   it('são nove tipos, cada um de 3 a 6 vezes o anterior, que se pagam de 10 a 70 anos', () => {
     const state = makeGame()
     expect(PROPERTY_TYPES).toHaveLength(9)
-    const paybacks = PROPERTY_TYPES.map((type) => paybackYears(state, type.id))
+    const paybacks = PROPERTY_TYPES.map((type) => paybackYears(type.id))
     expect(Math.round(paybacks[0])).toBe(10)
     expect(Math.round(paybacks.at(-1)!)).toBe(70)
     for (let i = 1; i < PROPERTY_TYPES.length; i++) {
@@ -62,7 +67,7 @@ describe('imóveis', () => {
     const supply = BALANCE.properties.homeSupply
     let state = withMoney(makeGame(), 1e9)
     for (let i = 0; i < supply; i++) {
-      expect(propertyPrice(state, 'kitnet')).toBe(PROPERTY_TYPES[0].price)
+      expect(propertyPrice('kitnet')).toBe(PROPERTY_TYPES[0].price)
       expect(propertiesLeft(state, 'kitnet')).toBe(supply - i)
       state = buy(state, 'kitnet')
     }
@@ -75,18 +80,49 @@ describe('imóveis', () => {
     })
   })
 
-  it('cada comercial do mesmo tipo custa 20% mais que o anterior, sem limite', () => {
-    let state = withHomes(withMoney(makeGame(), 1e12), { kitnet: 1, apartamento: 1, casa: 1 })
-    const prices: number[] = []
-    for (let i = 0; i < 12; i++) {
-      prices.push(propertyPrice(state, 'sala'))
+  it('os comerciais têm preço fixo, e poucos ficam à venda de cada vez', () => {
+    const max = BALANCE.properties.maxForSale
+    const start = withHomes(withMoney(makeGame(), 1e12), { kitnet: 1, apartamento: 1, casa: 1 })
+    for (const type of PROPERTY_TYPES) {
+      expect(propertiesLeft(start, type.id)).toBe(
+        type.market ? max : BALANCE.properties.homeSupply - (start.properties[type.id] ?? 0),
+      )
+    }
+    expect(start.market).toEqual(initialMarket())
+
+    let state = start
+    for (let i = 0; i < max; i++) {
+      expect(propertyPrice('sala')).toBe(PROPERTY_TYPES[3].price)
       state = buy(state, 'sala')
     }
-    const first = PROPERTY_TYPES[3].price
-    expect(prices[0]).toBe(first)
-    expect(prices[1]).toBe(Math.round(first * BALANCE.properties.priceGrowth))
-    expect(prices[11]).toBe(Math.round(first * BALANCE.properties.priceGrowth ** 11))
-    expect(propertiesLeft(state, 'sala')).toBe(Infinity)
+    expect(ownedCount(state, 'sala')).toBe(max)
+    expect(state.money).toBe(start.money - max * PROPERTY_TYPES[3].price)
+    expect(propertiesLeft(state, 'sala')).toBe(0)
+    expect(affordableProperties(state)).not.toContain('sala')
+    expect(applyAction(state, { type: 'buyProperty', propertyId: 'sala' })).toEqual({
+      ok: false,
+      error: 'soldOut',
+    })
+  })
+
+  it('um comercial novo fica à venda a cada poucos anos, até o máximo', () => {
+    const max = BALANCE.properties.maxForSale
+    const start = withHomes(withMoney(makeGame(), 1e12), { kitnet: 1, apartamento: 1, casa: 1 })
+    const soldOut = buy(start, ...Array.from({ length: max }, () => 'sala' as const))
+    const every = PROPERTY_TYPES[3].market.everyYears * BALANCE.daysPerYear
+    const next = nextListingDay(soldOut, 'sala')!
+    expect(next % every).toBe(0)
+    expect(next).toBeGreaterThan(soldOut.clock.day)
+    expect(nextListingDay(soldOut, 'kitnet')).toBeNull()
+
+    const dayBefore = play(soldOut, days(next - soldOut.clock.day - 1))
+    expect(propertiesLeft(dayBefore, 'sala')).toBe(0)
+    const listed = play(dayBefore, days(1))
+    expect(propertiesLeft(listed, 'sala')).toBe(1)
+    expect(nextListingDay(listed, 'sala')).toBe(next + every)
+    // Com o anúncio cheio, o imóvel novo não aparece.
+    const full = play(listed, days(2 * every))
+    expect(propertiesLeft(full, 'sala')).toBe(max)
   })
 
   it('os tipos liberam em ordem, e o próximo aparece bloqueado', () => {

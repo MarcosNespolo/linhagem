@@ -40,9 +40,11 @@ Jogue em [linhagem.vercel.app](https://linhagem.vercel.app).
 - Voltar ao jogo e ver o resumo do que aconteceu enquanto esteve fora
 - Entrar com e-mail, sem senha, para guardar a família na nuvem e continuar em outro aparelho
 
-Os preços são fixos: um filho custa R$ 15 mil e um casamento, R$ 30 mil. O que limita a família é
-o lugar em casa: cada pessoa precisa de um, e o bairro tem 10 kitnets, 10 apartamentos e 10 casas
-à venda. Na simulação de 10 horas, a família chega a cerca de 120 pessoas vivas.
+Os preços são fixos: um filho custa R$ 15 mil, um casamento, R$ 30 mil, e cada imóvel, sempre o
+mesmo. O que limita a família é o lugar em casa: cada pessoa precisa de um, e o bairro tem 10
+kitnets, 10 apartamentos e 10 casas à venda. O que limita o aluguel é haver poucos imóveis
+comerciais à venda de cada vez. Na simulação de 10 horas, a família chega a cerca de 120 pessoas
+vivas.
 
 ## Stack
 
@@ -195,11 +197,14 @@ na árvore como um ramo, envelhecendo até a expectativa de vida, mas saem das c
 primeiro nos imóveis que rendem menos aluguel por lugar (kitnets, depois apartamentos e casas) e
 paga as contas deles, de condomínio, IPTU e manutenção; os outros ficam alugados.
 
-Os comerciais, da sala comercial ao shopping, não acabam, mas cada um a mais do mesmo tipo custa 3%
-mais que o anterior, com o mesmo aluguel. Alugados, os de moradia se pagam em 10 a 13 anos do jogo,
-e os comerciais em 45 a 70: com um ano por minuto, um aluguel que se paga em poucos anos faria a
-renda disparar. Cada tipo libera com a primeira compra do anterior, e a compra é de um em um, sem
-venda nem financiamento por enquanto.
+Os comerciais, da sala comercial ao shopping, também têm preço fixo, mas ficam à venda poucos de
+cada vez: até 2 de cada tipo, e um novo aparece num calendário fixo, a cada 2 anos do jogo na sala
+comercial e a cada 9 no shopping. Com os 2 à venda, o novo não aparece. A aba Imóveis mostra
+quantos há à venda e quando aparece o próximo, e o número na aba diz quantos tipos à venda cabem no
+dinheiro. Alugados, os de moradia se pagam em 10 a 13 anos do jogo, e os comerciais em 45 a 70: com
+um ano por minuto, aluguéis que se pagassem em 15 a 30 anos, como na vida real, fariam a renda
+saltar 24 vezes na segunda hora de jogo. Cada tipo libera com a primeira compra do anterior, e a
+compra é de um em um, sem venda nem financiamento por enquanto.
 
 O aluguel entra na renda da família todo mês, sem depender de quem está vivo: os imóveis são da
 família e ficam quando as pessoas morrem. O resumo da volta ao jogo mostra quanto veio de aluguel.
@@ -247,9 +252,9 @@ A simulação confere sete limites (`src/sim/limits.ts`) e sai com erro se algum
 
 Com as seeds de 1 a 4, a família chega a 124 pessoas, o máximo que as casas do bairro e o aluguel
 comportam, em cerca de 1 hora e meia, e fica entre 118 e 124 dali em diante. A renda vai de cerca
-de R$ 700 mil por mês na primeira hora a R$ 450 milhões na décima, crescendo de 5 vezes, na segunda
-hora, a 1,2 vez, na última. O save fica perto de 560 KB, cada segundo de jogo custa cerca de 1 ms, e
-5 anos de progresso offline, menos de 80 ms. O CI roda uma versão de 1 hora com duas seeds
+de R$ 750 mil por mês na primeira hora a R$ 400 milhões na décima, crescendo até 6 vezes na segunda
+hora e 1,2 vez na última. O save fica perto de 560 KB, cada segundo de jogo custa cerca de 1 ms, e 5
+anos de progresso offline, menos de 80 ms. O CI roda uma versão de 1 hora com duas seeds
 (`tests/sim/balance.test.ts`), com os limites que já valem nesse tempo.
 
 ## Avatares

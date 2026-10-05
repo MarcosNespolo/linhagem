@@ -288,6 +288,8 @@ export type GameState = {
   choices: Choice[]
   /** Quantos imóveis de cada tipo a família tem. São da família e ficam quando as pessoas morrem. */
   properties: Partial<Record<PropertyId, number>>
+  /** Quantos imóveis comerciais de cada tipo estão à venda no bairro. */
+  market: Partial<Record<PropertyId, number>>
   /** Missões do dia, ou null antes do primeiro sorteio. */
   missions: Missions | null
   boosts: {

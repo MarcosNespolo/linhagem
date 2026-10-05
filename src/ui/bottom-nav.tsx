@@ -8,12 +8,18 @@ const TABS: { id: Tab; label: string; icon: LucideIcon; badgeLabel?: string }[] 
   { id: 'love', label: 'Amor', icon: Heart, badgeLabel: 'ações disponíveis' },
   { id: 'studies', label: 'Estudos', icon: School },
   { id: 'work', label: 'Trabalho', icon: Briefcase, badgeLabel: 'cursos cabem no dinheiro' },
-  { id: 'properties', label: 'Imóveis', icon: Building2 },
+  {
+    id: 'properties',
+    label: 'Imóveis',
+    icon: Building2,
+    badgeLabel: 'tipos de imóvel à venda cabem no dinheiro',
+  },
 ]
 
 /**
- * Navegação entre as abas. A aba Amor mostra quantas ações dá para fazer agora,
- * e a aba Trabalho, quantos cursos de promoção cabem no dinheiro.
+ * Navegação entre as abas. A aba Amor mostra quantas ações dá para fazer agora;
+ * a aba Trabalho, quantos cursos de promoção cabem no dinheiro; e a aba
+ * Imóveis, quantos tipos de imóvel à venda cabem no dinheiro.
  */
 export function BottomNav({ badges }: { badges: Partial<Record<Tab, number>> }) {
   const tab = useUiStore((store) => store.tab)

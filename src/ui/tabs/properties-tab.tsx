@@ -21,6 +21,7 @@ import {
   housingCost,
   isPropertyUnlocked,
   livingCount,
+  nextListingDay,
   ownedCount,
   paybackYears,
   propertiesLeft,
@@ -32,7 +33,7 @@ import {
   type GameState,
 } from '@/engine'
 import { useGameStore } from '@/game/store'
-import { formatMoney, formatRate } from '@/lib/format'
+import { formatGameSpan, formatMoney, formatRate } from '@/lib/format'
 import { button, card } from '../styles'
 
 const ICONS: Record<PropertyId, LucideIcon> = {
@@ -50,14 +51,13 @@ const ICONS: Record<PropertyId, LucideIcon> = {
 /**
  * Aba Imóveis: a moradia da família (lugares em casa, aluguel ou contas), o
  * aluguel que os imóveis rendem e um cartão por tipo, com quantos a família
- * tem, em quantos ela mora e o preço do próximo. O tipo seguinte aparece
- * bloqueado, com o preço.
+ * tem, em quantos ela mora, quantos estão à venda e o preço. O tipo seguinte
+ * aparece bloqueado, com o preço.
  */
 export function PropertiesTab({ game }: { game: GameState }) {
   const living = livingCount(game)
   const rent = rentPerMonth(game, living)
   const total = totalProperties(game)
-  const growth = Math.round((BALANCE.properties.priceGrowth - 1) * 100)
   const places = homePlaces(game)
   const rented = rentedPlaces(game, living)
   const housing = housingCost(game, living)
@@ -97,9 +97,10 @@ export function PropertiesTab({ game }: { game: GameState }) {
         </p>
         <p className="text-ink-soft mt-2 text-[13px]">
           Os imóveis em que a família não mora rendem aluguel todo mês e ficam com ela, mesmo quando
-          as pessoas morrem. Kitnets, apartamentos e casas têm preço fixo, e o bairro tem{' '}
-          {BALANCE.properties.homeSupply} de cada. Os comerciais custam {growth}% a mais a cada
-          compra. Cada tipo libera com a primeira compra do anterior.
+          as pessoas morrem. Todos têm preço fixo. O bairro tem {BALANCE.properties.homeSupply}{' '}
+          kitnets, apartamentos e casas, e os comerciais ficam à venda poucos de cada vez: até{' '}
+          {BALANCE.properties.maxForSale} de cada tipo, e um novo aparece de tempos em tempos. Cada
+          tipo libera com a primeira compra do anterior.
         </p>
       </section>
 
@@ -125,9 +126,9 @@ function PropertyCard({
   const Icon = ICONS[type.id]
   const unlocked = isPropertyUnlocked(game, type.id)
   const owned = ownedCount(game, type.id)
-  const price = propertyPrice(game, type.id)
+  const price = propertyPrice(type.id)
   const left = propertiesLeft(game, type.id)
-  const payback = paybackLabel(Math.round(paybackYears(game, type.id)))
+  const payback = paybackLabel(Math.round(paybackYears(type.id)))
   const previous = PROPERTY_TYPES[PROPERTY_TYPES.findIndex((other) => other.id === type.id) - 1]
   const inUse = homesInUse(game, living)[type.id] ?? 0
   const rented = owned - inUse
@@ -173,11 +174,11 @@ function PropertyCard({
                 {formatRate(rented * type.rentPerMonth)} de aluguel
               </span>
             ) : null}
-            {left <= 0
-              ? 'Não há mais à venda no bairro'
-              : type.home
+            {type.home
+              ? left > 0
                 ? `${left} à venda no bairro · se paga em ${payback} alugado`
-                : `${owned > 0 ? 'O próximo' : 'O primeiro'} se paga em ${payback}`}
+                : 'Não há mais à venda no bairro'
+              : marketLine(game, type.id, left, payback)}
           </p>
           <button
             type="button"
@@ -197,6 +198,15 @@ function PropertyCard({
       )}
     </li>
   )
+}
+
+/** Quantos comerciais do tipo estão à venda, quanto tempo levam para se pagar e quando sai o próximo. */
+function marketLine(game: GameState, id: PropertyId, left: number, payback: string): string {
+  const next = nextListingDay(game, id)
+  const wait = next === null ? '' : formatGameSpan(next - game.clock.day, BALANCE.daysPerYear)
+  if (left <= 0) return `Nenhum à venda · o próximo aparece em ${wait}`
+  const more = left < BALANCE.properties.maxForSale ? ` · outro aparece em ${wait}` : ''
+  return `${left} à venda · se paga em ${payback}${more}`
 }
 
 /** Prazo para o imóvel se pagar. Acima de mil anos, o número exato não ajuda a decidir. */

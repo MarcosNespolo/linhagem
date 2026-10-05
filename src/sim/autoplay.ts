@@ -265,7 +265,7 @@ function homeForRoom(state: GameState): { id: PropertyId; price: number; places:
     if (!type.home || !isPropertyUnlocked(state, type.id) || propertiesLeft(state, type.id) < 1) {
       continue
     }
-    const option = { id: type.id, price: propertyPrice(state, type.id), places: type.home.places }
+    const option = { id: type.id, price: propertyPrice(type.id), places: type.home.places }
     if (!best || option.price / option.places < best.price / best.places) best = option
   }
   return best
@@ -291,8 +291,8 @@ function propertyToBuy(state: GameState, budget: number): { id: PropertyId; pric
     .filter((type) => isPropertyUnlocked(state, type.id) && propertiesLeft(state, type.id) > 0)
     .map((type) => ({
       id: type.id,
-      price: propertyPrice(state, type.id),
-      payback: paybackYears(state, type.id),
+      price: propertyPrice(type.id),
+      payback: paybackYears(type.id),
     }))
     .sort((a, b) => a.payback - b.payback)
   const [best] = options

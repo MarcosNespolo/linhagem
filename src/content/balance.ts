@@ -130,13 +130,13 @@ export const BALANCE = {
   },
 
   /**
-   * Imóveis. Os de moradia (kitnet, apartamento e casa) têm preço fixo, e o
-   * bairro tem `homeSupply` de cada um. Os comerciais não acabam, mas ficam um
-   * pouco mais caros a cada compra: cada um custa `priceGrowth` vezes o
-   * anterior do mesmo tipo, com o mesmo aluguel. Com 3%, a renda continua
-   * crescendo a cada hora, sem disparar no começo nem parar no fim.
+   * Imóveis, todos com preço fixo. O bairro tem `homeSupply` de cada imóvel de
+   * moradia (kitnet, apartamento e casa). Os comerciais ficam à venda poucos de
+   * cada vez: até `maxForSale` de cada tipo, e um novo aparece de tempos em
+   * tempos (`market` em `PROPERTY_TYPES`). Com um ano do jogo por minuto, é o
+   * ritmo das vendas que segura o aluguel, em vez de preços que sobem.
    */
-  properties: { priceGrowth: 1.03, homeSupply: 10 },
+  properties: { homeSupply: 10, maxForSale: 2 },
 
   /**
    * Arquivo da árvore: quando ela passa deste número de pessoas, os ramos

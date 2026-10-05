@@ -1,12 +1,13 @@
 import { BALANCE } from '../content/balance'
 import { rollAppearance } from './appearance'
+import { initialMarket } from './properties'
 import { createRng, hashString } from './rng'
 import { baseAptitude, stageForAge, suitorAptitude } from './school'
 import { ageInYears, lastDayOfYear } from './time'
 import type { GameState } from './types'
 
 /** Versão atual do formato do save. Sobe a cada migração nova. */
-export const CURRENT_SCHEMA_VERSION = 11
+export const CURRENT_SCHEMA_VERSION = 12
 
 export type SaveErrorCode = 'corrupt' | 'futureVersion' | 'missingMigration'
 
@@ -252,6 +253,12 @@ const toVersion11: Migration = (save) => {
 }
 
 /**
+ * Versão 12: os imóveis comerciais passam a ter preço fixo e poucos à venda. O
+ * bairro começa com o máximo de cada tipo anunciado.
+ */
+const toVersion12: Migration = (save) => ({ ...save, market: initialMarket() })
+
+/**
  * Migrações, indexadas pela versão de origem. São sempre aditivas: criam
  * campos novos com valores padrão e nunca apagam dados do jogador; uma troca
  * de unidade, como a do dinheiro na versão 3, converte o valor sem perder
@@ -270,6 +277,7 @@ export const MIGRATIONS: Readonly<Record<number, Migration>> = {
   8: toVersion9,
   9: toVersion10,
   10: toVersion11,
+  11: toVersion12,
 }
 
 /** Valida um save lido de JSON e o leva até a versão atual. */

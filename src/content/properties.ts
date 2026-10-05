@@ -1,10 +1,11 @@
 /**
- * Tipos de imóvel, do mais barato ao mais caro. Cada um libera depois da
- * primeira compra do anterior. Os três primeiros são de moradia: a família pode
- * morar neles, e cada um tem lugar para algumas pessoas e contas por mês
- * (condomínio, IPTU e manutenção) enquanto alguém mora lá. Alugados, se pagam
- * em 10 a 13 anos. Os comerciais se pagam em 45 a 70 anos: com um ano do jogo
- * por minuto, um aluguel que se paga em poucos anos faria a renda disparar.
+ * Tipos de imóvel, do mais barato ao mais caro, todos com preço fixo. Cada um
+ * libera depois da primeira compra do anterior. Os três primeiros são de
+ * moradia: a família pode morar neles, e cada um tem lugar para algumas pessoas
+ * e contas por mês (condomínio, IPTU e manutenção) enquanto alguém mora lá; o
+ * bairro tem `BALANCE.properties.homeSupply` de cada. Os comerciais ficam à
+ * venda poucos de cada vez, até `BALANCE.properties.maxForSale`, e um novo
+ * aparece a cada `market.everyYears` anos do jogo.
  */
 export const PROPERTY_TYPES = [
   {
@@ -14,6 +15,7 @@ export const PROPERTY_TYPES = [
     price: 80_000,
     rentPerMonth: 670,
     home: { places: 2, billsPerMonth: 200 },
+    market: null,
   },
   {
     id: 'apartamento',
@@ -22,6 +24,7 @@ export const PROPERTY_TYPES = [
     price: 450_000,
     rentPerMonth: 3_200,
     home: { places: 4, billsPerMonth: 450 },
+    market: null,
   },
   {
     id: 'casa',
@@ -30,6 +33,7 @@ export const PROPERTY_TYPES = [
     price: 1_500_000,
     rentPerMonth: 9_400,
     home: { places: 6, billsPerMonth: 700 },
+    market: null,
   },
   {
     id: 'sala',
@@ -38,8 +42,17 @@ export const PROPERTY_TYPES = [
     price: 5_000_000,
     rentPerMonth: 9_300,
     home: null,
+    market: { everyYears: 2 },
   },
-  { id: 'loja', name: 'Loja', gender: 'f', price: 18_000_000, rentPerMonth: 30_000, home: null },
+  {
+    id: 'loja',
+    name: 'Loja',
+    gender: 'f',
+    price: 18_000_000,
+    rentPerMonth: 30_000,
+    home: null,
+    market: { everyYears: 3 },
+  },
   {
     id: 'galpao',
     name: 'Galpão',
@@ -47,6 +60,7 @@ export const PROPERTY_TYPES = [
     price: 70_000_000,
     rentPerMonth: 106_000,
     home: null,
+    market: { everyYears: 4 },
   },
   {
     id: 'predio',
@@ -55,6 +69,7 @@ export const PROPERTY_TYPES = [
     price: 280_000_000,
     rentPerMonth: 390_000,
     home: null,
+    market: { everyYears: 5 },
   },
   {
     id: 'fazenda',
@@ -63,6 +78,7 @@ export const PROPERTY_TYPES = [
     price: 1_200_000_000,
     rentPerMonth: 1_540_000,
     home: null,
+    market: { everyYears: 7 },
   },
   {
     id: 'shopping',
@@ -71,21 +87,21 @@ export const PROPERTY_TYPES = [
     price: 5_000_000_000,
     rentPerMonth: 5_950_000,
     home: null,
+    market: { everyYears: 9 },
   },
 ] as const satisfies readonly {
   id: string
   name: string
   /** Gênero da palavra, para os artigos: "um kitnet", "a 3ª casa". */
   gender: 'm' | 'f'
-  /**
-   * Preço do imóvel. Nos de moradia é sempre o mesmo; nos comerciais, é o do
-   * primeiro, e cada um a mais custa `BALANCE.properties.priceGrowth` vezes o anterior.
-   */
+  /** Preço de cada imóvel do tipo, sempre o mesmo. */
   price: number
   /** Aluguel por mês de cada imóvel do tipo, quando a família não mora nele. */
   rentPerMonth: number
   /** Moradia: lugares para pessoas da família e contas por mês de quando alguém mora lá. */
   home: { places: number; billsPerMonth: number } | null
+  /** Comercial: de quantos em quantos anos do jogo um novo fica à venda. */
+  market: { everyYears: number } | null
 }[]
 
 export type PropertyType = (typeof PROPERTY_TYPES)[number]

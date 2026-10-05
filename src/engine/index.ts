@@ -81,13 +81,16 @@ export {
 } from './migrations'
 export { newGame, type NewGameOptions } from './new-game'
 export {
+  affordableProperties,
   checkBuyProperty,
   freePlaces,
   homePlaces,
   homesInUse,
   housingCost,
+  initialMarket,
   isPropertyUnlocked,
   isRenting,
+  nextListingDay,
   ownedCount,
   ownedPlaces,
   paybackYears,

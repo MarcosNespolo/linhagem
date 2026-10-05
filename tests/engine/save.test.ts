@@ -5,6 +5,7 @@ import {
   baseAptitude,
   CURRENT_SCHEMA_VERSION,
   deserialize,
+  initialMarket,
   migrate,
   REAIS_PER_DOLLAR,
   SaveError,
@@ -120,6 +121,15 @@ describe('save', () => {
         before && { id: before.id, level: before.level, levelSince: v2.clock.day },
       )
     }
+  })
+
+  it('a versão 11 ganha os comerciais à venda no bairro, com o máximo de cada tipo', () => {
+    const json = readFileSync(new URL('save-v11.json', FIXTURES), 'utf8')
+    const v11 = JSON.parse(json) as GameState
+    const state = deserialize(json)
+    expect(state.market).toEqual(initialMarket())
+    expect(state.properties).toEqual(v11.properties)
+    expect(state.money).toBe(v11.money)
   })
 
   it('a versão 10 ganha quem saiu de casa, o desemprego e o arquivo da árvore, sem mudar o resto', () => {

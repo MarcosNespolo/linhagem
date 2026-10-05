@@ -15,25 +15,69 @@ export function ownedCount(state: GameState, id: PropertyId): number {
   return state.properties[id] ?? 0
 }
 
+/** Preço de um imóvel do tipo, sempre o mesmo. */
+export function propertyPrice(id: PropertyId): number {
+  return propertyType(id).price
+}
+
 /**
- * Preço do próximo imóvel do tipo. O de moradia custa sempre o mesmo; o
- * comercial custa `BALANCE.properties.priceGrowth` vezes o anterior.
+ * Quantos do tipo estão à venda no bairro: dos de moradia, os que a família
+ * ainda não comprou; dos comerciais, os anunciados que ainda ninguém levou.
  */
-export function propertyPrice(state: GameState, id: PropertyId): number {
-  const { price, home } = propertyType(id)
-  if (home) return price
-  return Math.round(price * BALANCE.properties.priceGrowth ** ownedCount(state, id))
-}
-
-/** Quantos do tipo ainda estão à venda: os de moradia são poucos no bairro; os comerciais, sem limite. */
 export function propertiesLeft(state: GameState, id: PropertyId): number {
-  if (!propertyType(id).home) return Infinity
-  return Math.max(0, BALANCE.properties.homeSupply - ownedCount(state, id))
+  if (propertyType(id).home) {
+    return Math.max(0, BALANCE.properties.homeSupply - ownedCount(state, id))
+  }
+  return state.market[id] ?? 0
 }
 
-/** Anos do jogo que o próximo imóvel do tipo leva para se pagar com o aluguel. */
-export function paybackYears(state: GameState, id: PropertyId): number {
-  return propertyPrice(state, id) / propertyType(id).rentPerMonth / 12
+/** Anos do jogo que um imóvel do tipo leva para se pagar com o aluguel. */
+export function paybackYears(id: PropertyId): number {
+  const { price, rentPerMonth } = propertyType(id)
+  return price / rentPerMonth / 12
+}
+
+/** Comerciais à venda no começo da partida: o máximo de cada tipo. */
+export function initialMarket(): Partial<Record<PropertyId, number>> {
+  const market: Partial<Record<PropertyId, number>> = {}
+  for (const type of PROPERTY_TYPES) {
+    if (type.market) market[type.id] = BALANCE.properties.maxForSale
+  }
+  return market
+}
+
+/** Dias do jogo entre um anúncio e outro de um tipo comercial. */
+function listingDays(everyYears: number): number {
+  return everyYears * BALANCE.daysPerYear
+}
+
+/**
+ * Dia em que o próximo imóvel comercial do tipo fica à venda: os anúncios
+ * saem a cada `market.everyYears` anos, contados do dia 0. Null para os de
+ * moradia, que não têm anúncios novos.
+ */
+export function nextListingDay(state: GameState, id: PropertyId): number | null {
+  const { market } = propertyType(id)
+  if (!market) return null
+  const every = listingDays(market.everyYears)
+  return (Math.floor(state.clock.day / every) + 1) * every
+}
+
+/**
+ * Anúncios do dia: cada tipo comercial ganha mais um à venda no seu dia, até
+ * `BALANCE.properties.maxForSale`. Sem lugar no anúncio, o imóvel novo não
+ * aparece. Altera o rascunho.
+ */
+export function processMarket(draft: GameState): void {
+  const day = draft.clock.day
+  if (day <= 0) return
+  for (const type of PROPERTY_TYPES) {
+    if (!type.market || day % listingDays(type.market.everyYears) !== 0) continue
+    const forSale = draft.market[type.id] ?? 0
+    if (forSale < BALANCE.properties.maxForSale) {
+      draft.market = { ...draft.market, [type.id]: forSale + 1 }
+    }
+  }
 }
 
 /** O tipo libera depois da primeira compra do anterior. O primeiro está sempre liberado. */
@@ -129,6 +173,11 @@ export function housingCost(state: GameState, living: number = livingCount(state
   return cost
 }
 
+/** Tipos liberados com algum imóvel à venda que cabe no dinheiro da família agora. */
+export function affordableProperties(state: GameState): PropertyId[] {
+  return PROPERTY_IDS.filter((id) => checkBuyProperty(state, id).ok)
+}
+
 /** Quantos imóveis a família tem, de todos os tipos. */
 export function totalProperties(state: GameState): number {
   return PROPERTY_IDS.reduce((sum, id) => sum + ownedCount(state, id), 0)
@@ -141,7 +190,7 @@ export function checkBuyProperty(state: GameState, id: PropertyId): PropertyChec
   if (!(PROPERTY_IDS as readonly string[]).includes(id)) return refuse('propertyNotFound')
   if (!isPropertyUnlocked(state, id)) return refuse('propertyLocked')
   if (propertiesLeft(state, id) <= 0) return refuse('soldOut')
-  const price = propertyPrice(state, id)
+  const price = propertyPrice(id)
   if (state.money < price) return refuse('notEnoughMoney')
   return { ok: true, price }
 }
@@ -150,6 +199,9 @@ export function checkBuyProperty(state: GameState, id: PropertyId): PropertyChec
 export function buyProperty(draft: GameState, id: PropertyId, price: number): GameEvent {
   const count = ownedCount(draft, id) + 1
   draft.properties = { ...draft.properties, [id]: count }
+  if (propertyType(id).market) {
+    draft.market = { ...draft.market, [id]: propertiesLeft(draft, id) - 1 }
+  }
   draft.money -= price
   draft.stats.totalSpent += price
   return { type: 'propertyBought', day: draft.clock.day, propertyId: id, count }

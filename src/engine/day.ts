@@ -6,6 +6,7 @@ import { isEnrollmentDay, processEnrollment } from './enrollment'
 import { openFirstJobChoice } from './jobs'
 import { processMishaps } from './mishaps'
 import { promoteByTime } from './promotions'
+import { processMarket } from './properties'
 import type { Rng } from './rng'
 import { halfTimeCaregivers } from './school'
 import { calendarDate } from './time'
@@ -14,7 +15,8 @@ import type { GameEvent, GameState, Member } from './types'
 /**
  * Processa a virada para o dia atual do relógio: aniversários, maioridade,
  * aposentadoria, morte, as matrículas e o arquivo da árvore de janeiro, as
- * promoções, os imprevistos, as provas de concurso e o 13º salário. As escolhas abertas aqui
+ * promoções, os imprevistos, os imóveis comerciais que ficam à venda, as
+ * provas de concurso e o 13º salário. As escolhas abertas aqui
  * (matrículas, depois do médio, primeiro emprego, resultado do concurso) param
  * o relógio. Altera o rascunho e devolve true quando algo pode ter mudado as
  * taxas de renda e despesa. `living` são as pessoas vivas do rascunho; quem
@@ -65,6 +67,7 @@ export function processNewDay(
   }
   if (promoteByTime(draft, events, living)) changed = true
   if (processMishaps(draft, events, living)) changed = true
+  processMarket(draft)
   if (takeExams(draft, rng, events)) changed = true
   payThirteenth(draft, events, living)
   return changed
