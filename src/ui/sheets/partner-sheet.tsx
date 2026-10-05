@@ -3,7 +3,7 @@
 import { Heart, Shuffle } from 'lucide-react'
 import { careerLevel } from '@/content/careers'
 import { BALANCE } from '@/content/balance'
-import { freePlaces, weddingCost, type GameState, type Member } from '@/engine'
+import { weddingCost, type GameState, type Member } from '@/engine'
 import { useGameStore } from '@/game/store'
 import { formatAge, formatMoney, formatRate } from '@/lib/format'
 import { PersonAvatar } from '../avatar/person-avatar'
@@ -21,7 +21,6 @@ export function PartnerSheet({ game, member }: { game: GameState; member: Member
   const cost = weddingCost()
   const missing = cost - game.money
   const day = game.clock.day
-  const leaves = freePlaces(game) < 1
 
   const marry = (suitorIndex: number) => {
     const result = dispatch({ type: 'marry', memberId: member.id, suitorIndex })
@@ -35,13 +34,6 @@ export function PartnerSheet({ game, member }: { game: GameState; member: Member
           ? `O casamento custa ${formatMoney(cost)}. Faltam ${formatMoney(missing)}.`
           : `O casamento custa ${formatMoney(cost)}.`}
       </p>
-      {leaves ? (
-        <p className="bg-rose-soft text-ink mt-3 rounded-2xl p-3 text-[14px]">
-          Não há lugar em casa para mais ninguém. Ao casar, {member.firstName} vai formar a própria
-          família com o par: os dois continuam na árvore, mas saem das contas. Para{' '}
-          {byGender(member, 'ela', 'ele')} ficar, compre um imóvel para a família morar.
-        </p>
-      ) : null}
 
       <ul className="mt-4 space-y-3">
         {suitors.map((suitor, index) => {
@@ -71,14 +63,10 @@ export function PartnerSheet({ game, member }: { game: GameState; member: Member
                 className={button.smallLove}
                 disabled={missing > 0}
                 onClick={() => marry(index)}
-                aria-label={
-                  leaves
-                    ? `Casar ${member.firstName} com ${suitor.firstName} e formar a própria família`
-                    : `Casar ${member.firstName} com ${suitor.firstName}`
-                }
+                aria-label={`Casar ${member.firstName} com ${suitor.firstName}`}
               >
                 <Heart size={14} fill="currentColor" />
-                {leaves ? 'Casar e sair' : 'Casar'}
+                Casar
               </button>
             </li>
           )

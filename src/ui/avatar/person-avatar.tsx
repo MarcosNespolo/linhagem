@@ -9,7 +9,6 @@ type Person = {
   birthDay: number
   lifespan: number
   deathDay?: number | null
-  leftHome?: boolean
 }
 
 type Props = {
@@ -21,7 +20,7 @@ type Props = {
 
 /** Avatar de um membro ou de uma pessoa sugerida como par, na idade do dia informado. */
 export function PersonAvatar({ person, day, size, className }: Props) {
-  const age = ageOf({ deathDay: null, leftHome: false, ...person }, day)
+  const age = ageOf({ deathDay: null, ...person }, day)
   const look = avatarLook(person.appearance, person.gender, age, person.avatarSeed)
   return <Avatar look={look} size={size} className={className} />
 }

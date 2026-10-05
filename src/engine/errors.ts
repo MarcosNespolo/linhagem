@@ -6,7 +6,6 @@ export type ActionError =
   | 'tooYoung'
   | 'tooOld'
   | 'cooldown'
-  | 'noRoom'
   | 'notEnoughMoney'
   | 'invalidName'
   | 'alreadyMarried'

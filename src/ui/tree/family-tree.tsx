@@ -12,10 +12,8 @@ import {
   ageOf,
   halfTimeCaregivers,
   incomeOf,
-  livesAway,
   memberExpense,
   type GameState,
-  type Member,
   type MemberId,
 } from '@/engine'
 import { formatSignedMoney } from '@/lib/format'
@@ -90,9 +88,8 @@ let cached: { key: string; layout: TreeLayout | null } | null = null
  */
 function treeLayoutFor(game: GameState, showDeceased: boolean): TreeLayout | null {
   const parts = [showDeceased ? 'all' : 'living']
-  const day = game.clock.day
   for (const member of Object.values(game.members)) {
-    const state = member.deathDay === null ? '' : livesAway(member, day) ? 'a' : 'x'
+    const state = member.deathDay === null ? '' : 'x'
     parts.push(`${member.id}:${member.partnerId ?? ''}:${state}`)
   }
   const key = parts.join('|')
@@ -136,7 +133,8 @@ export function FamilyTree({ game, showDeceased, actions, selectedId, onSelect }
           {layout.couples.map((couple) => {
             const action = actions.get(couple.aId) ?? actions.get(couple.bId)
             const together =
-              isPresent(game.members[couple.aId], day) && isPresent(game.members[couple.bId], day)
+              game.members[couple.aId].deathDay === null &&
+              game.members[couple.bId].deathDay === null
             return (
               <Knot
                 key={`${couple.aId}-${couple.bId}`}
@@ -153,7 +151,6 @@ export function FamilyTree({ game, showDeceased, actions, selectedId, onSelect }
             const member = game.members[person.id]
             const age = ageOf(member, day)
             const rate = incomeOf(game, member, caregivers) - memberExpense(member, day)
-            const away = livesAway(member, day)
             return (
               <TreeNode
                 key={person.id}
@@ -164,7 +161,6 @@ export function FamilyTree({ game, showDeceased, actions, selectedId, onSelect }
                 age={age}
                 rate={rate}
                 alive={member.deathDay === null}
-                away={away}
                 look={avatarLook(member.appearance, member.gender, age, member.avatarSeed)}
                 canMarry={actions.get(person.id) === 'marry'}
                 selected={selectedId === person.id}
@@ -205,15 +201,7 @@ function branchPath(b: Branch): string {
 
 const LEAF = 'M0 0 Q5 -4.2 11 0 Q5 4.2 0 0 Z'
 
-/** Vive na família ou fora dela, com a própria família. */
-function isPresent(member: Member, day: number): boolean {
-  return member.deathDay === null || livesAway(member, day)
-}
-
-/**
- * Galhos entre casais e filhos. Quem está vivo, na família ou fora dela, tem
- * folhas; galho de quem morreu fica seco.
- */
+/** Galhos entre casais e filhos. Quem está vivo tem folhas; galho de quem morreu fica seco. */
 function Branches({ layout, game }: { layout: TreeLayout; game: GameState }) {
   return (
     <svg
@@ -236,7 +224,7 @@ function Branches({ layout, game }: { layout: TreeLayout; game: GameState }) {
       ))}
       {layout.branches.map((branch, index) => {
         const child = game.members[branch.childId]
-        const alive = child !== undefined && isPresent(child, game.clock.day)
+        const alive = child !== undefined && child.deathDay === null
         const width = Math.max(2.4, 5.6 - branch.depth * 0.9)
         const side = index % 2 === 0 ? 1 : -1
         const leaf = bezierAt(branch, 0.42)
@@ -312,8 +300,6 @@ type NodeProps = {
   age: number
   rate: number
   alive: boolean
-  /** Saiu de casa e vive com a própria família, fora das contas. */
-  away: boolean
   look: AvatarLook
   canMarry: boolean
   selected: boolean
@@ -329,18 +315,16 @@ const TreeNode = memo(
     age,
     rate,
     alive,
-    away,
     look,
     canMarry,
     selected,
     onSelect,
   }: NodeProps) {
-    const colored = alive || away
     return (
       <button
         type="button"
         onClick={() => onSelect(id)}
-        aria-label={`${name}, ${age === 0 ? 'menos de 1 ano' : age === 1 ? '1 ano' : `${age} anos`}${alive ? '' : away ? ', mora com a própria família' : ', faleceu'}`}
+        aria-label={`${name}, ${age === 0 ? 'menos de 1 ano' : age === 1 ? '1 ano' : `${age} anos`}${alive ? '' : ', faleceu'}`}
         className="group absolute flex flex-col items-center outline-none"
         style={{ left: x - SLOT / 2, top: y - AVATAR / 2, width: SLOT }}
       >
@@ -350,7 +334,7 @@ const TreeNode = memo(
             size={AVATAR}
             className={`group-focus-visible:ring-leaf rounded-full ring-[3px] transition ${
               selected ? 'ring-leaf' : 'ring-white'
-            } ${colored ? '' : 'opacity-60 grayscale'}`}
+            } ${alive ? '' : 'opacity-60 grayscale'}`}
           />
           <span
             className={`tabular absolute -top-1 -left-1.5 grid h-6 min-w-6 place-items-center rounded-full px-1 text-[11px] font-extrabold ring-2 ring-white ${
@@ -377,11 +361,6 @@ const TreeNode = memo(
             {formatSignedMoney(rate)}
           </span>
         ) : null}
-        {away ? (
-          <span className="bg-surface/90 text-ink-soft rounded-full px-1.5 text-[11.5px] leading-4 font-bold">
-            mora fora
-          </span>
-        ) : null}
       </button>
     )
   },
@@ -393,7 +372,6 @@ const TreeNode = memo(
     prev.age === next.age &&
     prev.rate === next.rate &&
     prev.alive === next.alive &&
-    prev.away === next.away &&
     prev.canMarry === next.canMarry &&
     prev.selected === next.selected &&
     prev.onSelect === next.onSelect &&

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { BALANCE } from '@/content/balance'
-import { applyAction, freePlaces, lifeEndDay, type GameState } from '@/engine'
-import { buildFamilyTree, layoutFamilyTree, TREE_METRICS, type TreeUnit } from '@/ui/tree/layout'
+import { applyAction, type GameState } from '@/engine'
+import { buildFamilyTree, layoutFamilyTree, TREE_METRICS } from '@/ui/tree/layout'
 import {
   days,
   expectOk,
@@ -29,11 +29,6 @@ function bigFamily(): GameState {
   state = untilParentAge(marryMember(state, firstChild.id))
   state = expectOk(applyAction(state, { type: 'haveChild', parentId: firstChild.id })).state
   return state
-}
-
-/** Todas as pessoas da árvore montada. */
-function everyone(unit: TreeUnit): string[] {
-  return [...unit.memberIds, ...unit.children.flatMap(everyone)]
 }
 
 function overlaps(layout: ReturnType<typeof layoutFamilyTree>): boolean {
@@ -109,28 +104,6 @@ describe('árvore da família', () => {
 
     const everyone = buildFamilyTree(ended, { showDeceased: true })!
     expect(everyone.children.map((child) => child.coreId)).toContain(lastChild.id)
-  })
-
-  it('quem saiu de casa aparece como um ramo enquanto vive, e depois some como quem faleceu', () => {
-    let state = bigFamily()
-    const [, second, third] = Object.values(state.members).filter(
-      (member) => member.generation === 1 && member.origin === 'born',
-    )
-    state = marryMember(state, second.id)
-    expect(freePlaces(state)).toBe(0)
-    state = marryMember(state, third.id)
-    const leaver = state.members[third.id]
-    const spouse = state.members[leaver.partnerId!]
-    expect(leaver.leftHome).toBe(true)
-
-    const shown = (game: GameState, showDeceased: boolean) =>
-      everyone(buildFamilyTree(game, { showDeceased })!)
-    expect(shown(state, false)).toEqual(expect.arrayContaining([leaver.id, spouse.id]))
-
-    const end = Math.max(lifeEndDay(leaver), lifeEndDay(spouse))
-    const later: GameState = { ...state, clock: { ...state.clock, day: end } }
-    expect(shown(later, false)).not.toContain(leaver.id)
-    expect(shown(later, true)).toEqual(expect.arrayContaining([leaver.id, spouse.id]))
   })
 
   it('não mostra nada quando a família inteira já morreu', () => {

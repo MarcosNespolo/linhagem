@@ -8,8 +8,6 @@ import {
   applyAction,
   deserialize,
   familyRates,
-  freePlaces,
-  homePlaces,
   homesInUse,
   housingCost,
   initialMarket,
@@ -224,12 +222,10 @@ describe('imóveis', () => {
     expectClose(withRent.stats.rentEarned - state.stats.rentEarned, rent * 12)
   })
 
-  it('quem não cabe nos imóveis da família mora de aluguel, pago por lugar', () => {
-    const { rentPerPlace, rentedPlaces: maxRented } = BALANCE.housing
+  it('quem não cabe nos imóveis da família mora de aluguel, pago por lugar e sem limite', () => {
+    const { rentPerPlace } = BALANCE.housing
     const kitnet = PROPERTY_TYPES[0]
     const couple = makeGame(2)
-    expect(homePlaces(couple)).toBe(maxRented)
-    expect(freePlaces(couple)).toBe(maxRented - 2)
     expect(isRenting(couple)).toBe(true)
     expect(rentedPlaces(couple)).toBe(2)
     expect(housingCost(couple)).toBe(2 * rentPerPlace)
@@ -240,7 +236,6 @@ describe('imóveis', () => {
     // Com um kitnet, o casal sai do aluguel e paga as contas do kitnet, que não rende.
     const owner = withHomes(couple, { kitnet: 1 })
     expect(isRenting(owner)).toBe(false)
-    expect(homePlaces(owner)).toBe(maxRented + kitnet.home.places)
     expect(housingCost(owner)).toBe(kitnet.home.billsPerMonth)
     expect(rentPerMonth(owner)).toBe(0)
 
@@ -249,7 +244,6 @@ describe('imóveis', () => {
     expect(isRenting(parents)).toBe(true)
     expect(rentedPlaces(parents)).toBe(1)
     expect(housingCost(parents)).toBe(rentPerPlace + kitnet.home.billsPerMonth)
-    expect(freePlaces(parents)).toBe(maxRented + kitnet.home.places - 3)
 
     // Com uma casa, todos moram nela; os kitnets ficam alugados.
     const house = withHomes(parents, { apartamento: 1, casa: 1 })

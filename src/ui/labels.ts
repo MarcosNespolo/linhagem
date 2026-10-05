@@ -20,7 +20,6 @@ import {
   hasCar,
   isAlive,
   isUnemployed,
-  livesAway,
   needsCourse,
   nextListingDay,
   promotionDay,
@@ -115,13 +114,10 @@ export function roleLabel(member: Member, day: number): string {
   return 'Procurando o primeiro emprego'
 }
 
-/**
- * Idade em texto, com "Faleceu aos" para quem já morreu. Quem saiu de casa
- * continua contando a idade até a expectativa de vida.
- */
+/** Idade em texto, com "Faleceu aos" para quem já morreu. */
 export function ageLabel(member: Member, day: number): string {
   const age = ageOf(member, day)
-  if (!isAlive(member) && !livesAway(member, day)) return `Faleceu aos ${formatAge(age)}`
+  if (!isAlive(member)) return `Faleceu aos ${formatAge(age)}`
   if (age === 0) return 'Menos de 1 ano'
   return formatAge(age)
 }
@@ -165,6 +161,9 @@ export function generationLabel(generation: number): string {
 export function describeEvent(state: GameState, event: GameEvent): string {
   if (event.type === 'thirteenth') return `Chegou o 13º salário: ${formatMoney(event.amount)}`
   if (event.type === 'propertyBought') return purchaseText(event)
+  if (event.type === 'inDebt') return 'A família entrou no vermelho'
+  if (event.type === 'outOfDebt') return 'A família saiu do vermelho'
+  if (event.type === 'bankrupt') return 'A família foi à falência'
   const member = state.members[event.memberId]
   const name = member?.firstName ?? 'Alguém'
   switch (event.type) {
@@ -374,8 +373,6 @@ export function childStatus(
     }
     case 'notEnoughMoney':
       return `Custa ${formatMoney(cost)}, faltam ${formatMoney(cost - state.money)}`
-    case 'noRoom':
-      return 'Sem lugar em casa: compre um imóvel para morar'
     default:
       return ''
   }

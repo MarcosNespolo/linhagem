@@ -1,4 +1,4 @@
-import { livesAway, type GameState, type MemberId } from '@/engine'
+import type { GameState, MemberId } from '@/engine'
 
 /**
  * Unidade da árvore: um membro de sangue (ou o primeiro fundador) e, se
@@ -66,7 +66,6 @@ export function buildFamilyTree(
   { showDeceased }: { showDeceased: boolean },
 ): TreeUnit | null {
   const members = state.members
-  const day = state.clock.day
   const kidsOf = new Map<MemberId, MemberId[]>()
   for (const member of Object.values(members)) {
     if (member.origin !== 'born') continue
@@ -86,9 +85,7 @@ export function buildFamilyTree(
       .sort((a, b) => a.birthDay - b.birthDay || a.id.localeCompare(b.id, 'en', { numeric: true }))
       .map((child) => build(child.id))
       .filter((unit): unit is TreeUnit => unit !== null)
-    const anyAlive = memberIds.some(
-      (id) => members[id].deathDay === null || livesAway(members[id], day),
-    )
+    const anyAlive = memberIds.some((id) => members[id].deathDay === null)
     if (!showDeceased && !anyAlive && children.length === 0) return null
     return { coreId, memberIds, children }
   }

@@ -137,19 +137,6 @@ export function ownedPlaces(state: GameState): number {
   return places
 }
 
-/**
- * Lugares em casa: os dos imóveis de moradia da família mais os que ela
- * consegue alugar para quem não cabe neles.
- */
-export function homePlaces(state: GameState): number {
-  return ownedPlaces(state) + BALANCE.housing.rentedPlaces
-}
-
-/** Lugares livres em casa para mais uma pessoa: um filho ou quem casa. */
-export function freePlaces(state: GameState, living: number = livingCount(state)): number {
-  return Math.max(0, homePlaces(state) - living)
-}
-
 /** A família ainda mora de aluguel: os imóveis dela não têm lugar para todos. */
 export function isRenting(state: GameState, living: number = livingCount(state)): boolean {
   return ownedPlaces(state) < living
@@ -176,9 +163,9 @@ export function homesInUse(
   return used
 }
 
-/** Lugares alugados: os de quem não cabe nos imóveis de moradia da família. */
+/** Lugares alugados: os de quem não cabe nos imóveis de moradia da família, sem limite. */
 export function rentedPlaces(state: GameState, living: number = livingCount(state)): number {
-  return Math.min(BALANCE.housing.rentedPlaces, Math.max(0, living - ownedPlaces(state)))
+  return Math.max(0, living - ownedPlaces(state))
 }
 
 /**

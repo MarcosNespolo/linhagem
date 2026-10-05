@@ -15,8 +15,14 @@ export const BALANCE = {
   /** Tempo de jogo que passa, no máximo, enquanto o jogo está fechado, em anos do jogo. */
   offlineCapYears: 5,
 
-  /** Dinheiro no início da partida. */
-  startingMoney: 90_000,
+  /** Dinheiro no início da partida: a família começa do zero. */
+  startingMoney: 0,
+  /**
+   * Falência: o saldo pode ficar negativo. O relógio para quando a família
+   * entra no vermelho, e ela tem `graceDays` dias do jogo para voltar ao
+   * azul; se não voltar, vai à falência e a partida acaba.
+   */
+  debt: { graceDays: 365 },
   /** Faixa de idade do casal fundador, em anos. */
   startingAge: { min: 24, max: 29 },
 
@@ -69,15 +75,14 @@ export const BALANCE = {
 
   /**
    * Moradia. Cada pessoa da família precisa de um lugar em casa. Quem não cabe
-   * nos imóveis de moradia da família mora de aluguel, pago por lugar, até
-   * `rentedPlaces` lugares. Quem mora num imóvel da família paga só as contas
-   * dele (condomínio, IPTU e manutenção, em `PROPERTY_TYPES`).
+   * nos imóveis de moradia da família mora de aluguel, pago por lugar e sem
+   * limite: ninguém sai da família por falta de lugar. Quem mora num imóvel da
+   * família paga só as contas dele (condomínio, IPTU e manutenção, em
+   * `PROPERTY_TYPES`).
    */
   housing: {
     /** Aluguel por mês de cada lugar alugado. */
-    rentPerPlace: 350,
-    /** Lugares que a família consegue alugar, no máximo. */
-    rentedPlaces: 4,
+    rentPerPlace: 600,
   },
 
   /**

@@ -9,7 +9,7 @@ import { draftOf } from './draft'
 import { checkChangeSchool } from './enrollment'
 import { refuse, type ActionError, type Refusal } from './errors'
 import { recordEvents } from './log'
-import { checkMarry, checkSeekPartner, joinFamily, leaveHome, rollSuitors } from './marriage'
+import { checkMarry, checkSeekPartner, joinFamily, rollSuitors } from './marriage'
 import { addMember, ageOf, isAlive } from './members'
 import { claimReward, drawMissions, isMissionDone, trackMissions } from './missions'
 import {
@@ -18,7 +18,7 @@ import {
   courseFor,
   payCourse as applyCourse,
 } from './promotions'
-import { buyProperty as applyPurchase, checkBuyProperty, freePlaces } from './properties'
+import { buyProperty as applyPurchase, checkBuyProperty } from './properties'
 import { createRng } from './rng'
 import { inheritAptitude } from './school'
 import { canHaveTutor, setTutor as applyTutor } from './tutor'
@@ -122,7 +122,6 @@ export function checkHaveChild(state: GameState, parentId: MemberId): ChildCheck
   if (ages.some((age) => age < minParentAge)) return refuse('tooYoung')
   if (ages.some((age) => age > maxParentAge)) return refuse('tooOld')
   if (childCooldownDaysLeft(state, parentId) > 0) return refuse('cooldown')
-  if (freePlaces(state) < 1) return refuse('noRoom')
 
   const cost = childCost()
   if (state.money < cost) return refuse('notEnoughMoney')
@@ -182,12 +181,9 @@ function marry(state: GameState, memberId: MemberId, suitorIndex: number): Actio
   draft.money -= check.cost
   draft.stats.totalSpent += check.cost
   draft.rngState = rng.state
-  const day = draft.clock.day
-  const events: GameEvent[] = [{ type: 'married', day, memberId, partnerId: spouse.id }]
-  if (check.leavesHome) {
-    leaveHome(draft, member, spouse)
-    events.push({ type: 'leftHome', day, memberId, partnerId: spouse.id })
-  }
+  const events: GameEvent[] = [
+    { type: 'married', day: draft.clock.day, memberId, partnerId: spouse.id },
+  ]
   recordEvents(draft, events)
   return done(draft, events)
 }

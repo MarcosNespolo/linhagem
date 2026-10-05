@@ -178,16 +178,8 @@ export type Member = {
   gender: Gender
   /** Dia do jogo em que nasceu. Negativo para quem nasceu antes do início da partida. */
   birthDay: number
-  /**
-   * Dia do jogo em que morreu, ou null enquanto vive. Para quem saiu de casa
-   * (`leftHome`), o dia em que saiu: daí em diante a pessoa fica só na árvore.
-   */
+  /** Dia do jogo em que morreu, ou null enquanto vive. */
   deathDay: number | null
-  /**
-   * Saiu de casa: casou quando a família não tinha lugar para o par e foi
-   * formar a própria família. Continua na árvore, mas sai da simulação.
-   */
-  leftHome: boolean
   /** Idade, em anos, em que morre de causas naturais. Sorteada no nascimento. */
   lifespan: number
   /** 0 para o casal fundador, 1 para os filhos, 2 para os netos e assim por diante. */
@@ -279,7 +271,12 @@ export type GameState = {
   clock: Clock
   /** Instante real (epoch em ms) até onde o estado foi simulado. Base do progresso offline. */
   lastSimulatedAt: number
+  /** Dinheiro da família. Pode ficar negativo: é a dívida. */
   money: number
+  /** Dia em que o saldo ficou negativo, ou null no azul. Daí conta o prazo para a falência. */
+  debtSince: number | null
+  /** Dia da falência, ou null. Com ela, a partida acabou e o relógio não anda mais. */
+  bankruptDay: number | null
   members: Record<MemberId, Member>
   nextMemberId: number
   /** Pessoas sugeridas como par, por membro solteiro que procurou. */
@@ -331,7 +328,10 @@ export type MemberEvent =
       level: number | null
     }
   | { type: 'married'; day: number; memberId: MemberId; partnerId: MemberId }
-  /** Casou sem lugar em casa e foi formar a própria família, com o par. */
+  /**
+   * Casou sem lugar em casa e foi formar a própria família, com o par. Só nos
+   * históricos de saves antigos: desde a versão 14, ninguém sai de casa.
+   */
   | { type: 'leftHome'; day: number; memberId: MemberId; partnerId: MemberId }
   /** Demissão: fica sem salário até o dia `until`. */
   | { type: 'laidOff'; day: number; memberId: MemberId; until: number }
@@ -364,8 +364,14 @@ export type PropertyEvent = {
   count: number
 }
 
-/** Acontecimentos que ficam no histórico: os das pessoas e as compras da família. */
-export type LogEvent = MemberEvent | PropertyEvent
+/** O dinheiro da família: entrar e sair do vermelho, e a falência, que acaba a partida. */
+export type MoneyEvent =
+  | { type: 'inDebt'; day: number }
+  | { type: 'outOfDebt'; day: number }
+  | { type: 'bankrupt'; day: number }
+
+/** Acontecimentos que ficam no histórico: os das pessoas, as compras e o dinheiro da família. */
+export type LogEvent = MemberEvent | PropertyEvent | MoneyEvent
 
 /**
  * Acontecimentos que a engine reporta para a interface mostrar. O 13º salário

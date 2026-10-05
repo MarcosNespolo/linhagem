@@ -7,10 +7,8 @@ import {
   checkMarry,
   checkSeekPartner,
   familyRates,
-  freePlaces,
-  lifeEndDay,
-  livesAway,
   livingCount,
+  rentedPlaces,
   memberIncome,
   weddingCost,
   type GameState,
@@ -139,13 +137,11 @@ describe('casar', () => {
     }
   })
 
-  it('sem lugar em casa, o casal sai para formar a própria família', () => {
+  it('sem lugar em casa, o casal fica na família e paga aluguel', () => {
     const { state: full, childIds } = withAdultChildren(5)
     const [childId] = childIds
-    expect(livingCount(full)).toBe(BALANCE.housing.rentedPlaces)
-    expect(freePlaces(full)).toBe(0)
     const searched = expectOk(find(full, childId)).state
-    expect(checkMarry(searched, childId, 0)).toMatchObject({ ok: true, leavesHome: true })
+    expect(checkMarry(searched, childId, 0)).toMatchObject({ ok: true })
 
     const result = expectOk(
       applyAction(searched, { type: 'marry', memberId: childId, suitorIndex: 0 }),
@@ -153,36 +149,14 @@ describe('casar', () => {
     const married = result.state
     const child = married.members[childId]
     const spouse = married.members[child.partnerId ?? '']
-    const day = married.clock.day
     expect(result.events).toEqual([
-      { type: 'married', day, memberId: childId, partnerId: spouse.id },
-      { type: 'leftHome', day, memberId: childId, partnerId: spouse.id },
+      { type: 'married', day: married.clock.day, memberId: childId, partnerId: spouse.id },
     ])
-    for (const person of [child, spouse]) {
-      expect(person.leftHome).toBe(true)
-      expect(person.deathDay).toBe(day)
-      expect(livesAway(person, day)).toBe(true)
-    }
-    expect(livingCount(married)).toBe(livingCount(full) - 1)
+    expect(child.deathDay).toBeNull()
+    expect(spouse.deathDay).toBeNull()
+    expect(livingCount(married)).toBe(livingCount(full) + 1)
+    expect(rentedPlaces(married)).toBe(rentedPlaces(full) + 1)
     expect(married.money).toBe(searched.money - BALANCE.marriage.cost)
-    expect(familyRates(married).income).toBeLessThan(familyRates(full).income)
-
-    // Fora de casa, a idade continua contando até a expectativa de vida.
-    const tenYears = day + 10 * BALANCE.daysPerYear
-    expect(ageOf(child, tenYears)).toBe(ageOf(child, day) + 10)
-    expect(livesAway(child, lifeEndDay(child) - 1)).toBe(true)
-    expect(livesAway(child, lifeEndDay(child))).toBe(false)
-    expect(ageOf(child, lifeEndDay(child) + 1_000)).toBe(child.lifespan)
-  })
-
-  it('com lugar em casa, o casal fica na família', () => {
-    const { state, childIds } = withAdultChildren(5)
-    const [childId] = childIds
-    const searched = expectOk(find(withHomes(state, { kitnet: 1 }), childId)).state
-    expect(checkMarry(searched, childId, 0)).toMatchObject({ ok: true, leavesHome: false })
-    const married = marryMember(searched, childId)
-    expect(married.members[childId].leftHome).toBe(false)
-    expect(married.members[childId].deathDay).toBeNull()
   })
 
   it('exige dinheiro suficiente e uma sugestão válida', () => {
