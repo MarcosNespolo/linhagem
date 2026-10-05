@@ -25,10 +25,29 @@ export function propertyPrice(id: PropertyId): number {
  * ainda não comprou; dos comerciais, os anunciados que ainda ninguém levou.
  */
 export function propertiesLeft(state: GameState, id: PropertyId): number {
-  if (propertyType(id).home) {
-    return Math.max(0, BALANCE.properties.homeSupply - ownedCount(state, id))
-  }
+  const type = propertyType(id)
+  if (type.home) return Math.max(0, type.lots - ownedCount(state, id))
   return state.market[id] ?? 0
+}
+
+/** Lotes do tipo que são da família, em ordem. */
+export function ownedLots(state: GameState, id: PropertyId): readonly number[] {
+  return state.lots[id] ?? []
+}
+
+/**
+ * Lotes do tipo à venda, em ordem. Nos de moradia, todos os que não são da
+ * família. Nos comerciais, um lote para cada anúncio, nos primeiros que não
+ * são da família; com todos os lotes da família, os anúncios ficam fora da
+ * rua.
+ */
+export function lotsForSale(state: GameState, id: PropertyId): number[] {
+  const owned = new Set(ownedLots(state, id))
+  const free: number[] = []
+  for (let lot = 0; lot < propertyType(id).lots; lot++) {
+    if (!owned.has(lot)) free.push(lot)
+  }
+  return propertyType(id).home ? free : free.slice(0, propertiesLeft(state, id))
 }
 
 /** Anos do jogo que um imóvel do tipo leva para se pagar com o aluguel. */
@@ -183,22 +202,37 @@ export function totalProperties(state: GameState): number {
   return PROPERTY_IDS.reduce((sum, id) => sum + ownedCount(state, id), 0)
 }
 
-export type PropertyCheck = { ok: true; price: number } | Refusal
+export type PropertyCheck = { ok: true; price: number; lot: number | null } | Refusal
 
-/** Diz se a família pode comprar agora um imóvel do tipo e por quanto. */
-export function checkBuyProperty(state: GameState, id: PropertyId): PropertyCheck {
+/**
+ * Diz se a família pode comprar agora um imóvel do tipo, por quanto e qual
+ * lote ela leva. Com `lot`, é aquele lote, que precisa estar à venda; sem ele,
+ * o primeiro lote à venda, ou nenhum, quando o anúncio comercial está fora da
+ * rua.
+ */
+export function checkBuyProperty(state: GameState, id: PropertyId, lot?: number): PropertyCheck {
   if (!(PROPERTY_IDS as readonly string[]).includes(id)) return refuse('propertyNotFound')
   if (!isPropertyUnlocked(state, id)) return refuse('propertyLocked')
   if (propertiesLeft(state, id) <= 0) return refuse('soldOut')
+  const forSale = lotsForSale(state, id)
+  if (lot !== undefined && !forSale.includes(lot)) return refuse('lotNotForSale')
   const price = propertyPrice(id)
   if (state.money < price) return refuse('notEnoughMoney')
-  return { ok: true, price }
+  return { ok: true, price, lot: lot ?? forSale[0] ?? null }
 }
 
 /** Compra um imóvel já conferido. Altera o rascunho e devolve o acontecimento. */
-export function buyProperty(draft: GameState, id: PropertyId, price: number): GameEvent {
+export function buyProperty(
+  draft: GameState,
+  id: PropertyId,
+  price: number,
+  lot: number | null,
+): GameEvent {
   const count = ownedCount(draft, id) + 1
   draft.properties = { ...draft.properties, [id]: count }
+  if (lot !== null) {
+    draft.lots = { ...draft.lots, [id]: [...ownedLots(draft, id), lot].sort((a, b) => a - b) }
+  }
   if (propertyType(id).market) {
     draft.market = { ...draft.market, [id]: propertiesLeft(draft, id) - 1 }
   }

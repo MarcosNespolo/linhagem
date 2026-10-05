@@ -1,10 +1,11 @@
-import { BALANCE } from '@/content/balance'
 import { PROPERTY_IDS, PROPERTY_TYPES, type PropertyId } from '@/content/properties'
 import {
   homesInUse,
   isPropertyUnlocked,
   livingCount,
+  lotsForSale,
   ownedCount,
+  ownedLots,
   propertiesLeft,
   type GameState,
 } from '@/engine'
@@ -19,14 +20,16 @@ export type LotState = 'home' | 'rented' | 'forSale' | 'neighbor' | 'locked'
 export type MapLot = {
   key: string
   typeId: PropertyId
+  /** Número do lote no tipo, de 0 a `lots - 1`: o mesmo que a engine guarda e compra. */
+  lot: number
+  /** Endereço: a rua do lote e o número dele, ou o quilômetro, na estrada. */
+  address: string
   /** Centro da base do prédio, onde ele encosta na calçada. */
   x: number
   y: number
   state: LotState
   /** Escolhe o modelo e as cores do prédio: 10 × fileira + posição na fileira. */
   variant: number
-  /** Placa de "vende" na frente. Nos de moradia, só no próximo que a família compraria. */
-  sign: boolean
   /** Quantos a família tem do tipo, no primeiro lote dela, quando são mais do que os lotes. */
   count?: number
 }
@@ -110,18 +113,16 @@ const BOTTOM = 6
 
 /**
  * Monta o bairro a partir do estado: as fileiras dos tipos liberados e uma de
- * terrenos em obras para o próximo, então o bairro cresce com a família. Nos
- * de moradia, cada um dos 10 do bairro tem um lote: os primeiros são da
- * família (os em que ela mora antes) e os outros estão à venda. Nos
- * comerciais, a fileira mostra os da família, os à venda e, no resto, os de
- * vizinhos; quando a família tem mais do que cabe, o primeiro lote mostra o
- * total.
+ * terrenos em obras para o próximo, então o bairro cresce com a família. Cada
+ * lote é um imóvel com número: da família (ela mora nos primeiros dela), à
+ * venda ou de um vizinho. Quando a família tem mais comerciais do que os
+ * lotes da rua, o primeiro lote dela mostra o total.
  */
 export function neighborhoodLayout(state: GameState): NeighborhoodLayout {
   const inUse = homesInUse(state, livingCount(state))
   const next = PROPERTY_TYPES.find((type) => !isPropertyUnlocked(state, type.id))?.id
   const rows: MapRow[] = []
-  const homeIndex: Partial<Record<PropertyId, number>> = {}
+  const firstLot: Partial<Record<PropertyId, number>> = {}
   let y = TOP
 
   ROWS.forEach((spec, specIndex) => {
@@ -130,14 +131,18 @@ export function neighborhoodLayout(state: GameState): NeighborhoodLayout {
     const top = y
     const base = top + (locked ? LOCKED_HEIGHT : spec.height)
     const spacing = (MAP_WIDTH - MARGIN * 2) / spec.slots
-    const lots = (locked ? lockedLots(spec) : lotsOf(state, spec, inUse, homeIndex)).map(
-      (lot, slot): MapLot => ({
+    const start = firstLot[spec.typeId] ?? 0
+    firstLot[spec.typeId] = start + spec.slots
+    const lots = (locked ? lockedLots(spec) : lotsOf(state, spec, start, inUse)).map(
+      (info, slot): MapLot => ({
         key: `${specIndex}-${slot}`,
         typeId: spec.typeId,
+        lot: start + slot,
+        address: addressOf(spec, slot),
         x: MARGIN + spacing * (slot + 0.5),
         y: base,
         variant: specIndex * 10 + slot,
-        ...lot,
+        ...info,
       }),
     )
     rows.push({
@@ -153,11 +158,15 @@ export function neighborhoodLayout(state: GameState): NeighborhoodLayout {
   return { width: MAP_WIDTH, height: y + BOTTOM, rows }
 }
 
-/** O que muda o desenho: quantos a família tem de cada tipo, em quantos mora e quantos estão à venda. */
+/**
+ * O que muda o desenho: quantos a família tem de cada tipo, quais lotes, em
+ * quantos ela mora e quantos estão à venda.
+ */
 function layoutKey(state: GameState): string {
   const inUse = homesInUse(state, livingCount(state))
   return PROPERTY_IDS.map(
-    (id) => `${ownedCount(state, id)}:${inUse[id] ?? 0}:${propertiesLeft(state, id)}`,
+    (id) =>
+      `${ownedCount(state, id)}:${ownedLots(state, id).join(',')}:${inUse[id] ?? 0}:${propertiesLeft(state, id)}`,
   ).join('|')
 }
 
@@ -173,53 +182,48 @@ export function cachedNeighborhoodLayout(state: GameState): NeighborhoodLayout {
   return cached.layout
 }
 
-type LotInfo = Pick<MapLot, 'state' | 'sign' | 'count'>
+type LotInfo = Pick<MapLot, 'state' | 'count'>
 
 function lockedLots(spec: RowSpec): LotInfo[] {
-  return Array.from({ length: spec.slots }, () => ({ state: 'locked', sign: false }))
+  return Array.from({ length: spec.slots }, () => ({ state: 'locked' }))
 }
 
-function isHome(id: PropertyId): boolean {
-  return PROPERTY_TYPES.find((type) => type.id === id)?.home != null
+/** Número do prédio na rua: 10, 30, 50… Na estrada de terra, o quilômetro. */
+function addressOf(spec: RowSpec, slot: number): string {
+  if (spec.kind === 'dirt') return `${spec.street}, km ${slot * 4 + 3}`
+  return `${spec.street}, ${slot * 20 + 10}`
 }
 
 /**
- * Situação de cada lote de uma fileira liberada. Moradia: a fileira continua a
- * contagem da anterior do mesmo tipo, então os 10 lotes do tipo são os 10 do
- * bairro. Comercial: os da família, até deixar lugar para os à venda, depois
- * os à venda e os de vizinhos.
+ * Situação de cada lote de uma fileira liberada, a partir do lote `start` do
+ * tipo: a família mora nos primeiros lotes dela, até o número de imóveis em
+ * uso, e aluga os outros; os à venda e os de vizinhos vêm da engine.
  */
 function lotsOf(
   state: GameState,
   spec: RowSpec,
+  start: number,
   inUse: Partial<Record<PropertyId, number>>,
-  homeIndex: Partial<Record<PropertyId, number>>,
 ): LotInfo[] {
-  const owned = ownedCount(state, spec.typeId)
-  if (isHome(spec.typeId)) {
-    const start = homeIndex[spec.typeId] ?? 0
-    homeIndex[spec.typeId] = start + spec.slots
-    const living = inUse[spec.typeId] ?? 0
-    return Array.from({ length: spec.slots }, (_, slot): LotInfo => {
-      const index = start + slot
-      if (index < living) return { state: 'home', sign: false }
-      if (index < owned) return { state: 'rented', sign: false }
-      if (index < BALANCE.properties.homeSupply) return { state: 'forSale', sign: index === owned }
-      return { state: 'neighbor', sign: false }
-    })
-  }
-  const left = propertiesLeft(state, spec.typeId)
-  const forSale = Math.min(left, spec.slots - (owned > 0 ? 1 : 0))
-  const family = Math.min(owned, spec.slots - forSale)
+  const owned = ownedLots(state, spec.typeId)
+  const lived = new Set(owned.slice(0, inUse[spec.typeId] ?? 0))
+  const family = new Set(owned)
+  const forSale = new Set(lotsForSale(state, spec.typeId))
+  const total = ownedCount(state, spec.typeId)
   return Array.from({ length: spec.slots }, (_, slot): LotInfo => {
-    if (slot < family) {
+    const lot = start + slot
+    if (lived.has(lot)) return { state: 'home' }
+    if (family.has(lot)) {
       return {
         state: 'rented',
-        sign: false,
-        count: slot === 0 && owned > family ? owned : undefined,
+        count: lot === owned[0] && total > owned.length ? total : undefined,
       }
     }
-    if (slot < family + forSale) return { state: 'forSale', sign: true }
-    return { state: 'neighbor', sign: false }
+    return { state: forSale.has(lot) ? 'forSale' : 'neighbor' }
   })
+}
+
+/** Lotes de cada tipo nas fileiras, para conferir com o número de lotes do tipo. */
+export function rowLots(id: PropertyId): number {
+  return ROWS.filter((row) => row.typeId === id).reduce((sum, row) => sum + row.slots, 0)
 }

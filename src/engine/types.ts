@@ -290,6 +290,12 @@ export type GameState = {
   properties: Partial<Record<PropertyId, number>>
   /** Quantos imóveis comerciais de cada tipo estão à venda no bairro. */
   market: Partial<Record<PropertyId, number>>
+  /**
+   * Lotes do bairro que são da família, por tipo, em ordem: o número de cada
+   * lote, de 0 a `lots - 1`. Nos de moradia, um por imóvel; nos comerciais, a
+   * família pode ter mais imóveis do que lotes, e os outros ficam fora da rua.
+   */
+  lots: Partial<Record<PropertyId, number[]>>
   /** Missões do dia, ou null antes do primeiro sorteio. */
   missions: Missions | null
   boosts: {

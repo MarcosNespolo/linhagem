@@ -1133,10 +1133,10 @@ export function Tractor({ x, y, flip = false }: { x: number; y: number; flip?: b
   )
 }
 
-/** Placa de "vende" fincada na frente do lote. */
+/** Placa de "vende" fincada na frente de cada lote à venda. */
 export function ForSaleSign({ x, y }: { x: number; y: number }) {
   return (
-    <g transform={`translate(${x} ${y})`}>
+    <g transform={`translate(${x} ${y}) scale(0.82)`}>
       <rect x={-0.8} y={-14} width={1.6} height={14} fill={COLORS.bark} />
       <rect
         x={-13}

@@ -1,4 +1,5 @@
 import { BALANCE } from '../content/balance'
+import { PROPERTY_TYPES } from '../content/properties'
 import { rollAppearance } from './appearance'
 import { initialMarket } from './properties'
 import { createRng, hashString } from './rng'
@@ -7,7 +8,7 @@ import { ageInYears, lastDayOfYear } from './time'
 import type { GameState } from './types'
 
 /** Versão atual do formato do save. Sobe a cada migração nova. */
-export const CURRENT_SCHEMA_VERSION = 12
+export const CURRENT_SCHEMA_VERSION = 13
 
 export type SaveErrorCode = 'corrupt' | 'futureVersion' | 'missingMigration'
 
@@ -259,6 +260,22 @@ const toVersion11: Migration = (save) => {
 const toVersion12: Migration = (save) => ({ ...save, market: initialMarket() })
 
 /**
+ * Versão 13: cada imóvel do bairro vira um lote com número, e a família pode
+ * comprar o lote que escolher. Os que ela já tem ficam nos primeiros lotes do
+ * tipo; nos comerciais, até o número de lotes da rua.
+ */
+const toVersion13: Migration = (save) => {
+  const properties = isRecord(save.properties) ? save.properties : {}
+  const lots: Record<string, number[]> = {}
+  for (const type of PROPERTY_TYPES) {
+    const owned = properties[type.id]
+    const count = typeof owned === 'number' ? Math.min(owned, type.lots) : 0
+    if (count > 0) lots[type.id] = Array.from({ length: count }, (_, lot) => lot)
+  }
+  return { ...save, lots }
+}
+
+/**
  * Migrações, indexadas pela versão de origem. São sempre aditivas: criam
  * campos novos com valores padrão e nunca apagam dados do jogador; uma troca
  * de unidade, como a do dinheiro na versão 3, converte o valor sem perder
@@ -278,6 +295,7 @@ export const MIGRATIONS: Readonly<Record<number, Migration>> = {
   9: toVersion10,
   10: toVersion11,
   11: toVersion12,
+  12: toVersion13,
 }
 
 /** Valida um save lido de JSON e o leva até a versão atual. */

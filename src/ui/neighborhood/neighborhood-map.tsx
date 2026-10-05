@@ -26,7 +26,7 @@ import {
 
 type Props = {
   layout: NeighborhoodLayout
-  onSelect?: (id: PropertyId) => void
+  onSelect?: (lot: MapLot) => void
 }
 
 /** Tipos com calçadão na frente dos prédios, no lugar do gramado. */
@@ -85,7 +85,7 @@ function Row({
   row: MapRow
   index: number
   width: number
-  onSelect?: (id: PropertyId) => void
+  onSelect?: (lot: MapLot) => void
 }) {
   const spacing = row.lots.length > 1 ? row.lots[1].x - row.lots[0].x : width
   const paved = PAVED.has(row.typeId) && !row.locked
@@ -175,12 +175,12 @@ function Lot({
 }: {
   lot: MapLot
   spacing: number
-  onSelect?: (id: PropertyId) => void
+  onSelect?: (lot: MapLot) => void
 }) {
   const building = BUILDINGS[lot.typeId]
   const top = building.top(lot.variant)
   return (
-    <g {...pressable(lotLabel(lot), onSelect && (() => onSelect(lot.typeId)))}>
+    <g {...pressable(lotLabel(lot), onSelect && (() => onSelect(lot)))}>
       <rect
         className="lot-hit"
         x={lot.x - spacing / 2 + 2}
@@ -191,7 +191,7 @@ function Lot({
         fill="transparent"
       />
       <g transform={`translate(${lot.x} ${lot.y})`}>{building.draw(lot.variant)}</g>
-      {lot.sign ? (
+      {lot.state === 'forSale' ? (
         <ForSaleSign x={lot.x + Math.min(building.width / 2 - 2, spacing / 2 - 14)} y={lot.y + 3} />
       ) : null}
     </g>
@@ -206,9 +206,9 @@ function LockedLots({
 }: {
   row: MapRow
   spacing: number
-  onSelect?: (id: PropertyId) => void
+  onSelect?: (lot: MapLot) => void
 }) {
-  const select = onSelect && (() => onSelect(row.typeId))
+  const select = onSelect && (() => onSelect(row.lots[0]))
   const board = row.lots[Math.min(1, row.lots.length - 1)]
   return (
     <g {...pressable(`${propertyType(row.typeId).name}: em obras`, select)}>
@@ -253,17 +253,18 @@ function pressable(label: string, select: (() => void) | undefined) {
 function lotLabel(lot: MapLot): string {
   const type = propertyType(lot.typeId)
   const rented = type.gender === 'f' ? 'alugada' : 'alugado'
+  const where = lot.address
   switch (lot.state) {
     case 'home':
-      return `${type.name} onde a família mora`
+      return `${type.name} onde a família mora, ${where}`
     case 'rented':
       return lot.count
-        ? `${type.name}: a família tem ${lot.count}, todos de aluguel`
-        : `${type.name} da família, ${rented}`
+        ? `${type.name} da família, ${rented}, ${where}. A família tem ${lot.count}`
+        : `${type.name} da família, ${rented}, ${where}`
     case 'forSale':
-      return `${type.name} à venda`
+      return `${type.name} à venda, ${where}`
     case 'neighbor':
-      return `${type.name} de um vizinho`
+      return `${type.name} de um vizinho, ${where}`
     case 'locked':
       return `${type.name}: em obras`
   }

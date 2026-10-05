@@ -1,6 +1,6 @@
 import { expect } from 'vitest'
 import { BALANCE } from '@/content/balance'
-import type { PropertyId } from '@/content/properties'
+import { propertyType, type PropertyId } from '@/content/properties'
 import {
   advance,
   applyAction,
@@ -27,12 +27,20 @@ export function withMoney(state: GameState, money: number): GameState {
   return { ...state, money }
 }
 
-/** A família com os imóveis informados, sem pagar por eles: lugar em casa para mais gente. */
+/**
+ * A família com os imóveis informados, sem pagar por eles: lugar em casa para
+ * mais gente. Ela fica com os primeiros lotes de cada tipo, até os da rua.
+ */
 export function withHomes(
   state: GameState,
   properties: Partial<Record<PropertyId, number>>,
 ): GameState {
-  return { ...state, properties: { ...state.properties, ...properties } }
+  const lots = { ...state.lots }
+  for (const [id, count] of Object.entries(properties) as [PropertyId, number][]) {
+    const shown = Math.min(count, propertyType(id).lots)
+    lots[id] = Array.from({ length: shown }, (_, lot) => lot)
+  }
+  return { ...state, properties: { ...state.properties, ...properties }, lots }
 }
 
 /** Troca campos de um membro sem alterar o estado original. */

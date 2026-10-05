@@ -20,6 +20,7 @@ export type ActionError =
   | 'propertyNotFound'
   | 'propertyLocked'
   | 'soldOut'
+  | 'lotNotForSale'
   | 'invalidDate'
   | 'alreadyDrawn'
   | 'missionNotFound'
