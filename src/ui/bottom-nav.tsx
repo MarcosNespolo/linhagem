@@ -7,7 +7,7 @@ const TABS: { id: Tab; label: string; icon: LucideIcon; badgeLabel?: string }[] 
   { id: 'family', label: 'Família', icon: TreeDeciduous },
   { id: 'love', label: 'Amor', icon: Heart, badgeLabel: 'ações disponíveis' },
   { id: 'studies', label: 'Estudos', icon: School },
-  { id: 'work', label: 'Trabalho', icon: Briefcase, badgeLabel: 'cursos cabem no dinheiro' },
+  { id: 'work', label: 'Trabalho', icon: Briefcase, badgeLabel: 'pessoas podem fazer curso' },
   {
     id: 'properties',
     label: 'Imóveis',

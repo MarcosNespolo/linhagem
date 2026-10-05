@@ -11,12 +11,7 @@ import { refuse, type ActionError, type Refusal } from './errors'
 import { recordEvents } from './log'
 import { addMember, ageOf, isAlive } from './members'
 import { claimReward, drawMissions, isMissionDone, trackMissions } from './missions'
-import {
-  affordableCourses,
-  availableCourses,
-  courseFor,
-  payCourse as applyCourse,
-} from './promotions'
+import { beginCourse, courseOffer } from './promotions'
 import { buyProperty as applyPurchase, checkBuyProperty } from './properties'
 import { createRng } from './rng'
 import { inheritAptitude } from './school'
@@ -34,10 +29,13 @@ export type Action =
   | { type: 'choose'; picks: ChoicePick[] }
   /** Troca a rede da escola ou do ensino médio na próxima matrícula. A mesma rede desfaz o pedido. */
   | { type: 'changeSchool'; memberId: MemberId; network: Network }
-  /** Paga o curso de quem está pronto para o 4º ou o 5º nível, que sobe na hora. */
-  | { type: 'payCourse'; memberId: MemberId }
-  /** Paga os cursos disponíveis, do mais barato ao mais caro, enquanto houver dinheiro. */
-  | { type: 'payAllCourses' }
+  /**
+   * Começa o curso do próximo nível, pago por mês enquanto a pessoa trabalha.
+   * Com dedicação, dura a metade e custa o dobro por mês.
+   */
+  | { type: 'startCourse'; memberId: MemberId; dedicated: boolean }
+  /** Para o curso em andamento. O que já foi pago não volta. */
+  | { type: 'stopCourse'; memberId: MemberId }
   /** Compra um imóvel do tipo, de um em um. */
   | { type: 'buyProperty'; propertyId: PropertyId; lot?: number }
   /**
@@ -71,10 +69,10 @@ export function applyAction(state: GameState, action: Action): ActionResult {
       return choose(state, action.picks)
     case 'changeSchool':
       return changeSchool(state, action.memberId, action.network)
-    case 'payCourse':
-      return payCourse(state, action.memberId)
-    case 'payAllCourses':
-      return payAllCourses(state)
+    case 'startCourse':
+      return startCourse(state, action.memberId, action.dedicated)
+    case 'stopCourse':
+      return stopCourse(state, action.memberId)
     case 'buyProperty':
       return buyProperty(state, action.propertyId, action.lot)
     case 'drawMissions':
@@ -115,6 +113,8 @@ export function checkHaveChild(state: GameState, parentId: MemberId): ChildCheck
   if (ages.some((age) => age < minParentAge)) return refuse('tooYoung')
   if (ages.some((age) => age > maxParentAge)) return refuse('tooOld')
   if (childCooldownDaysLeft(state, parentId) > 0) return refuse('cooldown')
+  // Com dedicação ao curso, não sobra tempo para um filho até terminar.
+  if (parent.course?.dedicated || partner.course?.dedicated) return refuse('dedicated')
 
   const cost = childCost()
   if (state.money < cost) return refuse('notEnoughMoney')
@@ -174,28 +174,26 @@ function changeSchool(state: GameState, memberId: MemberId, network: Network): A
   return done(draft)
 }
 
-function payCourse(state: GameState, memberId: MemberId): ActionResult {
+function startCourse(state: GameState, memberId: MemberId, dedicated: boolean): ActionResult {
   const member = state.members[memberId]
   if (!member) return refuse('memberNotFound')
-  const course = courseFor(member, state.clock.day)
-  if (!course) return refuse('noCourse')
-  if (state.money < course.cost) return refuse('notEnoughMoney')
+  if (!isAlive(member)) return refuse('memberDeceased')
+  const offer = courseOffer(member, state.clock.day, dedicated)
+  if (!offer) return refuse('noCourse')
 
   const draft = draftOf(state)
-  const events = [applyCourse(draft, course)]
-  recordEvents(draft, events)
-  return done(draft, events)
+  beginCourse(draft.members[memberId], offer, draft.clock.day)
+  return done(draft)
 }
 
-function payAllCourses(state: GameState): ActionResult {
-  if (availableCourses(state).length === 0) return refuse('noCourse')
-  const courses = affordableCourses(state)
-  if (courses.length === 0) return refuse('notEnoughMoney')
+function stopCourse(state: GameState, memberId: MemberId): ActionResult {
+  const member = state.members[memberId]
+  if (!member) return refuse('memberNotFound')
+  if (!member.course) return refuse('noCourse')
 
   const draft = draftOf(state)
-  const events = courses.map((course) => applyCourse(draft, course))
-  recordEvents(draft, events)
-  return done(draft, events)
+  draft.members[memberId].course = null
+  return done(draft)
 }
 
 function buyProperty(state: GameState, id: PropertyId, lot?: number): ActionResult {

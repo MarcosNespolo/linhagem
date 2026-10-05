@@ -37,10 +37,10 @@ describe('histórico', () => {
       'firstJob',
       'becameAdult',
     ])
-    // Enquanto o filho cresce, os fundadores sobem de nível com o tempo e passam por imprevistos.
+    // Enquanto o filho cresce, os fundadores, sem cursos, só passam por imprevistos.
     const others = people.filter((event) => event.memberId !== childId)
-    const meanwhile = new Set(['promoted', 'laidOff', 'rehired', 'mishap'])
-    expect(others.some((event) => event.type === 'promoted')).toBe(true)
+    const meanwhile = new Set(['laidOff', 'rehired', 'mishap'])
+    expect(others.length).toBeGreaterThan(0)
     expect(others.every((event) => meanwhile.has(event.type))).toBe(true)
 
     const married = marryMember(state, childId)

@@ -4,9 +4,9 @@ import { GraduationCap } from 'lucide-react'
 import { BALANCE } from '@/content/balance'
 import { PUBLIC_CAREER } from '@/content/careers'
 import {
-  affordableCourses,
-  availableCourses,
   calendarDate,
+  courseCandidates,
+  courseOffer,
   expectedConcursoScore,
   halfTimeCaregivers,
   highestCargo,
@@ -14,14 +14,12 @@ import {
   isRetired,
   livingMembers,
   nextExamDay,
-  type CourseOffer,
   type GameState,
   type Member,
 } from '@/engine'
-import { useGameStore } from '@/game/store'
 import { formatMoney, formatMonthYear, formatRate } from '@/lib/format'
 import { PersonAvatar } from '../avatar/person-avatar'
-import { showMember } from '../flows'
+import { showCourse, showMember } from '../flows'
 import {
   byGender,
   careerLine,
@@ -35,8 +33,9 @@ import {
 import { button, card } from '../styles'
 
 /**
- * Aba Trabalho: os cursos de promoção para pagar, quem estuda para concurso e
- * quem trabalha, com a carreira, o nível, o salário e a próxima promoção.
+ * Aba Trabalho: quem pode começar um curso de promoção, quem estuda para
+ * concurso e quem trabalha, com a carreira, o nível, o salário e o curso ou a
+ * próxima promoção.
  */
 export function WorkTab({ game }: { game: GameState }) {
   const day = game.clock.day
@@ -49,6 +48,7 @@ export function WorkTab({ game }: { game: GameState }) {
   const studying = living.filter((member) => member.concurso)
   const salaries = workers.reduce((sum, member) => sum + incomeOf(game, member, caregivers), 0)
   const pensions = retired.reduce((sum, member) => sum + incomeOf(game, member, caregivers), 0)
+  const courseFees = living.reduce((sum, member) => sum + (member.course?.fee ?? 0), 0)
 
   return (
     <div className="mx-auto w-full max-w-md space-y-7 px-4 pt-5 pb-8">
@@ -59,11 +59,11 @@ export function WorkTab({ game }: { game: GameState }) {
         <p className="tabular text-ink-soft text-[14px]">
           Salários: {salaries > 0 ? `${formatMoney(salaries)} por mês` : 'nenhum'}
           {pensions > 0 ? ` · aposentadorias: ${formatMoney(pensions)} por mês` : ''}
+          {courseFees > 0 ? ` · cursos: ${formatMoney(courseFees)} por mês` : ''}
         </p>
         <p className="text-ink-soft mt-2 text-[13px]">
-          Até o 3º nível, a promoção vem com o tempo. Para o 4º e o 5º, a família paga um curso, que
-          custa {BALANCE.careers.courseMonths} meses do aumento. No serviço público, tudo vem com o
-          tempo.
+          Cada nível pede um curso, pago por mês. Com dedicação, dura a metade e custa o dobro, sem
+          namoro nem filho. No serviço público, a promoção vem com o tempo.
         </p>
       </section>
 
@@ -118,48 +118,26 @@ export function WorkTab({ game }: { game: GameState }) {
   )
 }
 
-/** Cursos de promoção prontos para pagar, com o botão de pagar todos. */
+/** Quem pode começar o curso do próximo nível, com a mensalidade no ritmo normal. */
 function Courses({ game }: { game: GameState }) {
-  const dispatch = useGameStore((store) => store.dispatch)
-  const courses = availableCourses(game)
-  if (courses.length === 0) return null
-  const affordable = affordableCourses(game)
-  const total = affordable.reduce((sum, course) => sum + course.cost, 0)
-  const missing = courses[0].cost - game.money
-
+  const candidates = courseCandidates(game)
+  if (candidates.length === 0) return null
   return (
     <section>
-      <h2 className="px-1 text-lg font-extrabold">Cursos de promoção</h2>
-      <p className="text-ink-soft px-1 text-[14px]">
-        {affordable.length === courses.length
-          ? 'Todos cabem no dinheiro.'
-          : `${affordable.length} de ${courses.length} cabem no dinheiro.`}
-      </p>
-      <button
-        type="button"
-        className={`${button.primary} mt-3 w-full`}
-        disabled={affordable.length === 0}
-        onClick={() => dispatch({ type: 'payAllCourses' })}
-      >
-        <GraduationCap size={18} />
-        {affordable.length > 0
-          ? `Pagar ${affordable.length === 1 ? 'o curso' : `${affordable.length} cursos`} · ${formatMoney(total)}`
-          : `Faltam ${formatMoney(missing)} para o mais barato`}
-      </button>
+      <h2 className="px-1 text-lg font-extrabold">Podem fazer curso</h2>
       <ul className="mt-3 space-y-2">
-        {courses.map((course) => (
-          <CourseRow key={course.memberId} game={game} course={course} />
+        {candidates.map((member) => (
+          <CourseRow key={member.id} game={game} member={member} />
         ))}
       </ul>
     </section>
   )
 }
 
-function CourseRow({ game, course }: { game: GameState; course: CourseOffer }) {
-  const dispatch = useGameStore((store) => store.dispatch)
-  const member = game.members[course.memberId]
-  if (!member?.career) return null
-  const next = levelTitle(member, member.career.id, course.level)
+function CourseRow({ game, member }: { game: GameState; member: Member }) {
+  const offer = courseOffer(member, game.clock.day, false)
+  if (!offer || !member.career) return null
+  const next = levelTitle(member, member.career.id, offer.level)
   return (
     <li className={`${card} flex items-center gap-3 p-2.5`}>
       <button
@@ -176,18 +154,21 @@ function CourseRow({ game, course }: { game: GameState; course: CourseOffer }) {
         <span className="min-w-0">
           <span className="block truncate text-[16px] font-bold">{member.firstName}</span>
           <span className="text-ink-soft block text-[13px]">
-            {upperFirst(courseName(course.level))} para virar {lowerFirst(next)}
+            {upperFirst(courseName(offer.level))} → {lowerFirst(next)}
+          </span>
+          <span className="tabular text-expense block text-[13px] font-bold">
+            {formatRate(-offer.fee)}
           </span>
         </span>
       </button>
       <button
         type="button"
-        className={`${button.small} tabular shrink-0`}
-        disabled={course.cost > game.money}
-        onClick={() => dispatch({ type: 'payCourse', memberId: member.id })}
-        aria-label={`Pagar o curso de ${member.firstName}: ${formatMoney(course.cost)}`}
+        className={`${button.small} shrink-0`}
+        onClick={() => showCourse(member.id)}
+        aria-label={`Escolher o curso de ${member.firstName}`}
       >
-        {formatMoney(course.cost)}
+        <GraduationCap size={15} />
+        Curso
       </button>
     </li>
   )
@@ -236,7 +217,7 @@ function WorkerRow({
       detail={`${careerLine(career.id, career.level)}${halfTime ? ' · meio período' : ''}`}
       value={formatRate(income)}
       note={status}
-      highlight={status?.startsWith('Curso disponível') ?? false}
+      highlight={status === 'Curso disponível'}
     />
   )
 }

@@ -147,14 +147,15 @@ function startWorkingAge(formation: Formation): number {
 }
 
 /**
- * Carreira de quem trabalha há `yearsWorked` anos desde a vaga `offer`: sobe os
- * níveis que vêm só com o tempo e fica no último deles há os anos que sobram.
+ * Carreira de quem chega de fora da família e trabalha há `yearsWorked` anos
+ * desde a vaga `offer`: sobe com os tempos do serviço público até
+ * `backgroundMaxLevel` e fica no último nível há os anos que sobram.
  */
 function experiencedCareer(offer: JobOffer, yearsWorked: number, day: number): CareerState {
-  const { yearsToPromote, courseLevel } = BALANCE.careers
+  const { yearsToPromote, backgroundMaxLevel } = BALANCE.careers
   let level = offer.level
   let years = yearsWorked
-  while (level + 1 < courseLevel && years >= yearsToPromote[level]) {
+  while (level < backgroundMaxLevel && years >= yearsToPromote[level]) {
     years -= yearsToPromote[level]
     level += 1
   }

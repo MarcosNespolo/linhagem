@@ -10,8 +10,8 @@ import {
   School,
   UserRoundCheck,
 } from 'lucide-react'
+import { useState } from 'react'
 import { BALANCE } from '@/content/balance'
-import { careerLevel } from '@/content/careers'
 import { isHigherStage, techCourseName, type Network } from '@/content/schools'
 import {
   ageOf,
@@ -22,7 +22,7 @@ import {
   checkHaveChild,
   childCost,
   childrenOf,
-  courseFor,
+  courseOffer,
   incomeOf,
   isRetired,
   isUnemployed,
@@ -33,7 +33,6 @@ import {
   schoolFee,
   schoolScore,
   type Choice,
-  type CourseOffer,
   type Enrollment,
   type GameState,
   type Member,
@@ -41,7 +40,7 @@ import {
 import { useGameStore } from '@/game/store'
 import { formatMoney, formatMonthYear, formatRate } from '@/lib/format'
 import { PersonAvatar } from '../avatar/person-avatar'
-import { showMember } from '../flows'
+import { showCourse, showMember } from '../flows'
 import {
   ageLabel,
   byGender,
@@ -52,15 +51,15 @@ import {
   formationLabel,
   levelTitle,
   livingCostLine,
-  lowerFirst,
   promotionStatus,
   relationLine,
   roleLabel,
   schoolName,
   schoolNameInSentence,
   schoolYearLabel,
+  upperFirst,
 } from '../labels'
-import { button } from '../styles'
+import { button, card } from '../styles'
 import { useUiStore } from '../ui-store'
 import { Sheet } from './sheet'
 
@@ -78,7 +77,6 @@ export function MemberSheet({ game, member }: { game: GameState; member: Member 
   const career = member.career
   const working = alive && !isRetired(member, day)
   const promotion = alive && working && career ? promotionStatus(member, day) : null
-  const course = alive ? courseFor(member, day) : null
 
   return (
     <Sheet title={member.firstName} hideTitle onClose={closeSheet}>
@@ -210,7 +208,7 @@ export function MemberSheet({ game, member }: { game: GameState; member: Member 
       </dl>
 
       {alive && choice ? <OpenChoice member={member} choice={choice} /> : null}
-      {course && !choice ? <PayCourse game={game} member={member} course={course} /> : null}
+      {working && !choice ? <CourseBlock game={game} member={member} /> : null}
       {alive && school && !choice ? <SchoolChange member={member} school={school} /> : null}
       {alive && !choice && canHaveTutor(member) ? <Tutor game={game} member={member} /> : null}
       {alive ? <MemberActions game={game} member={member} partner={partner} /> : null}
@@ -267,39 +265,62 @@ function OpenChoice({ member, choice }: { member: Member; choice: Choice }) {
   )
 }
 
-/** Curso pago que sobe a pessoa para o 4º ou o 5º nível na hora. */
-function PayCourse({
-  game,
-  member,
-  course,
-}: {
-  game: GameState
-  member: Member
-  course: CourseOffer
-}) {
+/**
+ * Curso de promoção: o que está em andamento, com o fim e a mensalidade e o
+ * botão de parar, ou o botão de começar o curso do próximo nível.
+ */
+function CourseBlock({ game, member }: { game: GameState; member: Member }) {
   const dispatch = useGameStore((store) => store.dispatch)
+  const [stopping, setStopping] = useState(false)
   const career = member.career
+  const course = member.course
   if (!career) return null
-  const next = levelTitle(member, career.id, course.level)
-  const raise =
-    careerLevel(career.id, course.level).salaryPerMonth -
-    careerLevel(career.id, career.level).salaryPerMonth
-  const missing = course.cost - game.money
-  return (
-    <div className="mt-5">
+  if (!course) {
+    if (!courseOffer(member, game.clock.day, false)) return null
+    return (
       <button
         type="button"
-        className={`${button.primary} w-full`}
-        disabled={missing > 0}
-        onClick={() => dispatch({ type: 'payCourse', memberId: member.id })}
+        className={`${button.primary} mt-5 w-full`}
+        onClick={() => showCourse(member.id)}
       >
         <BookOpen size={18} />
-        Pagar o {courseName(course.level)} · {formatMoney(course.cost)}
+        Fazer {courseName(career.level + 1)}
       </button>
-      <p className="tabular text-ink-soft mt-2 text-center text-sm">
-        {missing > 0 ? `Faltam ${formatMoney(missing)}. ` : ''}
-        {member.firstName} vira {lowerFirst(next)} na hora e ganha {formatRate(raise)} a mais.
+    )
+  }
+  const next = levelTitle(member, career.id, career.level + 1)
+  const end = formatMonthYear(calendarDate(game.startDate, course.until), 'short')
+  return (
+    <div className={`${card} mt-5 p-3`}>
+      <p className="text-[15px] font-bold">
+        {upperFirst(courseName(career.level + 1))}
+        {course.dedicated ? ' com dedicação' : ''}
       </p>
+      <p className="tabular text-ink-soft text-[14px]">
+        {next} em {end} · {formatRate(-course.fee)}
+      </p>
+      {stopping ? (
+        <div className="mt-2 flex gap-2">
+          <button
+            type="button"
+            className={`${button.danger} flex-1`}
+            onClick={() => dispatch({ type: 'stopCourse', memberId: member.id })}
+          >
+            Parar e perder o pago
+          </button>
+          <button type="button" className={button.quiet} onClick={() => setStopping(false)}>
+            Voltar
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          className={`${button.quiet} mt-1 -ml-3`}
+          onClick={() => setStopping(true)}
+        >
+          Parar curso
+        </button>
+      )}
     </div>
   )
 }

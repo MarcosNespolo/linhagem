@@ -64,8 +64,8 @@ describe('imprevistos', () => {
     })
     expect(isUnemployed(member, day)).toBe(true)
     expect(memberIncome(member, day)).toBe(0)
-    // A contagem para a promoção para: o tempo no nível recomeça de onde estava na volta.
-    expect(member.career!.levelSince).toBeGreaterThan(day)
+    // Fora do serviço público, a promoção vem do curso: o nível e o dia em que chegou a ele ficam.
+    expect(member.career).toEqual(state.members[founder.id].career)
 
     const back = liveDay(fired.state, until)
     const rehired = back.state.members[founder.id]

@@ -6,7 +6,7 @@ import { processDating } from './dating'
 import { isEnrollmentDay, processEnrollment } from './enrollment'
 import { openFirstJobChoice } from './jobs'
 import { processMishaps } from './mishaps'
-import { promoteByTime } from './promotions'
+import { processPromotions } from './promotions'
 import { processMarket } from './properties'
 import type { Rng } from './rng'
 import { halfTimeCaregivers } from './school'
@@ -44,6 +44,7 @@ export function processNewDay(
     if (age >= member.lifespan) {
       member.deathDay = day
       member.dating = null
+      member.course = null
       events.push({ type: 'died', day, memberId: member.id, age })
       continue
     }
@@ -58,6 +59,8 @@ export function processNewDay(
       }
     }
     if (age === BALANCE.retirementAge && member.career) {
+      // O curso que estava pela metade fica sem terminar.
+      member.course = null
       events.push({ type: 'retired', day, memberId: member.id })
     }
   }
@@ -67,7 +70,7 @@ export function processNewDay(
     archiveMembers(draft)
     changed = true
   }
-  if (promoteByTime(draft, events, living)) changed = true
+  if (processPromotions(draft, events, living)) changed = true
   if (processMishaps(draft, events, living)) changed = true
   processMarket(draft)
   if (takeExams(draft, rng, events)) changed = true

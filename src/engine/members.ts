@@ -118,6 +118,7 @@ export function addMember(draft: GameState, rng: Rng, input: NewMember): Member 
     marriedDay: null,
     dating: null,
     career: input.career ?? null,
+    course: null,
     unemployedUntil: null,
     concurso: null,
     lastChildDay: null,

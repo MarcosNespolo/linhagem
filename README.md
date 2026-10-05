@@ -22,8 +22,10 @@ Jogue em [linhagem.vercel.app](https://linhagem.vercel.app).
 - Tocar na foto de quem está numa escolha para ver a nota, de onde ela vem, o ENEM e a formação
 - Escolher o primeiro emprego entre três vagas das carreiras que a formação abre, ou estudar para
   concurso público; o tempo para até a escolha
-- Acompanhar na aba Trabalho as carreiras, os níveis e as promoções, e pagar os cursos que levam
-  ao 4º e ao 5º nível
+- Subir na carreira com cursos: cada nível pede um curso, pago por mês enquanto a pessoa
+  trabalha, no ritmo normal ou com dedicação, que termina na metade do tempo, custa o dobro por mês
+  e deixa a pessoa sem namoro nem filho até terminar; no serviço público, a promoção vem com o
+  tempo
 - Namorar quem aparece: no carnaval e no dia dos namorados, cada filho solteiro com 18 anos ou
   mais pode conhecer alguém, com formação e emprego, e o tempo para até decidir se namora. Um ano
   depois vem o pedido: casar, esperar mais um ano ou terminar. O cônjuge entra na família e
@@ -148,10 +150,13 @@ aprovação em concurso. Na escolha de emprego aparecem três vagas: a da área 
 e carreiras de ensino médio. Quem tem formação acima da que a carreira pede, na mesma área, entra
 um nível acima, como quem se formou em Enfermagem, que começa como enfermeiro.
 
-A promoção vem com o tempo no nível: 3 anos no 1º, 5 no 2º, 8 no 3º e 12 no 4º. Até o 3º nível, a
-pessoa sobe sozinha; para o 4º e o 5º, a família paga um curso que custa 24 meses do aumento, na
-aba Trabalho, onde também dá para pagar todos de uma vez, do mais barato ao mais caro. As regras
-ficam em `src/engine/promotions.ts`, e os valores em `BALANCE.careers`.
+Fora do serviço público, ninguém sobe só com o tempo: cada nível pede um curso, feito enquanto a
+pessoa trabalha (`src/engine/promotions.ts`, com os valores em `BALANCE.careers`). No ritmo normal,
+o curso para o 2º nível leva 1 ano, o do 3º, 2, o do 4º, 3, e o do 5º, 4, e a mensalidade é metade
+do aumento que ele traz. Com dedicação, o curso dura a metade e a mensalidade dobra, e até terminar
+a pessoa não conhece ninguém nem tem filho. Ao terminar, ela sobe de nível. O jogador começa o curso
+pela aba Trabalho ou pela ficha da pessoa e pode parar quando quiser, sem receber de volta o que
+pagou. Quem é demitido no meio continua pagando e sobe no fim; quem se aposenta perde o curso.
 
 Quem tem ensino médio pode trocar a primeira vaga por estudar para concurso: até um ano sem
 salário, com cursinho de R$ 500 por mês e uma prova a cada três meses. A nota parte do ENEM, sobe
@@ -161,9 +166,10 @@ continuar estudando para o cargo de nível superior ou procurar outro emprego. N
 a promoção vem só com o tempo, e a aposentadoria paga 70% do último salário, em vez de 50%. As
 regras ficam em `src/engine/concurso.ts`, e os valores em `BALANCE.concurso`.
 
-O casal fundador, de 24 a 29 anos, começa numa carreira de ensino médio, já com as promoções dos
-anos que trabalhou desde os 18. Quem aparece para namorar chega com formação e emprego sorteados,
-também com as promoções dos anos de trabalho (`src/engine/jobs.ts`).
+O casal fundador, de 24 a 29 anos, começa numa carreira de ensino médio, já com os níveis dos anos
+que trabalhou desde os 18, contados com os tempos do serviço público (3 anos no 1º nível e 5 no 2º),
+até o 3º nível. Quem aparece para namorar chega com formação e emprego sorteados, também com os
+níveis dos anos de trabalho (`src/engine/jobs.ts`).
 
 ## Namoro e casamento
 
@@ -275,8 +281,8 @@ Os números ficam em `src/content/balance.ts` e foram ajustados com uma simulaç
 jogo (`npm run sim`). Um jogador automático (`src/sim/autoplay.ts`) namora quem aparece, casa no
 pedido quando o casamento cabe no dinheiro e tem até 4 filhos por casal; põe os filhos no colégio
 particular quando sobra renda depois de guardar um quarto dela, tenta a federal e paga a faculdade
-particular quando não passa; escolhe a vaga de maior salário, paga os cursos e pega as recompensas
-das missões. Filhos e casamentos vêm primeiro, mas a
+particular quando não passa; escolhe a vaga de maior salário, começa os cursos no ritmo normal
+quando a mensalidade deixa folga de R$ 2 mil na renda e pega as recompensas das missões. Filhos e casamentos vêm primeiro, mas a
 estratégia guarda 3 meses de despesa e só tem mais um filho com folga de R$ 2 mil na renda, para
 não ir à falência. O resto vai para o imóvel que se paga mais rápido; os de moradia contam o
 aluguel que a família deixa de pagar morando neles. O dia das missões vira a cada hora, como quem
@@ -294,9 +300,10 @@ A simulação confere sete limites (`src/sim/limits.ts`) e sai com erro se algum
 | Relógio       | cada segundo de jogo custa menos de 2 ms com a família do fim                 |
 | Volta ao jogo | 5 anos de progresso offline em menos de 200 ms                                |
 
-Os resultados abaixo são de antes do aluguel sem limite (etapa 4.9) e do namoro (4.10), que deixam
-a família crescer sem teto: com a seed 1, ela passa de 1.900 pessoas vivas no ano 110 do jogo, e a
-simulação longa fica lenta. O balanceamento das regras novas (etapa 4.14) refaz os números.
+Os resultados abaixo são de antes do aluguel sem limite (etapa 4.9), do namoro (4.10) e dos cursos
+de promoção (4.11). O aluguel e o namoro deixam a família crescer sem teto: com a seed 1, ela passa
+de 1.900 pessoas vivas no ano 110 do jogo, e a simulação longa fica lenta. O balanceamento das
+regras novas (etapa 4.14) refaz os números.
 
 Com as seeds de 1 a 4, a família chega a 124 pessoas, o máximo que as casas do bairro e o aluguel
 comportam, em cerca de 1 hora e meia, e fica entre 118 e 124 dali em diante. A renda vai de cerca

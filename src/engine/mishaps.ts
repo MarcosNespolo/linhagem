@@ -37,14 +37,14 @@ function amount(value: number, { min, max }: { min: number; max: number }): numb
 }
 
 /**
- * Imprevistos do dia, para quem está vivo em `living`: quem foi demitido e
- * já achou outro emprego volta a trabalhar, no mesmo nível e sem contar o tempo
- * parado para a promoção; quem trabalha fora do serviço público pode ser
- * demitido; adultos podem precisar de cirurgia, mais os
- * idosos; quem tem carro pode precisar de conserto. Cada pessoa tem um sorteio
- * por dia, que cai na faixa de no máximo um imprevisto: primeiro a demissão,
- * para quem pode ser demitido, depois a cirurgia e o conserto do carro. Altera
- * o rascunho e devolve true quando a renda mudou.
+ * Imprevistos do dia, para quem está vivo em `living`: quem foi demitido e já
+ * achou outro emprego volta a trabalhar, no mesmo nível; quem trabalha fora do
+ * serviço público pode ser demitido, e o curso de promoção continua; adultos
+ * podem precisar de cirurgia, mais os idosos; quem tem carro pode precisar de
+ * conserto. Cada pessoa tem um sorteio por dia, que cai na faixa de no máximo
+ * um imprevisto: primeiro a demissão, para quem pode ser demitido, depois a
+ * cirurgia e o conserto do carro. Altera o rascunho e devolve true quando a
+ * renda mudou.
  */
 export function processMishaps(
   draft: GameState,
@@ -80,8 +80,6 @@ export function processMishaps(
       const months = min + Math.floor(roll(draft, member, ROLL.layoffMonths) * (max - min + 1))
       const until = day + Math.round((months * BALANCE.daysPerYear) / 12)
       member.unemployedUntil = until
-      // O tempo sem emprego não conta para a promoção: a contagem no nível para até a volta.
-      career.levelSince += until - day
       events.push({ type: 'laidOff', day, memberId: member.id, until })
       changed = true
       continue

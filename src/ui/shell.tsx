@@ -1,8 +1,8 @@
 'use client'
 
 import {
-  affordableCourses,
   affordableProperties,
+  courseCandidates,
   familyRates,
   livingMembers,
   type GameState,
@@ -18,6 +18,7 @@ import { ChoiceSheet } from './sheets/choice-sheet'
 import { CloudLoginSheet } from './sheets/cloud-login-sheet'
 import { ConfirmNewFamilySheet } from './sheets/confirm-new-family-sheet'
 import { ConflictSheet } from './sheets/conflict-sheet'
+import { CourseSheet } from './sheets/course-sheet'
 import { DebtSheet } from './sheets/debt-sheet'
 import { MemberSheet } from './sheets/member-sheet'
 import { MissionsSheet } from './sheets/missions-sheet'
@@ -117,7 +118,7 @@ export function Shell({ game }: { game: GameState }) {
       <BottomNav
         badges={{
           love: actions.ready,
-          work: affordableCourses(game).length,
+          work: courseCandidates(game).length,
           properties: affordableProperties(game).length,
         }}
       />
@@ -142,6 +143,10 @@ function SheetHost({ game, sheet }: { game: GameState; sheet: Sheet }) {
     case 'member': {
       const member = game.members[sheet.memberId]
       return member ? <MemberSheet game={game} member={member} /> : null
+    }
+    case 'course': {
+      const member = game.members[sheet.memberId]
+      return member ? <CourseSheet game={game} member={member} /> : null
     }
     case 'rename':
       return <RenameSheet game={game} />
