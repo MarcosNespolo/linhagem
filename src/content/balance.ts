@@ -23,9 +23,6 @@ export const BALANCE = {
    * azul; se não voltar, vai à falência e a partida acaba.
    */
   debt: { graceDays: 365 },
-  /** Faixa de idade do casal fundador, em anos. */
-  startingAge: { min: 24, max: 29 },
-
   /** Idade em que um membro vira adulto e consegue o primeiro emprego. */
   adultAge: 18,
   /** Idade de aposentadoria. A partir dela, a renda é uma fração do último salário. */
@@ -62,13 +59,14 @@ export const BALANCE = {
 
   /**
    * Custo de vida de cada adulto por mês, sem a moradia: mercado e contas,
-   * plano de saúde (com médico e dentista), que fica mais caro a partir dos 65
-   * anos, e transporte, de ônibus para quem ganha pouco e de carro para quem
-   * ganha a partir de `carFromSalary`.
+   * plano de saúde (com médico e dentista) para quem ganha a partir de
+   * `planFromSalary`, mais caro a partir dos 65 anos, e transporte, de ônibus
+   * para quem ganha pouco e de carro para quem ganha a partir de
+   * `carFromSalary`. Quem ganha menos que `planFromSalary` usa o SUS.
    */
   living: {
-    adult: 800,
-    health: { adult: 300, senior: 900 },
+    adult: 700,
+    health: { adult: 300, senior: 900, planFromSalary: 3_000 },
     seniorAge: 65,
     transport: { bus: 200, car: 800, carFromSalary: 6_000 },
   },
@@ -93,12 +91,17 @@ export const BALANCE = {
 
   /**
    * Imprevistos, com a chance por ano de cada um. Demissão: quem trabalha fora
-   * do serviço público fica de `months` meses sem salário e volta no mesmo
-   * nível. Cirurgia: conta de hospital, mais provável a partir de
-   * `seniorRiskFromAge`. Carro: conserto para quem tem carro.
+   * do serviço público fica de `months` meses procurando emprego, com o
+   * seguro-desemprego (`unemploymentPay`: uma parte do salário, até um teto),
+   * tranca o curso que estiver fazendo e volta no mesmo nível. Cirurgia: conta de hospital, mais provável a
+   * partir de `seniorRiskFromAge`. Carro: conserto para quem tem carro.
    */
   mishaps: {
-    layoff: { perYear: 0.03, months: { min: 3, max: 9 } },
+    layoff: {
+      perYear: 0.03,
+      months: { min: 3, max: 9 },
+      unemploymentPay: { share: 0.8, max: 2_400 },
+    },
     surgery: { perYear: 0.01, seniorPerYear: 0.04, cost: { min: 15_000, max: 60_000 } },
     car: { perYear: 0.06, cost: { min: 1_500, max: 8_000 } },
   },

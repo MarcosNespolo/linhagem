@@ -21,7 +21,11 @@ export type NewGameOptions = {
   familyName?: string
 }
 
-/** Cria uma partida nova com o casal fundador. */
+/**
+ * Cria uma partida nova com uma pessoa só: 18 anos, ensino médio, o primeiro
+ * emprego de uma carreira de quem tem o médio e nenhum dinheiro. O par vem
+ * depois, pelo namoro.
+ */
 export function newGame({ seed, now, startDate, familyName }: NewGameOptions): GameState {
   const rng = createRng(seed)
   const chosenName = familyName?.trim().slice(0, FAMILY_NAME_MAX_LENGTH)
@@ -48,19 +52,14 @@ export function newGame({ seed, now, startDate, familyName }: NewGameOptions): G
     stats: { simulatedMs: 0, totalEarned: 0, totalSpent: 0, rentEarned: 0, archived: 0 },
   }
 
-  const first = addFounder(draft, rng, 'f')
-  const second = addFounder(draft, rng, 'm')
-  first.partnerId = second.id
-  second.partnerId = first.id
-  first.marriedDay = 0
-  second.marriedDay = 0
-
+  addFounder(draft, rng, rng.chance(0.5) ? 'f' : 'm')
   draft.rngState = rng.state
   return draft
 }
 
 function addFounder(draft: GameState, rng: Rng, gender: Gender): Member {
-  const birthDay = rollAdultBirthDay(rng)
+  // 18 anos feitos, com o aniversário num dia qualquer do ano que vem pela frente.
+  const birthDay = -(BALANCE.adultAge * BALANCE.daysPerYear + rng.int(0, BALANCE.daysPerYear - 1))
   const appearance = rollAppearance(rng, gender)
   return addMember(draft, rng, {
     gender,
@@ -72,11 +71,4 @@ function addFounder(draft: GameState, rng: Rng, gender: Gender): Member {
     career: rollFounderCareer(rng, birthDay, 0),
     education: newEducation({ level: 'medio' }),
   })
-}
-
-/** Dia de nascimento de alguém do casal fundador, com aniversário num dia qualquer do ano. */
-function rollAdultBirthDay(rng: Rng): number {
-  const { min, max } = BALANCE.startingAge
-  const age = rng.int(min, max)
-  return -(age * BALANCE.daysPerYear + rng.int(0, BALANCE.daysPerYear - 1))
 }

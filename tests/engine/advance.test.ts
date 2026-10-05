@@ -18,7 +18,6 @@ import {
   OFFLINE_CAP_MS,
   salaryPerMonth,
   TICKS_PER_DAY,
-  ticksToMonths,
   type Choice,
   type GameState,
 } from '@/engine'
@@ -35,6 +34,7 @@ import {
   setMember,
   withChild,
   withMoney,
+  withPartner,
   workPolicy,
   years,
 } from '../helpers'
@@ -137,7 +137,7 @@ describe('advance', () => {
 
   it('dá o mesmo resultado com passos fracionados e atravessando aniversários', () => {
     // Começa em agosto para o 13º caber antes das matrículas de janeiro, que param o relógio.
-    const start = withChild(newGame({ seed: 4, now: 0, startDate: '2026-08-02' }))
+    const start = withChild(withPartner(newGame({ seed: 4, now: 0, startDate: '2026-08-02' })))
     // 146 dias: 24 s reais, múltiplo exato dos passos de 2,5 ms.
     const total = days(146)
     const atOnce = advance(start, total).state
@@ -174,9 +174,9 @@ describe('advance', () => {
     expect(events).toContainEqual({ type: 'becameAdult', day: 1, memberId: child.id })
     expect(events.some((event) => event.type === 'firstJob')).toBe(false)
     expect(grown.career).toBeNull()
-    // Sem escola, fica só o custo de vida de adulto, de ônibus enquanto não tem salário.
-    const { adult, health, transport } = BALANCE.living
-    expect(memberExpense(grown, 1)).toBe(adult + health.adult + transport.bus)
+    // Sem escola, fica só o custo de vida de adulto, de ônibus e no SUS enquanto não tem salário.
+    const { adult, transport } = BALANCE.living
+    expect(memberExpense(grown, 1)).toBe(adult + transport.bus)
     expect(memberIncome(grown, 1)).toBe(0)
 
     const choice = jobChoice(state)
@@ -220,6 +220,30 @@ describe('advance', () => {
     expectSameState(atOnce, stepwise)
   })
 
+  it('fecha o dinheiro por mês: a renda entra e a despesa sai só na virada para o dia 1º', () => {
+    const start = withMoney(makeGame(3), 50_000)
+    const firstOfMonth = 29
+    expect(calendarDate(start.startDate, firstOfMonth)).toBe('2026-11-01')
+
+    // Até o fim de outubro, nada entra nem sai.
+    const october = advance(start, days(firstOfMonth - 1)).state
+    expect(october.money).toBe(start.money)
+    expect(october.stats.totalEarned).toBe(start.stats.totalEarned)
+
+    // Na virada para 1º de novembro, entra a renda e sai a despesa do mês inteiro.
+    const { income, expense } = familyRates(start)
+    const november = advance(start, days(firstOfMonth)).state
+    expectClose(november.money, start.money + income - expense)
+    expectClose(november.stats.totalEarned, start.stats.totalEarned + income)
+    expectClose(november.stats.totalSpent, start.stats.totalSpent + expense)
+
+    // Avançar de uma vez ou aos poucos fecha o mesmo mês.
+    let steps = start
+    for (let day = 0; day < firstOfMonth; day++) steps = advance(steps, days(1)).state
+    expect(steps.clock).toEqual(november.clock)
+    expectClose(steps.money, november.money)
+  })
+
   it('paga o 13º em 20 de dezembro a quem trabalha e a quem é aposentado', () => {
     const start = makeGame(6)
     const [first, second] = founders(start)
@@ -236,8 +260,8 @@ describe('advance', () => {
     const { state, events } = advance(retiree, days(day))
     const amount = salaryPerMonth(second) + salaryPerMonth(first) * BALANCE.pensionRatio
     expect(events).toContainEqual({ type: 'thirteenth', day, amount })
-    const accrued = familyRates(retiree).net * ticksToMonths(day * TICKS_PER_DAY)
-    expectClose(state.money, retiree.money + accrued + amount)
+    // Até 20 de dezembro fecham dois meses: 1º de novembro e 1º de dezembro.
+    expectClose(state.money, retiree.money + 2 * familyRates(retiree).net + amount)
     expect(state.log.map((event) => String(event.type))).not.toContain('thirteenth')
   })
 

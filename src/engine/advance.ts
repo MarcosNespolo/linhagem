@@ -1,11 +1,10 @@
-import { boostTicksLeft, isBoosted } from './boost'
 import { processNewDay } from './day'
 import { checkDebt } from './debt'
 import { draftOf } from './draft'
-import { familyRates, type Rates } from './economy'
+import { settleMonth } from './economy'
 import { recordEvents } from './log'
 import { createRng } from './rng'
-import { msToTicks, OFFLINE_CAP_MS, TICKS_PER_DAY, TICKS_PER_MS, ticksToMonths } from './time'
+import { isFirstOfMonth, msToTicks, OFFLINE_CAP_MS, TICKS_PER_DAY, TICKS_PER_MS } from './time'
 import type { GameEvent, GameState } from './types'
 
 export type AdvanceResult = {
@@ -22,17 +21,16 @@ export function isWaiting(state: GameState): boolean {
  * Avança a simulação em `ms` milissegundos reais de jogo.
  *
  * O relógio anda em unidades inteiras e os eventos acontecem na virada de cada
- * dia. O dinheiro acumula de forma contínua (taxa por mês do jogo vezes o
- * tempo); como as taxas só mudam nesses eventos ou em ações do jogador, a
- * renda entre duas viradas é calculada de uma vez. Avançar um minuto numa
- * chamada deixa o relógio igual a avançar 60 vezes um segundo, e o dinheiro
- * igual a menos de arredondamento.
+ * dia. O dinheiro fecha por mês: na virada para o dia 1º, a família recebe a
+ * renda e paga as despesas do mês que passou (`settleMonth`); entre uma
+ * virada de mês e outra, ele só muda com as compras, os imprevistos, o 13º e
+ * as recompensas. Avançar um minuto numa chamada deixa o estado igual a
+ * avançar 60 vezes um segundo.
  *
  * Quando uma virada de dia abre uma escolha, deixa o saldo negativo ou leva à
  * falência, o relógio para ali e o resto do tempo é descartado, como na pausa.
  * O dia da parada é mais um ponto de corte, então avançar de uma vez ou aos
- * poucos continua dando o mesmo resultado. O fim da renda em dobro também é um
- * ponto de corte: as taxas mudam ali.
+ * poucos continua dando o mesmo resultado.
  *
  * Função pura: não altera `state` e devolve um estado novo.
  */
@@ -47,37 +45,22 @@ export function advance(state: GameState, ms: number): AdvanceResult {
   const living = Object.values(draft.members).filter((member) => member.deathDay === null)
   const rng = createRng(draft.rngState)
   const events: GameEvent[] = []
-  let rates = familyRates(draft, living)
-  let boosted = isBoosted(draft)
   let remaining = ticks
 
   while (remaining > 0) {
     const untilNextDay = TICKS_PER_DAY - draft.clock.tickOfDay
-    const untilBoostEnds = boostTicksLeft(draft)
-    if (untilBoostEnds > 0 && untilBoostEnds < Math.min(remaining, untilNextDay)) {
-      accrue(draft, rates, untilBoostEnds)
-      draft.clock.tickOfDay += untilBoostEnds
-      remaining -= untilBoostEnds
-      rates = familyRates(draft, living)
-      boosted = false
-      continue
-    }
     if (remaining < untilNextDay) {
-      accrue(draft, rates, remaining)
       draft.clock.tickOfDay += remaining
       remaining = 0
       break
     }
-    accrue(draft, rates, untilNextDay)
     remaining -= untilNextDay
     draft.clock.day += 1
     draft.clock.tickOfDay = 0
-    const changed = processNewDay(draft, rng, events, living)
-    // O bônus pode acabar bem na virada do dia.
-    if (changed || (boosted && !isBoosted(draft))) {
-      rates = familyRates(draft, living)
-      boosted = isBoosted(draft)
-    }
+    // O mês que passou fecha antes dos acontecimentos do dia 1º: quem morre ou se
+    // aposenta nesse dia ainda recebe o mês inteiro.
+    if (isFirstOfMonth(draft.startDate, draft.clock.day)) settleMonth(draft, living)
+    processNewDay(draft, rng, events, living)
     if (checkDebt(draft, events) || draft.choices.length > 0) break
   }
 
@@ -99,18 +82,4 @@ export function advanceTo(state: GameState, now: number): AdvanceResult {
   const ms = isWaiting(state) ? 0 : Math.min(Math.max(elapsed, 0), OFFLINE_CAP_MS)
   const result = ms > 0 ? advance(state, ms) : { state, events: [] }
   return { state: { ...result.state, lastSimulatedAt: now }, events: result.events }
-}
-
-/**
- * Soma a renda e desconta a despesa de um intervalo com taxas constantes. O
- * saldo pode ficar negativo: a virada do dia confere a dívida.
- */
-function accrue(draft: GameState, rates: Rates, ticks: number): void {
-  const months = ticksToMonths(ticks)
-  const earned = rates.income * months
-  const owed = rates.expense * months
-  draft.money += earned - owed
-  draft.stats.totalEarned += earned
-  draft.stats.totalSpent += owed
-  draft.stats.rentEarned += rates.rent * months
 }

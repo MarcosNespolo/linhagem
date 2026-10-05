@@ -33,6 +33,7 @@ import {
   expectOk,
   founders,
   makeGame,
+  makeStart,
   marryMember,
   meetSomeone,
   setMember,
@@ -125,20 +126,12 @@ function study(state: GameState, memberId: string, dedicated = false): GameState
 }
 
 describe('promoções', () => {
-  it('o casal fundador começa com as promoções dos anos que já trabalhou desde os 18', () => {
-    const [toSecond, toThird] = BALANCE.careers.yearsToPromote
+  it('quem funda a família começa no primeiro nível de uma carreira de médio, sem curso', () => {
     for (const seed of [1, 2, 3, 4, 5, 6]) {
-      for (const founder of founders(makeGame(seed))) {
-        const worked = -founder.birthDay / BALANCE.daysPerYear - BALANCE.adultAge
-        const level = worked >= toSecond + toThird ? 2 : worked >= toSecond ? 1 : 0
-        const inLevel = worked - [0, toSecond, toSecond + toThird][level]
-        expect(MEDIO_CAREERS).toContain(founder.career!.id)
-        expect(founder.career).toMatchObject({
-          level,
-          levelSince: -Math.floor(inLevel * BALANCE.daysPerYear),
-        })
-        expect(founder.course).toBeNull()
-      }
+      const [founder] = Object.values(makeStart(seed).members)
+      expect(MEDIO_CAREERS).toContain(founder.career!.id)
+      expect(founder.career?.level).toBe(0)
+      expect(founder.course).toBeNull()
     }
   })
 
@@ -265,14 +258,15 @@ describe('promoções', () => {
     expect(offer({ unemployedUntil: yearDays(1) })).toBeNull()
   })
 
-  it('quem é demitido no meio do curso continua pagando e sobe no fim', () => {
+  it('quem está demitido tranca o curso e não paga a mensalidade', () => {
     const state = beginners(16)
     const [first] = founders(state)
-    const laidOff = setMember(study(state, first.id), first.id, { unemployedUntil: yearDays(2) })
-    expect(familyRates(laidOff).expense).toBeCloseTo(
+    const studying = study(state, first.id)
+    expect(familyRates(studying).expense).toBeCloseTo(
       familyRates(state).expense + courseOffer(first, 0, false)!.fee,
     )
-    expect(advance(laidOff, years(1)).state.members[first.id].career?.level).toBe(1)
+    const laidOff = setMember(studying, first.id, { unemployedUntil: yearDays(2) })
+    expect(familyRates(laidOff).expense).toBeCloseTo(familyRates(state).expense)
   })
 
   it('quem se aposenta no meio do curso perde o curso e não sobe', () => {

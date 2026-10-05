@@ -2,17 +2,17 @@
 
 import { Shuffle } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { ageOf, FAMILY_NAME_MAX_LENGTH, newGame, type GameState } from '@/engine'
+import { ageOf, FAMILY_NAME_MAX_LENGTH, memberIncome, newGame, type GameState } from '@/engine'
 import { localDate, useGameStore, type SetupDraft } from '@/game/store'
-import { formatAge } from '@/lib/format'
+import { formatAge, formatRate } from '@/lib/format'
 import { PersonAvatar } from './avatar/person-avatar'
 import { FamilyMark } from './family-mark'
-import { roleLabel } from './labels'
+import { formationLabel, roleLabel } from './labels'
 import { CloudLoginSheet } from './sheets/cloud-login-sheet'
 import { button } from './styles'
 import { useUiStore } from './ui-store'
 
-/** Tela de criar família: mostra o casal fundador sorteado e pede o sobrenome. */
+/** Tela de criar família: mostra quem começa a família, sorteado, e pede o sobrenome. */
 export function NewFamily({ draft, current }: { draft: SetupDraft; current: GameState | null }) {
   const startWithGame = useGameStore((store) => store.startWithGame)
   const rerollSetup = useGameStore((store) => store.rerollSetup)
@@ -24,7 +24,7 @@ export function NewFamily({ draft, current }: { draft: SetupDraft; current: Game
   const [typedName, setTypedName] = useState<string | null>(null)
   const name = typedName ?? base.familyName
   const trimmed = name.trim()
-  const founders = Object.values(base.members)
+  const [founder] = Object.values(base.members)
 
   const start = (event: React.FormEvent) => {
     event.preventDefault()
@@ -36,25 +36,26 @@ export function NewFamily({ draft, current }: { draft: SetupDraft; current: Game
     <main className="mx-auto flex min-h-dvh max-w-md flex-col px-5 pt-[max(env(safe-area-inset-top),2.5rem)] pb-10">
       <FamilyMark className="size-14" />
       <h1 className="mt-5 text-[32px] leading-9 font-black tracking-tight">Comece uma família</h1>
-      <p className="text-ink-soft mt-2 text-[16px]">O casal fundador</p>
+      <p className="text-ink-soft mt-2 text-[16px]">Começa com R$ 0</p>
 
-      <ul className="mt-6 grid grid-cols-2 gap-3">
-        {founders.map((founder) => (
-          <li key={founder.id} className="bg-surface ring-line rounded-3xl p-4 text-center ring-1">
-            <PersonAvatar person={founder} day={0} size={96} className="mx-auto rounded-full" />
-            <p className="mt-2 text-[17px] font-extrabold">{founder.firstName}</p>
-            <p className="text-ink-soft text-[14px]">{formatAge(ageOf(founder, 0))}</p>
-            <p className="text-[14px] font-semibold">{roleLabel(founder, 0)}</p>
-          </li>
-        ))}
-      </ul>
+      <div className="bg-surface ring-line mt-6 self-center rounded-3xl px-8 py-4 text-center ring-1">
+        <PersonAvatar person={founder} day={0} size={96} className="mx-auto rounded-full" />
+        <p className="mt-2 text-[17px] font-extrabold">{founder.firstName}</p>
+        <p className="text-ink-soft text-[14px]">
+          {formatAge(ageOf(founder, 0))} · {formationLabel(founder, founder.education.formation!)}
+        </p>
+        <p className="text-[14px] font-semibold">{roleLabel(founder, 0)}</p>
+        <p className="tabular text-income text-[14px] font-bold">
+          {formatRate(memberIncome(founder, 0))}
+        </p>
+      </div>
       <button
         type="button"
         className={`${button.secondary} mt-3 self-center`}
         onClick={rerollSetup}
       >
         <Shuffle size={16} />
-        Sortear outro casal
+        Sortear outra pessoa
       </button>
 
       <form onSubmit={start} className="mt-8">

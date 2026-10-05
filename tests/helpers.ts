@@ -6,6 +6,7 @@ import {
   applyAction,
   canMeet,
   createRng,
+  joinFamily,
   MEET_OPTIONS,
   PROPOSE_OPTIONS,
   rollSuitor,
@@ -24,8 +25,35 @@ import {
 
 export const START = { now: 1_760_000_000_000, startDate: '2026-10-03' } as const
 
-export function makeGame(seed = 1): GameState {
+/** A partida como o jogo começa: uma pessoa de 18 anos, sozinha, no dia 0. */
+export function makeStart(seed = 1): GameState {
   return newGame({ seed, ...START })
+}
+
+/** Idade de quem funda a família nas partidas dos testes, que já começam com um casal. */
+export const COUPLE_AGE = 26
+
+/**
+ * A partida da maioria dos testes: a pessoa que funda a família com
+ * `COUPLE_AGE` anos, já casada com alguém de fora sorteado como no namoro, no
+ * dia 0, para os dois poderem ter filhos.
+ */
+export function makeGame(seed = 1): GameState {
+  return withPartner(makeStart(seed))
+}
+
+/**
+ * Casa quem funda a família, com `COUPLE_AGE` anos, com alguém de fora
+ * sorteado como no namoro, sem passar pelo pedido nem pagar o casamento.
+ */
+export function withPartner(state: GameState): GameState {
+  const draft = structuredClone(state)
+  const [founder] = Object.values(draft.members)
+  founder.birthDay -= (COUPLE_AGE - BALANCE.adultAge) * BALANCE.daysPerYear
+  const rng = createRng(draft.rngState)
+  joinFamily(draft, rng, founder, rollSuitor(draft, rng, founder))
+  draft.rngState = rng.state
+  return draft
 }
 
 export function withMoney(state: GameState, money: number): GameState {

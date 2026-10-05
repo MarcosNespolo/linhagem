@@ -5,6 +5,8 @@ import {
   advance,
   hashUnit,
   isUnemployed,
+  livingCost,
+  memberExpense,
   memberIncome,
   salaryPerMonth,
   type GameEvent,
@@ -47,7 +49,7 @@ function eventsOf(events: GameEvent[], memberId: string) {
 }
 
 describe('imprevistos', () => {
-  it('demissão: fica sem salário pelos meses sorteados e volta no mesmo nível', () => {
+  it('demissão: recebe o seguro-desemprego pelos meses sorteados e volta no mesmo nível', () => {
     const { state, day } = findDay(0, LAYOFF)
     const [founder] = founders(state)
     const fired = liveDay(state, day)
@@ -63,7 +65,8 @@ describe('imprevistos', () => {
       until,
     })
     expect(isUnemployed(member, day)).toBe(true)
-    expect(memberIncome(member, day)).toBe(0)
+    const { share, max } = layoff.unemploymentPay
+    expect(memberIncome(member, day)).toBe(Math.min(salaryPerMonth(member) * share, max))
     // Fora do serviço público, a promoção vem do curso: o nível e o dia em que chegou a ele ficam.
     expect(member.career).toEqual(state.members[founder.id].career)
 
@@ -77,6 +80,20 @@ describe('imprevistos', () => {
     expect(rehired.unemployedUntil).toBeNull()
     expect(rehired.career?.id).toBe(member.career?.id)
     expect(memberIncome(rehired, until)).toBe(salaryPerMonth(rehired))
+  })
+
+  it('quem é demitido no meio do curso tranca: sem mensalidade, e o curso acaba mais tarde', () => {
+    const { state, day } = findDay(0, LAYOFF)
+    const [founder] = founders(state)
+    // O curso começou antes da demissão e acabaria depois dela.
+    const course = { since: day - 10, until: day + 100, dedicated: false, fee: 500 }
+    const fired = liveDay(setMember(state, founder.id, { course }), day).state
+    const member = fired.members[founder.id]
+    const back = member.unemployedUntil!
+    expect(member.course).toEqual({ ...course, until: course.until + (back - day) })
+    expect(memberExpense(member, day)).toBe(livingCost(member, day))
+    // De volta ao trabalho, a mensalidade volta até o fim do curso.
+    expect(memberExpense(member, back)).toBe(livingCost(member, back) + course.fee)
   })
 
   it('servidor público não é demitido', () => {

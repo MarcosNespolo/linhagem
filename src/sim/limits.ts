@@ -15,10 +15,11 @@ import {
   serialize,
   visiblePropertyTypes,
   type GameState,
+  type Member,
 } from '../engine'
 import { BALANCE } from '../content/balance'
 import { formatMoney } from '../lib/format'
-import { clockMs, strategyPicks } from './autoplay'
+import { clockMs, courseShortfall, strategyPicks } from './autoplay'
 
 const MINUTE = 60_000
 const HOUR = 60 * MINUTE
@@ -31,8 +32,10 @@ export const LIMITS = {
   /**
    * Crescimento: a renda por mês no fim de cada hora, sem a renda em dobro das
    * missões, é maior que a do fim da hora anterior, e no máximo tantas vezes.
+   * Com o começo de uma pessoa só, a primeira hora é a mais fraca, e o salto
+   * para a segunda fica entre 8 e 10 vezes.
    */
-  maxHourlyGrowth: 10,
+  maxHourlyGrowth: 12,
   /** Família: pessoas vivas depois das primeiras horas. */
   family: { afterMs: 3 * HOUR, min: 60, max: 150 },
   /** Save: o limite de cada save na nuvem, em bytes. */
@@ -45,15 +48,16 @@ export const LIMITS = {
 
 /**
  * Se a família consegue comprar alguma coisa agora: um filho, um imóvel ou um
- * curso de promoção cuja mensalidade cabe na renda. O casamento vem no pedido,
- * depois do namoro.
+ * curso de promoção cuja mensalidade cabe na renda ou, com a renda curta, no
+ * dinheiro guardado até o fim do curso. O casamento vem no pedido, depois do
+ * namoro.
  */
 export function canBuySomething(state: GameState): boolean {
   const { net } = familyRates(state)
   const day = state.clock.day
-  if (courseCandidates(state).some((member) => courseOffer(member, day, false)!.fee <= net)) {
-    return true
-  }
+  const affordable = (member: Member) =>
+    state.money >= courseShortfall(courseOffer(member, day, false)!, net)
+  if (courseCandidates(state).some(affordable)) return true
   if (visiblePropertyTypes(state).some((type) => checkBuyProperty(state, type.id).ok)) return true
   for (const member of livingMembers(state)) {
     if (member.partnerId && checkHaveChild(state, member.id).ok) return true

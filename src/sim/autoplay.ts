@@ -19,6 +19,7 @@
  * Fica fora da engine e do jogo: só o script `npm run sim` e o teste de
  * balanceamento usam.
  */
+import { BALANCE } from '../content/balance'
 import { careerLevel } from '../content/careers'
 import { type PropertyId, type PropertyType } from '../content/properties'
 import { degree } from '../content/schools'
@@ -49,6 +50,7 @@ import {
   type Action,
   type Choice,
   type ChoicePick,
+  type CourseOffer,
   type GameEvent,
   type GameState,
   type Member,
@@ -276,11 +278,17 @@ export function spend(play: Autoplay): void {
 
   const reserve = () => RESERVE_MONTHS * familyRates(play.state).expense
 
-  // Cursos no ritmo normal, com a reserva guardada e folga na renda depois da mensalidade.
+  // Cursos no ritmo normal: com folga na renda depois da mensalidade e a reserva guardada,
+  // ou, com a renda curta, quando o guardado paga a diferença até o fim do curso.
   for (const member of courseCandidates(play.state)) {
     const offer = courseOffer(member, play.state.clock.day, false)
-    if (!offer || familyRates(play.state).net - offer.fee < COURSE_MARGIN) continue
-    if (play.state.money < reserve()) break
+    if (!offer) continue
+    const { net, expense } = familyRates(play.state)
+    const fits =
+      net - offer.fee >= COURSE_MARGIN
+        ? play.state.money >= reserve()
+        : play.state.money - expense >= courseShortfall(offer, net)
+    if (!fits) continue
     if (act(play, { type: 'startCourse', memberId: member.id, dedicated: false })) {
       play.counters.courses += 1
     }
@@ -316,6 +324,15 @@ export function spend(play: Autoplay): void {
     if (!choice || !act(play, { type: 'buyProperty', propertyId: choice.id })) break
     play.counters.properties += 1
   }
+}
+
+/**
+ * Quanto falta de dinheiro para pagar o curso até o fim quando a mensalidade
+ * passa do saldo do mês: a diferença vezes os meses do curso.
+ */
+export function courseShortfall(offer: CourseOffer, net: number): number {
+  const months = (offer.days * 12) / BALANCE.daysPerYear
+  return Math.max(0, offer.fee - net) * months
 }
 
 /**

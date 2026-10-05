@@ -55,6 +55,11 @@ export function lastDayOfYear(startDate: string, day: number): number {
   return Math.round((Date.UTC(year, 11, 31) - start) / 86_400_000)
 }
 
+/** O dia do jogo cai no dia 1º de um mês do calendário: é quando o mês fecha. */
+export function isFirstOfMonth(startDate: string, day: number): boolean {
+  return calendarDate(startDate, day).endsWith('-01')
+}
+
 /** Data do calendário (AAAA-MM-DD) que corresponde a um dia do jogo. */
 export function calendarDate(startDate: string, day: number): string {
   if (lastDate.day === day && lastDate.startDate === startDate) return lastDate.date

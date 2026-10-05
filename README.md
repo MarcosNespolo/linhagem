@@ -3,14 +3,16 @@
 Idle game de família para web e celular. Toda a progressão vem de jogar: sem anúncios, sem
 compras, sem moeda premium.
 
-O jogador começa com um casal, tem filhos, vê os filhos namorarem e casarem com quem aparece e vê
-a linhagem atravessar gerações enquanto o tempo passa, inclusive um pouco com o jogo fechado.
+O jogador começa com uma pessoa de 18 anos e nenhum dinheiro, que namora, casa e tem filhos, vê
+os filhos namorarem e casarem com quem aparece e vê a linhagem atravessar gerações enquanto o tempo
+passa, inclusive um pouco com o jogo fechado.
 
 Jogue em [linhagem.vercel.app](https://linhagem.vercel.app).
 
 ## O que já dá para fazer
 
-- Criar uma família a partir de um casal fundador sorteado e dar o sobrenome
+- Começar uma família com uma pessoa sorteada, de 18 anos, com ensino médio, no primeiro emprego
+  e com R$ 0, e dar o sobrenome
 - Ter filhos a partir dos 20 anos, com 2 anos entre um e outro; eles herdam o tom de pele, a cor
   do cabelo e dos olhos dos pais
 - Matricular os filhos todo janeiro: creche, escola e ensino médio, na rede pública, num colégio
@@ -36,9 +38,10 @@ Jogue em [linhagem.vercel.app](https://linhagem.vercel.app).
   mês
 - Cumprir as três missões do dia, que valem até a meia-noite, e pegar a recompensa: meses de renda
   ou a renda em dobro por 5 anos do jogo
-- Acompanhar o dinheiro em reais, a partir do zero, com salários, aluguel, custo de vida (mercado,
-  plano de saúde, transporte e moradia) e o 13º salário em dezembro, e passar por imprevistos:
-  demissão, cirurgia e conserto do carro
+- Acompanhar o dinheiro em reais, a partir do zero, que fecha no dia 1º de cada mês: salários,
+  aluguel, custo de vida (mercado, plano de saúde ou SUS, transporte e moradia) e o 13º salário em
+  dezembro; e passar por imprevistos: demissão, com seguro-desemprego, cirurgia e conserto do
+  carro
 - Perder o jogo: um ano no vermelho leva a família à falência
 - Ver a família numa árvore com zoom e arrasto, com quem já morreu esmaecido
 - Ver o histórico na aba Família: nascimentos, namoros, casamentos, estudos, empregos, promoções,
@@ -48,11 +51,11 @@ Jogue em [linhagem.vercel.app](https://linhagem.vercel.app).
   curtos
 - Entrar com e-mail, sem senha, para guardar a família na nuvem e continuar em outro aparelho
 
-A família começa com R$ 0. Os preços são fixos: um filho custa R$ 15 mil, um casamento, R$ 30 mil,
-e cada imóvel, sempre o mesmo. O que limita a família é o dinheiro: quem não cabe nos imóveis
-dela paga aluguel, que fica mais caro a cada lugar, e para ter mais filhos é preciso ganhar mais.
-Se o saldo fica negativo, o jogo para e avisa, e a família tem um ano do jogo para voltar ao azul
-antes da falência. O que limita o aluguel que ela recebe é haver poucos imóveis comerciais à
+A família começa com uma pessoa e R$ 0. Os preços são fixos: um filho custa R$ 15 mil, um casamento,
+R$ 30 mil, e cada imóvel, sempre o mesmo. O que limita a família é o dinheiro: quem não cabe nos
+imóveis dela paga aluguel, que fica mais caro a cada lugar, e para ter mais filhos é preciso ganhar
+mais. Se o saldo fica negativo, o jogo para e avisa, e a família tem um ano do jogo para voltar ao
+azul antes da falência. O que limita o aluguel que ela recebe é haver poucos imóveis comerciais à
 venda de cada vez.
 
 ## Stack
@@ -120,9 +123,11 @@ linha com os números de `BALANCE`; quando um número muda, a página muda junto
 
 O jogo passa a 1 ano por minuto, ou 1 mês a cada 5 segundos (`BALANCE.secondsPerGameMonth` em
 `src/content/balance.ts`): um filho vira adulto em 18 minutos. Salários e despesas são em reais
-por mês do jogo e o dinheiro entra aos poucos, a cada instante. Os eventos (aniversários,
-maioridade, aposentadoria, morte, promoções, imprevistos, provas de concurso e o 13º salário, em
-20 de dezembro) acontecem na virada de cada dia do jogo.
+por mês do jogo, e o dinheiro fecha por mês: na virada para o dia 1º, a família recebe a renda e
+paga as despesas do mês que passou, pelas taxas daquele dia (`settleMonth`). Entre um dia 1º e
+outro, o dinheiro só muda com as compras, os imprevistos, o 13º e as recompensas. Os eventos
+(aniversários, maioridade, aposentadoria, morte, promoções, imprevistos, provas de concurso e o 13º
+salário, em 20 de dezembro) acontecem na virada de cada dia do jogo.
 
 Quando alguém precisa de uma escolha, como a matrícula ou o primeiro emprego, o relógio para até o
 jogador decidir. As escolhas abertas ficam no save (`choices`), e a sugestão de cada uma já vem
@@ -202,13 +207,18 @@ Quem entrou na família casando, ou ficou viúvo, não casa de novo.
 
 Cada pessoa tem um custo de vida por mês (`livingCost` em `src/engine/economy.ts`, com os valores
 em `BALANCE.living` e `BALANCE.children`). Uma criança custa R$ 400 mais R$ 30 por ano de idade,
-sem a escola. Um adulto paga R$ 800 de mercado e contas, R$ 300 de plano de saúde, com médico e
-dentista (R$ 900 a partir dos 65), e o transporte: R$ 200 de ônibus, ou R$ 800 de carro para quem
-ganha a partir de R$ 6 mil. A moradia é da família inteira (veja Moradia e imóveis).
+sem a escola. Um adulto paga R$ 700 de mercado e contas, o plano de saúde, com médico e dentista,
+de R$ 300 (R$ 900 a partir dos 65) para quem ganha a partir de R$ 3 mil, e o transporte: R$ 200 de
+ônibus, ou R$ 800 de carro para quem ganha a partir de R$ 6 mil. Quem ganha menos de R$ 3 mil usa
+o SUS e não paga plano. Sozinha, a pessoa que começa a família ganha de R$ 1.700 a R$ 2.400 e gasta
+R$ 1.500 com o aluguel, então sobram de R$ 200 a R$ 900 por mês. A moradia é da família inteira
+(veja Moradia e imóveis).
 
 Imprevistos acontecem com uma chance pequena por ano (`src/engine/mishaps.ts`, com os valores em
 `BALANCE.mishaps`). Quem trabalha fora do serviço público pode ser demitido (3% ao ano) e fica de 3
-a 9 meses sem salário, voltando no mesmo nível. Adultos podem precisar de cirurgia (1% ao ano, 4% a
+a 9 meses procurando emprego, com o seguro-desemprego de 80% do salário, até R$ 2.400 por mês, e
+volta no mesmo nível. O curso que a pessoa estiver fazendo fica trancado nesse tempo: não paga a
+mensalidade e termina mais tarde. Adultos podem precisar de cirurgia (1% ao ano, 4% a
 partir dos 65), de R$ 15 mil a R$ 60 mil, e quem tem carro pode precisar de conserto (6% ao ano),
 de R$ 1.500 a R$ 8 mil. A família paga o que tiver no caixa. Cada sorteio depende só da seed, do dia
 e da pessoa, sem gastar o gerador do jogo, então o resultado é o mesmo avançando de uma vez ou aos
@@ -227,7 +237,8 @@ forma chega sempre ao mesmo estado. Os testes conferem isso.
 ## Dinheiro e falência
 
 A família começa com R$ 0, e o saldo pode ficar negativo (`src/engine/debt.ts`, com o prazo em
-`BALANCE.debt`). Na virada do dia em que o saldo fica negativo, o relógio para e um aviso mostra o
+`BALANCE.debt`). Na virada do dia em que o saldo fica negativo, quase sempre um dia 1º, o relógio
+para e um aviso mostra o
 saldo, a renda e as despesas; o topo passa a mostrar quanto falta para a falência. Se a família
 voltar ao azul, o prazo some. Se ficar um ano do jogo no vermelho, ela vai à falência: a partida
 acaba, o relógio não anda mais e o jogo oferece começar outra família. Com o jogo fechado, o
@@ -298,7 +309,8 @@ jogo (`npm run sim`). Um jogador automático (`src/sim/autoplay.ts`) namora quem
 pedido quando o casamento cabe no dinheiro e tem até 4 filhos por casal; põe os filhos no colégio
 particular quando sobra renda depois de guardar um quarto dela, tenta a federal e paga a faculdade
 particular quando não passa; escolhe a vaga de maior salário, começa os cursos no ritmo normal
-quando a mensalidade deixa folga de R$ 500 na renda e pega as recompensas das missões. Filhos e
+quando a mensalidade deixa folga de R$ 500 na renda ou, com a renda curta, quando o dinheiro
+guardado paga a diferença até o fim do curso, e pega as recompensas das missões. Filhos e
 casamentos vêm primeiro, mas a estratégia guarda 3 meses de despesa e só tem mais um filho com
 folga de R$ 2 mil na renda, para não ir à falência. O resto vai para o imóvel que se paga mais
 rápido; os de moradia contam o aluguel que a família deixa de pagar morando neles. O dia das
@@ -318,19 +330,23 @@ A simulação confere sete limites (`src/sim/limits.ts`) e sai com erro se algum
 | ------------- | ----------------------------------------------------------------------------- |
 | Números       | dinheiro e renda finitos e abaixo de 10^15                                    |
 | Ritmo         | depois dos 5 primeiros minutos, nunca mais de 2 minutos sem nada para comprar |
-| Crescimento   | a renda por mês no fim de cada hora sobe, no máximo 10 vezes, sem o bônus     |
+| Crescimento   | a renda por mês no fim de cada hora sobe, no máximo 12 vezes, sem o bônus     |
 | Família       | entre 60 e 150 pessoas vivas depois das 3 primeiras horas                     |
 | Save          | abaixo de 1 MB, o limite de cada save na nuvem                                |
 | Relógio       | cada segundo de jogo custa menos de 2 ms com a família do fim                 |
 | Volta ao jogo | 5 anos de progresso offline em menos de 200 ms                                |
 
-Com as seeds de 1 a 4, a família passa de 120 pessoas vivas por volta dos 80 minutos e fica entre
-100 e 147 dali em diante, subindo e descendo à medida que as gerações nascem e morrem. A renda vai
-de cerca de R$ 800 mil por mês na primeira hora a R$ 410 milhões na décima, crescendo de 7 a 9
-vezes na segunda hora e 1,2 vez na última. A família nunca entra no vermelho. O save fica perto de
-560 KB, cada segundo de jogo custa cerca de 1,2 ms, e 5 anos de progresso offline, cerca de 110 ms.
-Cada seed leva uns 2 minutos para simular as 10 horas. O CI roda uma versão de 1 hora com duas
-seeds (`tests/sim/balance.test.ts`), com os limites que já valem nesse tempo.
+O começo é com uma pessoa só, que guarda o pouco que sobra para o primeiro curso: com as seeds de
+1 a 4, ela casa entre 4 e 8 minutos de jogo e tem o primeiro filho entre 8 e 12. A família tem de
+56 a 81 pessoas vivas no fim da primeira hora, passa de 120 na segunda e fica entre 99 e 146 depois
+das 3 horas, subindo e descendo à medida que as gerações nascem e morrem. A renda vai de R$ 550 mil
+a R$ 850 mil por mês na primeira hora a cerca de R$ 410 milhões na décima, crescendo de 7 a 10
+vezes na segunda hora e 1,2 vez na última. Com a primeira hora mais fraca, o salto da segunda
+passou do antigo limite de 10 vezes em 2 de 12 seeds, e o limite subiu para 12. Só a seed 1 entra
+no vermelho, uma vez, no começo, e se recupera. O save fica perto de 560 KB, cada segundo de jogo
+custa cerca de 1,1 ms, e 5 anos de progresso offline, cerca de 85 ms. Cada seed leva uns 2 minutos
+para simular as 10 horas. O CI roda uma versão de 1 hora com duas seeds
+(`tests/sim/balance.test.ts`), com os limites que já valem nesse tempo.
 
 ## Avatares
 

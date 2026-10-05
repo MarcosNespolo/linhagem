@@ -21,10 +21,18 @@ export function salaryPerMonth(member: Pick<Member, 'career'>): number {
 export function memberIncome(member: Member, day: number): number {
   if (!isAlive(member) || !member.career) return 0
   const salary = salaryPerMonth(member)
-  if (ageOf(member, day) < BALANCE.retirementAge) return isUnemployed(member, day) ? 0 : salary
+  if (ageOf(member, day) < BALANCE.retirementAge) {
+    return isUnemployed(member, day) ? unemploymentPay(salary) : salary
+  }
   const ratio =
     member.career.id === PUBLIC_CAREER ? BALANCE.publicPensionRatio : BALANCE.pensionRatio
   return salary * ratio
+}
+
+/** Seguro-desemprego por mês de quem foi demitido: uma parte do salário, até um teto. */
+export function unemploymentPay(salary: number): number {
+  const { share, max } = BALANCE.mishaps.layoff.unemploymentPay
+  return Math.min(salary * share, max)
 }
 
 /** Demitido e ainda procurando outro emprego. */
@@ -47,8 +55,9 @@ export function incomeOf(
 
 /**
  * Custo de vida por mês, sem a moradia. Criança: alimentação, roupas, saúde e
- * lazer, mais caros a cada ano. Adulto: mercado e contas, plano de saúde (mais
- * caro para idosos) e transporte, de carro para quem ganha a partir de
+ * lazer, mais caros a cada ano. Adulto: mercado e contas, plano de saúde para
+ * quem ganha a partir de `planFromSalary` (mais caro para idosos; os outros
+ * usam o SUS) e transporte, de carro para quem ganha a partir de
  * `carFromSalary` e de ônibus para os outros.
  */
 export function livingCost(member: Member, day: number): number {
@@ -56,12 +65,15 @@ export function livingCost(member: Member, day: number): number {
   if (age < BALANCE.adultAge) {
     return BALANCE.children.expenseBase + BALANCE.children.expensePerYear * age
   }
-  const { adult, health, seniorAge, transport } = BALANCE.living
-  return (
-    adult +
-    (age >= seniorAge ? health.senior : health.adult) +
-    (hasCar(member, day) ? transport.car : transport.bus)
-  )
+  const { adult, transport } = BALANCE.living
+  return adult + healthPlanCost(member, day) + (hasCar(member, day) ? transport.car : transport.bus)
+}
+
+/** Plano de saúde por mês: zero para quem usa o SUS, por ganhar menos que `planFromSalary`. */
+export function healthPlanCost(member: Member, day: number): number {
+  const { health, seniorAge } = BALANCE.living
+  if (memberIncome(member, day) < health.planFromSalary) return 0
+  return ageOf(member, day) >= seniorAge ? health.senior : health.adult
 }
 
 /** Tem carro: ganha a partir do salário em que o transporte deixa de ser de ônibus. */
@@ -72,7 +84,8 @@ export function hasCar(member: Member, day: number): boolean {
 /**
  * Despesa por mês da pessoa: o custo de vida, a mensalidade da escola
  * particular, o professor particular, o cursinho de quem estuda para concurso e
- * o curso de promoção. A moradia é da família inteira (`housingCost`).
+ * o curso de promoção, que fica trancado, sem mensalidade, enquanto a pessoa
+ * está demitida. A moradia é da família inteira (`housingCost`).
  */
 export function memberExpense(member: Member, day: number): number {
   if (!isAlive(member)) return 0
@@ -80,7 +93,7 @@ export function memberExpense(member: Member, day: number): number {
     schoolFee(member.education.school) +
     (member.education.tutorSince !== null ? BALANCE.school.tutor.fee : 0) +
     (member.concurso ? BALANCE.concurso.fee : 0) +
-    (member.course?.fee ?? 0)
+    (member.course && !isUnemployed(member, day) ? member.course.fee : 0)
   return livingCost(member, day) + fee
 }
 
@@ -93,6 +106,23 @@ export type Rates = {
   expense: number
   /** Renda menos despesa, por mês. */
   net: number
+}
+
+/**
+ * Fecha o mês: na virada para o dia 1º, entram os salários, as pensões e os
+ * aluguéis e saem as despesas, pelas taxas da família nesse momento, com a
+ * renda em dobro se o bônus estiver valendo. O saldo pode ficar negativo: a
+ * virada do dia confere a dívida. Altera o rascunho.
+ */
+export function settleMonth(
+  draft: GameState,
+  members: readonly Member[] = Object.values(draft.members),
+): void {
+  const { income, expense, rent } = familyRates(draft, members)
+  draft.money += income - expense
+  draft.stats.totalEarned += income
+  draft.stats.totalSpent += expense
+  draft.stats.rentEarned += rent
 }
 
 /**
