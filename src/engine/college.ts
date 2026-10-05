@@ -15,10 +15,10 @@ import type {
 
 type PathChoice = Extract<Choice, { type: 'afterSchool' }>
 
-/** Nota do ENEM: a nota da escola mais um sorteio, entre 0 e 1.000. */
-export function rollEnem(rng: Rng, member: Member): number {
+/** Nota do ENEM no dia: a nota da escola mais um sorteio, entre 0 e 1.000. */
+export function rollEnem(rng: Rng, member: Member, day: number): number {
   const spread = BALANCE.college.enemSpread
-  const score = Math.round(schoolScore(member)) + rng.int(-spread, spread)
+  const score = Math.round(schoolScore(member, day)) + rng.int(-spread, spread)
   return Math.min(1000, Math.max(0, score))
 }
 
@@ -32,7 +32,7 @@ export function openAfterSchoolChoice(
   rng: Rng,
   member: Member,
   events: GameEvent[],
-  enem: number = rollEnem(rng, member),
+  enem: number = rollEnem(rng, member, draft.clock.day),
 ): void {
   const day = draft.clock.day
   member.education.enem = enem

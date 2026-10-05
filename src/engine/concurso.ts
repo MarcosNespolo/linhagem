@@ -14,9 +14,9 @@ export function startConcurso(member: Member, day: number): GameEvent {
   return { type: 'concursoStarted', day, memberId: member.id }
 }
 
-/** Nota de partida: a do ENEM, ou a da escola para quem não fez o ENEM. */
-export function concursoBase(member: Member): number {
-  return member.education.enem ?? Math.round(schoolScore(member))
+/** Nota de partida: a do ENEM, ou a da escola no dia para quem não fez o ENEM. */
+export function concursoBase(member: Member, day: number): number {
+  return member.education.enem ?? Math.round(schoolScore(member, day))
 }
 
 /** Meses completos de estudo até o dia. */
@@ -28,7 +28,7 @@ export function monthsStudied(study: ConcursoStudy, day: number): number {
 export function expectedConcursoScore(member: Member, day: number): number {
   const study = member.concurso
   const months = study ? monthsStudied(study, day) : 0
-  return Math.min(1000, concursoBase(member) + months * BALANCE.concurso.pointsPerMonth)
+  return Math.min(1000, concursoBase(member, day) + months * BALANCE.concurso.pointsPerMonth)
 }
 
 /** Cargo mais alto que a formação permite: analista (1) com faculdade, técnico (0) sem. */

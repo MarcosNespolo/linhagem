@@ -342,11 +342,12 @@ function describeOption(
   const points = stagePoints(stage, option.network)
   const price = fee > 0 ? `${formatMoney(fee)}/mês` : 'Gratuita'
   const bonus = points > 0 ? `+${points} na nota` : ''
+  const withBonus = (text: string) => [text, bonus].filter(Boolean).join(' · ')
   const title = schoolName(stage, option.network)
 
   if (option.network === 'federal') {
     if (!option.available) {
-      const score = Math.floor(schoolScore(member))
+      const score = Math.floor(schoolScore(member, game.clock.day))
       return {
         title,
         detail: `Nota ${score} na prova; precisava de ${BALANCE.school.federalCutoff}`,
@@ -354,21 +355,21 @@ function describeOption(
       }
     }
     const course = option.course ? `Técnico em ${techCourseName(option.course)}` : 'Técnico'
-    return { title, detail: [course, bonus].filter(Boolean).join(' · '), value: 'Gratuito' }
+    return { title, detail: withBonus(course), value: 'Gratuito' }
   }
   if (option.network === 'avos') {
     const names = retiredGrandparents(game, member).map((person) => person.firstName)
-    return { title, detail: `Com ${names.join(' e ')}`, value: 'Gratuito' }
+    return { title, detail: withBonus(`Com ${names.join(' e ')}`), value: 'Gratuito' }
   }
   if (option.network === 'casa') {
     const caregiver = homeCaregiver(game, member)
     const cost = homeCareCost(game, member)
     if (!caregiver || cost === 0) {
-      return { title, detail: 'Sem perder renda', value: 'Sem custo' }
+      return { title, detail: withBonus('Sem perder renda'), value: 'Sem custo' }
     }
     return {
       title,
-      detail: `${caregiver.firstName} trabalha meio período`,
+      detail: withBonus(`${caregiver.firstName} trabalha meio período`),
       value: `-${formatMoney(cost)}/mês`,
       expense: true,
     }

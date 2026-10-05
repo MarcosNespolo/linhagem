@@ -113,6 +113,7 @@ export { createRng, hashString, hashUnit, mix32, pickWeighted, type Rng } from '
 export { deserialize, serialize } from './save'
 export { canHaveTutor, tutorPoints } from './tutor'
 export {
+  agePoints,
   aptitudeOf,
   baseAptitude,
   halfTimeCaregivers,

@@ -20,6 +20,7 @@ import {
   withChild,
   withHomes,
   withMoney,
+  workPolicy,
   years,
 } from '../helpers'
 
@@ -174,7 +175,7 @@ describe('escolher', () => {
   it('recusa opção que não existe e resposta repetida para a mesma pessoa', () => {
     const born = withChild(makeGame(4))
     const memberId = lastMember(born).id
-    const waiting = play(born, years(BALANCE.adultAge + 1), 'firstJob')
+    const waiting = play(born, years(BALANCE.adultAge + 1), 'firstJob', workPolicy)
     const choose = (...options: number[]) =>
       applyAction(waiting, {
         type: 'choose',
@@ -188,7 +189,7 @@ describe('escolher', () => {
 
   it('não altera o estado recebido', () => {
     const born = withChild(makeGame(4))
-    const waiting = play(born, years(BALANCE.adultAge + 1), 'firstJob')
+    const waiting = play(born, years(BALANCE.adultAge + 1), 'firstJob', workPolicy)
     const copy = structuredClone(waiting)
     const memberId = waiting.choices[0].memberId
     expectOk(applyAction(waiting, { type: 'choose', picks: [{ memberId, option: 0 }] }))

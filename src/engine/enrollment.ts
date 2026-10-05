@@ -153,7 +153,7 @@ function schoolOptions(
         { network: 'publica', available: true },
         { network: 'particular', available: true },
       ]
-      if (schoolScore(member) >= BALANCE.school.federalCutoff) {
+      if (schoolScore(member, draft.clock.day) >= BALANCE.school.federalCutoff) {
         for (const course of courses) options.push({ network: 'federal', course, available: true })
       } else {
         options.push({ network: 'federal', available: false })

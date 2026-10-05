@@ -2,6 +2,7 @@
 
 import { BALANCE } from '@/content/balance'
 import {
+  agePoints,
   ageThisYear,
   aptitudeOf,
   schoolFee,
@@ -14,21 +15,23 @@ import { formationLabel, schoolName, schoolYearLabel } from './labels'
 
 /**
  * Ficha da pessoa para decidir os estudos: a nota da escola e de onde ela vem
- * (a aptidão de nascença mais o que os estudos somaram), o ENEM, a formação e
- * onde estuda.
+ * (a aptidão de nascença, o que a idade somou e o que os estudos somaram), o
+ * ENEM, a formação e onde estuda.
  */
 export function MemberStats({ game, member }: { game: GameState; member: Member }) {
   const { education } = member
+  const day = game.clock.day
   const aptitude = aptitudeOf(member)
+  const grown = agePoints(member, day)
   const studied = Math.floor(education.points)
   const school = education.school
 
   return (
     <dl className="bg-canvas divide-line divide-y rounded-2xl px-3.5 text-[14px]">
       <Row label="Nota da escola">
-        <span className="tabular font-bold">{Math.floor(schoolScore(member))}</span>
+        <span className="tabular font-bold">{Math.floor(schoolScore(member, day))}</span>
         <span className="text-ink-soft block text-[12px] font-normal">
-          Aptidão {aptitude} + {studied} de estudo
+          Aptidão {aptitude} + {grown} da idade + {studied} de estudo
         </span>
       </Row>
       {education.enem !== null ? (
