@@ -1,14 +1,18 @@
 import { BALANCE } from '../content/balance'
 import { careerLevel, PUBLIC_CAREER, topLevel } from '../content/careers'
+import { isUnemployed } from './economy'
 import { ageOf } from './members'
 import type { CareerState, GameEvent, GameState, Member, MemberId } from './types'
 
-/** Quem trabalha e ainda pode subir: vivo, com carreira e antes da aposentadoria. */
+/** Quem trabalha e ainda pode subir: vivo, empregado e antes da aposentadoria. */
 type Worker = Member & { career: CareerState }
 
 function isWorker(member: Member, day: number): member is Worker {
   return (
-    member.deathDay === null && member.career !== null && ageOf(member, day) < BALANCE.retirementAge
+    member.deathDay === null &&
+    member.career !== null &&
+    !isUnemployed(member, day) &&
+    ageOf(member, day) < BALANCE.retirementAge
   )
 }
 
@@ -85,10 +89,14 @@ export function promote(member: Worker, day: number): GameEvent {
  * Na virada do dia, sobe quem completou o tempo num nível que não pede curso.
  * Altera o rascunho e devolve true quando alguém subiu.
  */
-export function promoteByTime(draft: GameState, events: GameEvent[]): boolean {
+export function promoteByTime(
+  draft: GameState,
+  events: GameEvent[],
+  members: readonly Member[] = Object.values(draft.members),
+): boolean {
   const day = draft.clock.day
   let promoted = false
-  for (const member of Object.values(draft.members)) {
+  for (const member of members) {
     if (!isWorker(member, day) || needsCourse(member.career)) continue
     const due = promotionDay(member.career)
     if (due === null || day < due) continue

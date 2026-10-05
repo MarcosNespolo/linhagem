@@ -96,9 +96,13 @@ export function openFirstJobChoice(
   })
 }
 
-/** Emprego do casal fundador: uma carreira de ensino médio, no primeiro nível. */
-export function rollFounderCareer(rng: Rng, day: number): CareerState {
-  return { id: rng.pick(MEDIO_CAREERS), level: 0, levelSince: day }
+/**
+ * Carreira de quem funda a família: uma das que pedem ensino médio, com os
+ * anos de trabalho desde os 18 e as promoções que vêm só com o tempo.
+ */
+export function rollFounderCareer(rng: Rng, birthDay: number, day: number): CareerState {
+  const yearsWorked = Math.max(0, (day - birthDay) / BALANCE.daysPerYear - BALANCE.adultAge)
+  return experiencedCareer({ careerId: rng.pick(MEDIO_CAREERS), level: 0 }, yearsWorked, day)
 }
 
 /**

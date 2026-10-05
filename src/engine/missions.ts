@@ -3,20 +3,21 @@ import { MISSION_IDS, missionInfo, type MissionId } from '../content/missions'
 import { addBoost } from './boost'
 import { familyRates } from './economy'
 import { ageOf, livingMembers } from './members'
-import { totalProperties } from './properties'
+import { freePlaces, totalProperties } from './properties'
 import { createRng, hashString, type Rng } from './rng'
 import type { GameEvent, GameState, MissionState } from './types'
 
 /**
  * A meta se ajusta ao momento da família: cada missão só aparece quando dá
- * para cumprir. Formatura pede alguém na faculdade ou no técnico, e Investidor,
- * o primeiro imóvel.
+ * para cumprir. Formatura pede alguém na faculdade ou no técnico; Investidor,
+ * o primeiro imóvel; e Chá de bebê e Casa cheia, lugar em casa para mais gente.
  */
 function isEligible(state: GameState, id: MissionId): boolean {
   const day = state.clock.day
   const living = livingMembers(state)
   switch (id) {
     case 'chaDeBebe': {
+      if (freePlaces(state) < 1) return false
       const { minParentAge, maxParentAge } = BALANCE.children
       const fertile = (age: number) => age >= minParentAge && age <= maxParentAge
       return living.some((member) => {
@@ -56,7 +57,7 @@ function isEligible(state: GameState, id: MissionId): boolean {
     case 'investidor':
       return totalProperties(state) > 0
     case 'casaCheia':
-      return true
+      return freePlaces(state) >= 1
     case 'peDeMeia':
       return familyRates(state).net > 0
   }

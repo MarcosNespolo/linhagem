@@ -1,170 +1,86 @@
 /**
- * Simula minutos de jogo com uma estratégia simples e imprime a evolução da
- * família, para ajustar src/content/balance.ts olhando números em vez de
- * jogar por horas.
+ * Simula horas de jogo com o jogador automático e confere os limites do plano,
+ * para ajustar src/content/balance.ts olhando números em vez de jogar por
+ * horas. A estratégia fica em src/sim/autoplay.ts e os limites em
+ * src/sim/limits.ts.
  *
- * Estratégia: as escolhas ficam com a sugestão (a escola, o caminho depois do
- * médio e a vaga de maior salário), a família paga os cursos de promoção que
- * cabem no dinheiro, quem é adulto casa assim que dá (com a pessoa de maior
- * salário entre as sugeridas), todo casal tem filho sempre que pode, até o
- * limite de filhos por casal, o que sobra além do próximo casamento vai para
- * o imóvel que se paga mais rápido, e as recompensas das missões são pegas
- * assim que saem. As escolhas são respondidas na hora, então o relógio quase
- * não fica parado. O dia das missões vira a cada 24 horas reais simuladas.
+ * As escolhas são respondidas na hora, então o relógio quase não fica parado,
+ * e o dia das missões vira a cada hora, como quem joga uma hora por dia. Sai
+ * com erro quando algum limite falha.
  *
- * Uso: npm run sim -- --minutos 120 --seed 7 --filhos 4
+ * Uso: npm run sim -- --minutos 600 --seed 7 --filhos 4 --linhas 20 --save /tmp/save.json
  */
+import { writeFileSync } from 'node:fs'
 import { parseArgs } from 'node:util'
 import { BALANCE } from '../src/content/balance'
-import { careerLevel } from '../src/content/careers'
 import {
-  advance,
-  applyAction,
-  checkHaveChild,
-  checkSeekPartner,
-  childrenOf,
-  claimableMissions,
-  isBoosted,
   familyRates,
-  isPropertyUnlocked,
+  homePlaces,
+  isBoosted,
   livingMembers,
-  msToTicks,
-  newGame,
-  paybackYears,
-  propertyPrice,
   rentPerMonth,
-  suggestedPicks,
+  serialize,
   totalProperties,
-  visiblePropertyTypes,
-  TICKS_PER_DAY,
-  TICKS_PER_MS,
-  weddingCost,
-  type GameState,
 } from '../src/engine'
 import { formatMoney, formatRate } from '../src/lib/format'
+import type { Autoplay } from '../src/sim/autoplay'
+import { simulate } from '../src/sim/run'
 
 const { values } = parseArgs({
   options: {
-    minutos: { type: 'string', default: '120' },
+    minutos: { type: 'string', default: '600' },
     seed: { type: 'string', default: '1' },
     filhos: { type: 'string', default: '4' },
+    linhas: { type: 'string', default: '20' },
+    save: { type: 'string' },
   },
 })
 const minutes = Number(values.minutos)
-const seed = Number(values.seed)
-const maxChildren = Number(values.filhos)
 if (!Number.isFinite(minutes) || minutes <= 0) {
   throw new Error('Use --minutos com um número positivo')
 }
 
-/** Milissegundos reais entre uma decisão e outra da estratégia. */
-const STEP_MS = 1_000
-/** De quanto em quanto tempo real a tabela ganha uma linha. */
-const ROW_EVERY_MS = 5 * 60_000
-
-let state: GameState = newGame({ seed, now: 0, startDate: '2026-01-01' })
-let births = 0
-let weddings = 0
-let deaths = 0
-let courses = 0
-let rewards = 0
-
-/** Data das missões no dia real simulado: começa em 1º de janeiro de 2026. */
-function missionDate(elapsedMs: number): string {
-  const day = Math.floor(elapsedMs / 86_400_000)
-  return new Date(Date.UTC(2026, 0, 1 + day)).toISOString().slice(0, 10)
-}
 const rows: Record<string, string | number>[] = []
-
-const snapshot = (elapsedMs: number) => {
+const snapshot = ({ state, counters, elapsedMs }: Autoplay) => {
   rows.push({
     minuto: elapsedMs / 60_000,
     ano: Math.floor(state.clock.day / BALANCE.daysPerYear),
     dinheiro: formatMoney(state.money),
-    taxa: formatRate(familyRates(state).net),
+    renda: formatRate(familyRates(state).income),
+    saldo: formatRate(familyRates(state).net),
     vivos: livingMembers(state).length,
+    lugares: homePlaces(state),
     total: Object.keys(state.members).length,
-    casamentos: weddings,
-    nascimentos: births,
-    mortes: deaths,
-    cursos: courses,
+    casamentos: counters.weddings,
+    nascimentos: counters.births,
+    mortes: counters.deaths,
+    cursos: counters.courses,
     imóveis: totalProperties(state),
     aluguel: formatRate(rentPerMonth(state)),
-    'renda ×2': isBoosted(state) ? 'sim' : '',
-    recompensas: rewards,
-    'próx. casamento': formatMoney(weddingCost(state)),
+    '×2': isBoosted(state) ? 'sim' : '',
+    recompensas: counters.rewards,
+    saíram: counters.leftHome,
   })
 }
 
-/** Posição do relógio em milissegundos reais desde o dia 0, sem arredondar. */
-function clockMs(game: GameState): number {
-  return (game.clock.day * TICKS_PER_DAY + game.clock.tickOfDay) / TICKS_PER_MS
-}
-
-function tryAct(action: Parameters<typeof applyAction>[1]): boolean {
-  const result = applyAction(state, action)
-  if (result.ok) state = result.state
-  return result.ok
-}
-
-snapshot(0)
-for (let elapsed = STEP_MS; elapsed <= minutes * 60_000; elapsed += STEP_MS) {
-  // O relógio para em cada escolha; a estratégia responde e avança o resto do passo.
-  let left = STEP_MS
-  while (msToTicks(left) > 0) {
-    const before = clockMs(state)
-    const result = advance(state, left)
-    state = result.state
-    deaths += result.events.filter((event) => event.type === 'died').length
-    left -= clockMs(state) - before
-    if (state.choices.length === 0) break
-    if (!tryAct({ type: 'choose', picks: suggestedPicks(state) })) break
-  }
-
-  if (state.missions?.date !== missionDate(elapsed)) {
-    tryAct({ type: 'drawMissions', date: missionDate(elapsed) })
-  }
-  for (const mission of claimableMissions(state)) {
-    if (tryAct({ type: 'claimMission', missionId: mission.id })) rewards += 1
-  }
-
-  const paid = applyAction(state, { type: 'payAllCourses' })
-  if (paid.ok) {
-    state = paid.state
-    courses += paid.events.length
-  }
-
-  for (const member of livingMembers(state)) {
-    if (!checkSeekPartner(state, member.id).ok || state.money < weddingCost(state)) continue
-    if (!tryAct({ type: 'findSuitors', memberId: member.id })) continue
-    const suitors = state.suitors[member.id] ?? []
-    const salary = (index: number) =>
-      careerLevel(suitors[index].career.id, suitors[index].career.level).salaryPerMonth
-    const best = suitors.reduce(
-      (bestIndex, _suitor, index) => (salary(index) > salary(bestIndex) ? index : bestIndex),
-      0,
-    )
-    if (tryAct({ type: 'marry', memberId: member.id, suitorIndex: best })) weddings += 1
-  }
-
-  for (const member of livingMembers(state)) {
-    if (!member.partnerId || member.id > member.partnerId) continue
-    if (childrenOf(state, member.id).length >= maxChildren) continue
-    if (!checkHaveChild(state, member.id).ok) continue
-    if (tryAct({ type: 'haveChild', parentId: member.id })) births += 1
-  }
-  // O que sobra além do próximo casamento vai para o imóvel que se paga mais rápido.
-  for (;;) {
-    const [best] = visiblePropertyTypes(state)
-      .filter((type) => isPropertyUnlocked(state, type.id))
-      .sort((a, b) => paybackYears(state, a.id) - paybackYears(state, b.id))
-    if (!best || state.money - propertyPrice(state, best.id) < weddingCost(state)) break
-    if (!tryAct({ type: 'buyProperty', propertyId: best.id })) break
-  }
-  if (elapsed % ROW_EVERY_MS === 0) snapshot(elapsed)
-}
+const started = performance.now()
+const { play, results } = simulate({
+  seed: Number(values.seed),
+  maxChildren: Number(values.filhos),
+  minutes,
+  everyMinutes: Number(values.linhas),
+  onRow: snapshot,
+})
+const seconds = (performance.now() - started) / 1000
+if (values.save) writeFileSync(values.save, serialize(play.state))
 
 console.log(
-  `Seed ${seed}, ${minutes} min reais, até ${maxChildren} filhos por casal (família ${state.familyName})`,
+  `Seed ${values.seed}, ${minutes} min, até ${values.filhos} filhos por casal (família ${play.state.familyName}), em ${seconds.toFixed(0)} s`,
 )
 console.table(rows)
+for (const result of results) {
+  console.log(
+    `${result.ok ? 'ok   ' : 'FALHA'} ${result.name}: ${result.value} (limite: ${result.limit})`,
+  )
+}
+if (results.some((result) => !result.ok)) process.exitCode = 1

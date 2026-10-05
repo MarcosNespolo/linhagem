@@ -290,9 +290,11 @@ function catchUp(
       },
     }
   }
-  // Aposentadoria, emprego, promoções e matrículas (que o jogador acabou de escolher) ficam
-  // só no histórico, para os avisos não cobrirem a tela.
-  const worthShowing = events.filter((event) => !QUIET_EVENTS.has(event.type))
+  // Aposentadoria, emprego, promoções, matrículas (que o jogador acabou de escolher) e consertos
+  // do carro ficam só no histórico, para os avisos não cobrirem a tela.
+  const worthShowing = events.filter(
+    (event) => !QUIET_EVENTS.has(event.type) && !(event.type === 'mishap' && event.kind === 'car'),
+  )
   if (worthShowing.length === 0) return {}
   const added = worthShowing.map((event) => ({ id: nextToastId++, event }))
   return { toasts: [...store.toasts, ...added].slice(-TOAST_LIMIT) }
@@ -304,6 +306,7 @@ const QUIET_EVENTS = new Set<GameEvent['type']>([
   'concursoStarted',
   'propertyBought',
   'retired',
+  'rehired',
   'schoolStarted',
   'schoolChanged',
   'enem',

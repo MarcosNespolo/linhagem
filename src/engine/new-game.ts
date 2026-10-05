@@ -5,6 +5,7 @@ import { FAMILY_NAME_MAX_LENGTH } from './constants'
 import { rollFounderCareer } from './jobs'
 import { addMember } from './members'
 import { CURRENT_SCHEMA_VERSION } from './migrations'
+import { initialMarket } from './properties'
 import { createRng, type Rng } from './rng'
 import { newEducation } from './school'
 import type { GameState, Gender, Member } from './types'
@@ -38,10 +39,11 @@ export function newGame({ seed, now, startDate, familyName }: NewGameOptions): G
     suitors: {},
     choices: [],
     properties: {},
+    market: initialMarket(),
     missions: null,
     boosts: { incomeUntil: 0 },
     log: [],
-    stats: { simulatedMs: 0, totalEarned: 0, totalSpent: 0, rentEarned: 0 },
+    stats: { simulatedMs: 0, totalEarned: 0, totalSpent: 0, rentEarned: 0, archived: 0 },
   }
 
   const first = addFounder(draft, rng, 'f')
@@ -65,7 +67,7 @@ function addFounder(draft: GameState, rng: Rng, gender: Gender): Member {
     parentIds: [],
     origin: 'founder',
     appearance,
-    career: rollFounderCareer(rng, 0),
+    career: rollFounderCareer(rng, birthDay, 0),
     education: newEducation({ level: 'medio' }),
   })
 }

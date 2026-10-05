@@ -23,11 +23,14 @@ export function recordEvents(draft: GameState, events: readonly GameEvent[]): vo
   trackMissions(draft, events)
 }
 
-/** Acrescenta ao histórico do rascunho os acontecimentos, respeitando o limite. */
+/**
+ * Acrescenta ao histórico do rascunho os acontecimentos, respeitando o limite.
+ * O histórico vira uma lista nova, porque o rascunho divide a anterior com o
+ * estado original.
+ */
 export function appendLog(draft: GameState, events: readonly GameEvent[]): void {
   const logged = events.filter(isLogEvent)
   if (logged.length === 0) return
-  draft.log.push(...logged)
-  const excess = draft.log.length - LOG_LIMIT
-  if (excess > 0) draft.log.splice(0, excess)
+  const log = draft.log.concat(logged)
+  draft.log = log.length > LOG_LIMIT ? log.slice(log.length - LOG_LIMIT) : log
 }

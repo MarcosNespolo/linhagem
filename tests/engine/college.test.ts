@@ -7,6 +7,7 @@ import {
   applyAction,
   deserialize,
   isEnrollmentDay,
+  livingCost,
   memberExpense,
   memberIncome,
   schoolFee,
@@ -32,11 +33,11 @@ import {
 
 type PathChoice = Extract<Choice, { type: 'afterSchool' }>
 
-/** Filho do casal fundador com a aptidão na faixa pedida e dinheiro de sobra. */
-function child(seed: number, min: number, max: number): { state: GameState; childId: string } {
+/** Filho do casal fundador com a aptidão pedida e dinheiro de sobra. */
+function child(seed: number, aptitude: number): { state: GameState; childId: string } {
   const born = withMoney(withChild(makeGame(seed)), 50_000_000)
   const childId = lastMember(born).id
-  return { state: withAptitude(born, childId, min, max), childId }
+  return { state: withAptitude(born, childId, aptitude), childId }
 }
 
 /** Joga até o janeiro em que a pessoa termina o médio e devolve a escolha do que fazer depois. */
@@ -65,7 +66,7 @@ const optionOf = (choice: PathChoice) => choice.options[choice.suggested]
 
 describe('depois do ensino médio', () => {
   it('no janeiro em que faz 18, sai o ENEM e abre a escolha do caminho', () => {
-    const start = child(1, 600, 650)
+    const start = child(1, 620)
     const { state, choice } = afterSchool(start.state, start.childId)
     const member = state.members[start.childId]
 
@@ -99,7 +100,7 @@ describe('depois do ensino médio', () => {
   })
 
   it('sugere o curso mais disputado que a nota alcança na universidade federal', () => {
-    const start = child(2, 690, 700)
+    const start = child(2, 695)
     const { choice } = afterSchool(start.state, start.childId)
     const passed = DEGREES.filter((course) => choice.enem >= course.cutoff)
     expect(passed.length).toBeGreaterThan(0)
@@ -112,7 +113,7 @@ describe('depois do ensino médio', () => {
   })
 
   it('com nota baixa, sugere trabalhar; o salário começa em janeiro, antes dos 18', () => {
-    const start = child(3, 400, 410)
+    const start = child(3, 405)
     const { state, choice } = afterSchool(start.state, start.childId)
     expect(optionOf(choice).path).toBe('trabalho')
 
@@ -125,7 +126,7 @@ describe('depois do ensino médio', () => {
   })
 
   it('faculdade particular: mensalidade, nada de salário, e a vaga da área na formatura', () => {
-    const start = child(4, 500, 550)
+    const start = child(4, 520)
     const { state, choice } = afterSchool(start.state, start.childId)
     const studying = choosePath(
       state,
@@ -149,7 +150,8 @@ describe('depois do ensino médio', () => {
     const member = graduated.members[start.childId]
     expect(member.education.formation).toEqual({ level: 'superior', degree: 'computacao' })
     expect(member.education.school).toBeNull()
-    expect(memberExpense(member, graduated.clock.day)).toBe(0)
+    // Formada, sai a mensalidade e fica o custo de vida.
+    expect(memberExpense(member, graduated.clock.day)).toBe(livingCost(member, graduated.clock.day))
     const yearsStudied = Math.round(
       (graduated.clock.day - studying.clock.day) / BALANCE.daysPerYear,
     )
@@ -160,7 +162,7 @@ describe('depois do ensino médio', () => {
 
   it('cursinho: um ano, e o ENEM seguinte vem com os pontos a mais, sem cair', () => {
     for (const seed of [5, 15, 25]) {
-      const start = child(seed, 500, 550)
+      const start = child(seed, 520)
       const { state, choice } = afterSchool(start.state, start.childId)
       const pointsBefore = state.members[start.childId].education.points
       const preparing = choosePath(state, choice, (option) => option.path === 'cursinho')
@@ -179,7 +181,7 @@ describe('depois do ensino médio', () => {
   })
 
   it('curso técnico depois do médio: dois anos e forma técnico', () => {
-    const start = child(6, 600, 640)
+    const start = child(6, 620)
     const { state, choice } = afterSchool(start.state, start.childId)
     const studying = choosePath(
       state,
@@ -202,8 +204,8 @@ describe('depois do ensino médio', () => {
       ids.push(lastMember(state).id)
       state = play(state, days(BALANCE.children.cooldownDays))
     }
-    state = withAptitude(state, ids[0], 690, 700)
-    state = withAptitude(state, ids[1], 400, 420)
+    state = withAptitude(state, ids[0], 695)
+    state = withAptitude(state, ids[1], 410)
 
     // Na federal quando a nota alcança; senão, Licenciatura na particular.
     const policy: Policy = (current) =>

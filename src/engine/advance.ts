@@ -40,9 +40,12 @@ export function advance(state: GameState, ms: number): AdvanceResult {
   if (isWaiting(state) || ticks <= 0) return { state, events: [] }
 
   const draft = draftOf(state)
+  // No meio do avanço ninguém entra na família, só sai quem morre: a lista de quem
+  // está vivo no começo serve até o fim, e as contas do dia não passam pelos antepassados.
+  const living = Object.values(draft.members).filter((member) => member.deathDay === null)
   const rng = createRng(draft.rngState)
   const events: GameEvent[] = []
-  let rates = familyRates(draft)
+  let rates = familyRates(draft, living)
   let boosted = isBoosted(draft)
   let remaining = ticks
 
@@ -53,7 +56,7 @@ export function advance(state: GameState, ms: number): AdvanceResult {
       accrue(draft, rates, untilBoostEnds)
       draft.clock.tickOfDay += untilBoostEnds
       remaining -= untilBoostEnds
-      rates = familyRates(draft)
+      rates = familyRates(draft, living)
       boosted = false
       continue
     }
@@ -67,10 +70,10 @@ export function advance(state: GameState, ms: number): AdvanceResult {
     remaining -= untilNextDay
     draft.clock.day += 1
     draft.clock.tickOfDay = 0
-    const changed = processNewDay(draft, rng, events)
+    const changed = processNewDay(draft, rng, events, living)
     // O bônus pode acabar bem na virada do dia.
     if (changed || (boosted && !isBoosted(draft))) {
-      rates = familyRates(draft)
+      rates = familyRates(draft, living)
       boosted = isBoosted(draft)
     }
     if (draft.choices.length > 0) break

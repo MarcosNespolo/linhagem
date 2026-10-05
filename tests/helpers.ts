@@ -1,9 +1,9 @@
 import { expect } from 'vitest'
 import { BALANCE } from '@/content/balance'
+import type { PropertyId } from '@/content/properties'
 import {
   advance,
   applyAction,
-  aptitudeOf,
   daysToMs,
   msToTicks,
   newGame,
@@ -25,6 +25,14 @@ export function makeGame(seed = 1): GameState {
 
 export function withMoney(state: GameState, money: number): GameState {
   return { ...state, money }
+}
+
+/** A família com os imóveis informados, sem pagar por eles: lugar em casa para mais gente. */
+export function withHomes(
+  state: GameState,
+  properties: Partial<Record<PropertyId, number>>,
+): GameState {
+  return { ...state, properties: { ...state.properties, ...properties } }
 }
 
 /** Troca campos de um membro sem alterar o estado original. */
@@ -122,6 +130,19 @@ export function withAdultChild(seed = 1): { state: GameState; childId: string } 
 }
 
 /**
+ * Família com dois filhos, nascidos com o intervalo mínimo entre filhos e já
+ * adultos: com os fundadores, enche os 4 lugares que a família consegue alugar.
+ */
+export function withAdultChildren(seed = 1): { state: GameState; childIds: [string, string] } {
+  const first = withChild(makeGame(seed))
+  const older = lastMember(first).id
+  const second = withChild(play(first, days(BALANCE.children.cooldownDays), undefined, workPolicy))
+  const younger = lastMember(second).id
+  const grown = play(second, years(BALANCE.adultAge), undefined, workPolicy)
+  return { state: withMoney(grown, 1_000_000), childIds: [older, younger] }
+}
+
+/**
  * Avança até o casal recém-casado poder ter filhos: quem casa aos 18 espera a
  * idade mínima, assim como o par mais novo.
  */
@@ -135,19 +156,9 @@ export function marryMember(state: GameState, memberId: string, suitorIndex = 0)
   return expectOk(applyAction(searched, { type: 'marry', memberId, suitorIndex })).state
 }
 
-/** Troca a semente do avatar do membro para dar a ele uma aptidão dentro da faixa pedida. */
-export function withAptitude(
-  state: GameState,
-  memberId: string,
-  min: number,
-  max: number,
-): GameState {
-  for (let i = 0; i < 10_000; i++) {
-    const avatarSeed = `teste${i}`
-    const aptitude = aptitudeOf({ id: memberId, avatarSeed })
-    if (aptitude >= min && aptitude <= max) return setMember(state, memberId, { avatarSeed })
-  }
-  throw new Error('Nenhuma semente com essa aptidão')
+/** Dá ao membro a aptidão pedida. */
+export function withAptitude(state: GameState, memberId: string, aptitude: number): GameState {
+  return setMember(state, memberId, { aptitude })
 }
 
 /** Milissegundos reais de `n` dias do jogo. */

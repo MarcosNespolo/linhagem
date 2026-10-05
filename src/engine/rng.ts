@@ -53,6 +53,33 @@ export function hashString(text: string): number {
   return hash >>> 0
 }
 
+/**
+ * Embaralha os bits de um inteiro de 32 bits (finalizador do lowbias32). Serve
+ * para sorteios que dependem só de números, como seed, dia e pessoa, sem
+ * gastar o gerador do jogo.
+ */
+export function mix32(value: number): number {
+  let x = value >>> 0
+  x ^= x >>> 16
+  x = Math.imul(x, 0x7feb352d)
+  x ^= x >>> 15
+  x = Math.imul(x, 0x846ca68b)
+  x ^= x >>> 16
+  return x >>> 0
+}
+
+/**
+ * Número em [0, 1) que depende só das quatro entradas: o mesmo sorteio em
+ * qualquer aparelho, sem gastar o gerador do jogo.
+ */
+export function hashUnit(a: number, b: number, c: number, d: number): number {
+  let hash = mix32(0x9e3779b9 ^ mix32(a))
+  hash = mix32(hash ^ mix32(b))
+  hash = mix32(hash ^ mix32(c))
+  hash = mix32(hash ^ mix32(d))
+  return hash / 4294967296
+}
+
 /** Sorteia um índice com probabilidade proporcional ao peso. Os pesos não podem ser todos zero. */
 export function pickWeighted(rng: Rng, weights: readonly number[]): number {
   const total = weights.reduce((sum, weight) => sum + weight, 0)

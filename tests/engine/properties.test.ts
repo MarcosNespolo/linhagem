@@ -4,18 +4,41 @@ import { BALANCE } from '@/content/balance'
 import { PROPERTY_TYPES, type PropertyId } from '@/content/properties'
 import {
   advance,
+  affordableProperties,
   applyAction,
   deserialize,
   familyRates,
+  freePlaces,
+  homePlaces,
+  homesInUse,
+  housingCost,
+  initialMarket,
   isPropertyUnlocked,
+  isRenting,
+  livingCost,
+  nextListingDay,
   ownedCount,
   paybackYears,
+  propertiesLeft,
   propertyPrice,
+  rentedPlaces,
   rentPerMonth,
   visiblePropertyTypes,
   type GameState,
 } from '@/engine'
-import { expectClose, expectOk, founders, makeGame, setMember, withMoney, years } from '../helpers'
+import {
+  days,
+  expectClose,
+  expectOk,
+  founders,
+  makeGame,
+  play,
+  setMember,
+  withChild,
+  withHomes,
+  withMoney,
+  years,
+} from '../helpers'
 
 function buy(state: GameState, ...ids: PropertyId[]): GameState {
   let current = state
@@ -26,33 +49,80 @@ function buy(state: GameState, ...ids: PropertyId[]): GameState {
 }
 
 describe('imóveis', () => {
-  it('são nove tipos, cada um de 3 a 4,5 vezes o anterior, que se pagam de 10 a 32 anos', () => {
+  it('são nove tipos, cada um de 3 a 6 vezes o anterior, que se pagam de 10 a 70 anos', () => {
     const state = makeGame()
     expect(PROPERTY_TYPES).toHaveLength(9)
-    const paybacks = PROPERTY_TYPES.map((type) => paybackYears(state, type.id))
-    expect(paybacks[0]).toBeCloseTo(10)
-    expect(Math.round(paybacks.at(-1)!)).toBe(32)
+    const paybacks = PROPERTY_TYPES.map((type) => paybackYears(type.id))
+    expect(Math.round(paybacks[0])).toBe(10)
+    expect(Math.round(paybacks.at(-1)!)).toBe(70)
     for (let i = 1; i < PROPERTY_TYPES.length; i++) {
       const ratio = PROPERTY_TYPES[i].price / PROPERTY_TYPES[i - 1].price
       expect(ratio).toBeGreaterThanOrEqual(3)
-      expect(ratio).toBeLessThanOrEqual(4.5)
+      expect(ratio).toBeLessThanOrEqual(6)
       expect(paybacks[i]).toBeGreaterThan(paybacks[i - 1])
     }
   })
 
-  it('cada imóvel do mesmo tipo custa 15% mais que o anterior', () => {
+  it('os de moradia custam sempre o mesmo, e o bairro tem poucos de cada', () => {
+    const supply = BALANCE.properties.homeSupply
     let state = withMoney(makeGame(), 1e9)
-    const prices: number[] = []
-    for (let i = 0; i < 10; i++) {
-      prices.push(propertyPrice(state, 'kitnet'))
+    for (let i = 0; i < supply; i++) {
+      expect(propertyPrice('kitnet')).toBe(PROPERTY_TYPES[0].price)
+      expect(propertiesLeft(state, 'kitnet')).toBe(supply - i)
       state = buy(state, 'kitnet')
     }
-    expect(prices[0]).toBe(PROPERTY_TYPES[0].price)
-    expect(prices[1]).toBe(Math.round(PROPERTY_TYPES[0].price * BALANCE.properties.priceGrowth))
-    // O décimo kitnet custa cerca de R$ 420 mil.
-    expect(Math.round(prices[9] / 10_000)).toBe(42)
-    expect(ownedCount(state, 'kitnet')).toBe(10)
-    expect(state.money).toBe(1e9 - prices.reduce((sum, price) => sum + price, 0))
+    expect(ownedCount(state, 'kitnet')).toBe(supply)
+    expect(propertiesLeft(state, 'kitnet')).toBe(0)
+    expect(state.money).toBe(1e9 - supply * PROPERTY_TYPES[0].price)
+    expect(applyAction(state, { type: 'buyProperty', propertyId: 'kitnet' })).toEqual({
+      ok: false,
+      error: 'soldOut',
+    })
+  })
+
+  it('os comerciais têm preço fixo, e poucos ficam à venda de cada vez', () => {
+    const max = BALANCE.properties.maxForSale
+    const start = withHomes(withMoney(makeGame(), 1e12), { kitnet: 1, apartamento: 1, casa: 1 })
+    for (const type of PROPERTY_TYPES) {
+      expect(propertiesLeft(start, type.id)).toBe(
+        type.market ? max : BALANCE.properties.homeSupply - (start.properties[type.id] ?? 0),
+      )
+    }
+    expect(start.market).toEqual(initialMarket())
+
+    let state = start
+    for (let i = 0; i < max; i++) {
+      expect(propertyPrice('sala')).toBe(PROPERTY_TYPES[3].price)
+      state = buy(state, 'sala')
+    }
+    expect(ownedCount(state, 'sala')).toBe(max)
+    expect(state.money).toBe(start.money - max * PROPERTY_TYPES[3].price)
+    expect(propertiesLeft(state, 'sala')).toBe(0)
+    expect(affordableProperties(state)).not.toContain('sala')
+    expect(applyAction(state, { type: 'buyProperty', propertyId: 'sala' })).toEqual({
+      ok: false,
+      error: 'soldOut',
+    })
+  })
+
+  it('um comercial novo fica à venda a cada poucos anos, até o máximo', () => {
+    const max = BALANCE.properties.maxForSale
+    const start = withHomes(withMoney(makeGame(), 1e12), { kitnet: 1, apartamento: 1, casa: 1 })
+    const soldOut = buy(start, ...Array.from({ length: max }, () => 'sala' as const))
+    const every = PROPERTY_TYPES[3].market.everyYears * BALANCE.daysPerYear
+    const next = nextListingDay(soldOut, 'sala')!
+    expect(next % every).toBe(0)
+    expect(next).toBeGreaterThan(soldOut.clock.day)
+    expect(nextListingDay(soldOut, 'kitnet')).toBeNull()
+
+    const dayBefore = play(soldOut, days(next - soldOut.clock.day - 1))
+    expect(propertiesLeft(dayBefore, 'sala')).toBe(0)
+    const listed = play(dayBefore, days(1))
+    expect(propertiesLeft(listed, 'sala')).toBe(1)
+    expect(nextListingDay(listed, 'sala')).toBe(next + every)
+    // Com o anúncio cheio, o imóvel novo não aparece.
+    const full = play(listed, days(2 * every))
+    expect(propertiesLeft(full, 'sala')).toBe(max)
   })
 
   it('os tipos liberam em ordem, e o próximo aparece bloqueado', () => {
@@ -90,19 +160,55 @@ describe('imóveis', () => {
     expect(bought.state.stats.totalSpent).toBe(price)
   })
 
-  it('o aluguel entra na renda da família todo mês', () => {
+  it('o aluguel dos imóveis em que a família não mora entra na renda todo mês', () => {
     const start = withMoney(makeGame(), 1e7)
     const state = buy(start, 'kitnet', 'kitnet', 'apartamento')
-    const rent = 2 * PROPERTY_TYPES[0].rentPerMonth + PROPERTY_TYPES[1].rentPerMonth
+    // O casal mora num dos kitnets; o outro kitnet e o apartamento rendem aluguel.
+    expect(homesInUse(state)).toEqual({ kitnet: 1 })
+    const rent = PROPERTY_TYPES[0].rentPerMonth + PROPERTY_TYPES[1].rentPerMonth
     expect(rentPerMonth(state)).toBe(rent)
     expect(familyRates(state).rent).toBe(rent)
     expect(familyRates(state).income).toBe(familyRates(start).income + rent)
 
-    // Um ano depois, a família tem 12 aluguéis a mais do que teria sem os imóveis.
+    // Um ano depois, a família tem 12 aluguéis a mais e 12 meses de moradia a menos.
+    const housing = housingCost(start) - housingCost(state)
     const withRent = advance(state, years(1)).state
     const withoutRent = advance({ ...state, properties: {} }, years(1)).state
-    expectClose(withRent.money - withoutRent.money, rent * 12)
+    expectClose(withRent.money - withoutRent.money, (rent + housing) * 12)
     expectClose(withRent.stats.rentEarned - state.stats.rentEarned, rent * 12)
+  })
+
+  it('quem não cabe nos imóveis da família mora de aluguel, pago por lugar', () => {
+    const { rentPerPlace, rentedPlaces: maxRented } = BALANCE.housing
+    const kitnet = PROPERTY_TYPES[0]
+    const couple = makeGame(2)
+    expect(homePlaces(couple)).toBe(maxRented)
+    expect(freePlaces(couple)).toBe(maxRented - 2)
+    expect(isRenting(couple)).toBe(true)
+    expect(rentedPlaces(couple)).toBe(2)
+    expect(housingCost(couple)).toBe(2 * rentPerPlace)
+    const [first, second] = founders(couple)
+    const living = livingCost(first, 0) + livingCost(second, 0)
+    expect(familyRates(couple).expense).toBe(living + 2 * rentPerPlace)
+
+    // Com um kitnet, o casal sai do aluguel e paga as contas do kitnet, que não rende.
+    const owner = withHomes(couple, { kitnet: 1 })
+    expect(isRenting(owner)).toBe(false)
+    expect(homePlaces(owner)).toBe(maxRented + kitnet.home.places)
+    expect(housingCost(owner)).toBe(kitnet.home.billsPerMonth)
+    expect(rentPerMonth(owner)).toBe(0)
+
+    // Um filho não cabe no kitnet: ele mora num lugar alugado.
+    const parents = withChild(owner)
+    expect(isRenting(parents)).toBe(true)
+    expect(rentedPlaces(parents)).toBe(1)
+    expect(housingCost(parents)).toBe(rentPerPlace + kitnet.home.billsPerMonth)
+    expect(freePlaces(parents)).toBe(maxRented + kitnet.home.places - 3)
+
+    // Com uma casa, todos moram nela; os kitnets ficam alugados.
+    const house = withHomes(parents, { apartamento: 1, casa: 1 })
+    expect(homesInUse(house)).toEqual({ kitnet: 1, apartamento: 1 })
+    expect(isRenting(house)).toBe(false)
   })
 
   it('os imóveis ficam com a família quando as pessoas morrem', () => {

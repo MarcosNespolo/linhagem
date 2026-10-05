@@ -1,7 +1,7 @@
 import { BALANCE } from '../content/balance'
 import { FEMALE_NAMES, MALE_NAMES } from '../content/names'
 import type { Rng } from './rng'
-import { newEducation } from './school'
+import { baseAptitude, newEducation } from './school'
 import { ageInYears } from './time'
 import type {
   Appearance,
@@ -18,9 +18,29 @@ export function isAlive(member: Member): boolean {
   return member.deathDay === null
 }
 
-/** Idade no dia informado. Para quem já morreu, a idade com que morreu. */
-export function ageOf(member: Member, day: number): number {
-  return ageInYears(member.birthDay, member.deathDay ?? day)
+/** Dia em que a pessoa chega à expectativa de vida. */
+export function lifeEndDay(member: Pick<Member, 'birthDay' | 'lifespan'>): number {
+  return member.birthDay + member.lifespan * BALANCE.daysPerYear
+}
+
+/**
+ * Saiu de casa para formar a própria família e ainda vive, fora das contas:
+ * até chegar à expectativa de vida.
+ */
+export function livesAway(member: Member, day: number): boolean {
+  return member.leftHome && day < lifeEndDay(member)
+}
+
+/**
+ * Idade no dia informado. Para quem já morreu, a idade com que morreu. Quem
+ * saiu de casa continua envelhecendo até a expectativa de vida.
+ */
+export function ageOf(
+  member: Pick<Member, 'birthDay' | 'deathDay' | 'leftHome' | 'lifespan'>,
+  day: number,
+): number {
+  const end = member.leftHome ? Math.min(day, lifeEndDay(member)) : (member.deathDay ?? day)
+  return ageInYears(member.birthDay, end)
 }
 
 export function isAdult(member: Member, day: number): boolean {
@@ -35,13 +55,13 @@ export function livingMembers(state: GameState): Member[] {
   return Object.values(state.members).filter(isAlive)
 }
 
-/** Multiplicador de custos pelo tamanho da família viva (BALANCE.familySizeGrowth). */
-export function familySizeFactor(state: GameState): number {
+/** Quantas pessoas vivem na família agora. */
+export function livingCount(state: GameState): number {
   let living = 0
   for (const member of Object.values(state.members)) {
     if (member.deathDay === null) living += 1
   }
-  return BALANCE.familySizeGrowth ** living
+  return living
 }
 
 /** Filhos do membro, do mais velho para o mais novo. */
@@ -93,31 +113,39 @@ export type NewMember = {
   avatarSeed?: string
   /** Vida escolar. Sem valor, a de quem nasce: sem escola e sem formação. */
   education?: Education
+  /** Aptidão para os estudos. Sem valor, a de nascença de quem vem de fora. */
+  aptitude?: number
 }
 
 /** Cria um membro e o registra no rascunho do estado, que é alterado. */
 export function addMember(draft: GameState, rng: Rng, input: NewMember): Member {
   const id = `m${draft.nextMemberId}`
   draft.nextMemberId += 1
+  const firstName = input.firstName ?? rollFirstName(draft, rng, input.gender)
+  const lifespan = input.lifespan ?? rollLifespan(rng)
+  const avatarSeed = input.avatarSeed ?? rollAvatarSeed(rng)
   const member: Member = {
     id,
-    firstName: input.firstName ?? rollFirstName(draft, rng, input.gender),
+    firstName,
     gender: input.gender,
     birthDay: input.birthDay,
     deathDay: null,
-    lifespan: input.lifespan ?? rollLifespan(rng),
+    leftHome: false,
+    lifespan,
     generation: input.generation,
     origin: input.origin,
     parentIds: input.parentIds,
     partnerId: null,
     marriedDay: null,
     career: input.career ?? null,
+    unemployedUntil: null,
     concurso: null,
     lastChildDay: null,
     traits: [],
     appearance: input.appearance,
-    avatarSeed: input.avatarSeed ?? rollAvatarSeed(rng),
+    avatarSeed,
     education: input.education ?? newEducation(),
+    aptitude: input.aptitude ?? baseAptitude(avatarSeed, id),
   }
   draft.members[id] = member
   return member

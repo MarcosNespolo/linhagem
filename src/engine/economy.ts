@@ -2,7 +2,7 @@ import { BALANCE } from '../content/balance'
 import { careerLevel, PUBLIC_CAREER } from '../content/careers'
 import { isBoosted } from './boost'
 import { ageOf, isAlive } from './members'
-import { rentPerMonth } from './properties'
+import { housingCost, rentPerMonth } from './properties'
 import { halfTimeCaregivers, schoolFee } from './school'
 import type { GameState, Member, MemberId } from './types'
 
@@ -14,17 +14,22 @@ export function salaryPerMonth(member: Pick<Member, 'career'>): number {
 
 /**
  * Renda por mês: salário para quem trabalha, pensão para aposentados e zero
- * para quem ainda não tem emprego. Quem termina o médio e vai trabalhar recebe
- * desde janeiro, mesmo antes dos 18. A aposentadoria do serviço público paga
- * uma fração maior do último salário.
+ * para quem ainda não tem emprego ou foi demitido. Quem termina o médio e vai
+ * trabalhar recebe desde janeiro, mesmo antes dos 18. A aposentadoria do
+ * serviço público paga uma fração maior do último salário.
  */
 export function memberIncome(member: Member, day: number): number {
   if (!isAlive(member) || !member.career) return 0
   const salary = salaryPerMonth(member)
-  if (ageOf(member, day) < BALANCE.retirementAge) return salary
+  if (ageOf(member, day) < BALANCE.retirementAge) return isUnemployed(member, day) ? 0 : salary
   const ratio =
     member.career.id === PUBLIC_CAREER ? BALANCE.publicPensionRatio : BALANCE.pensionRatio
   return salary * ratio
+}
+
+/** Demitido e ainda procurando outro emprego. */
+export function isUnemployed(member: Pick<Member, 'unemployedUntil'>, day: number): boolean {
+  return member.unemployedUntil !== null && day < member.unemployedUntil
 }
 
 /**
@@ -41,9 +46,33 @@ export function incomeOf(
 }
 
 /**
- * Despesa por mês: crianças custam mais conforme crescem, quem estuda em
- * escola particular paga a mensalidade, quem tem professor particular paga o
- * professor, e quem estuda para concurso, o cursinho.
+ * Custo de vida por mês, sem a moradia. Criança: alimentação, roupas, saúde e
+ * lazer, mais caros a cada ano. Adulto: mercado e contas, plano de saúde (mais
+ * caro para idosos) e transporte, de carro para quem ganha a partir de
+ * `carFromSalary` e de ônibus para os outros.
+ */
+export function livingCost(member: Member, day: number): number {
+  const age = ageOf(member, day)
+  if (age < BALANCE.adultAge) {
+    return BALANCE.children.expenseBase + BALANCE.children.expensePerYear * age
+  }
+  const { adult, health, seniorAge, transport } = BALANCE.living
+  return (
+    adult +
+    (age >= seniorAge ? health.senior : health.adult) +
+    (hasCar(member, day) ? transport.car : transport.bus)
+  )
+}
+
+/** Tem carro: ganha a partir do salário em que o transporte deixa de ser de ônibus. */
+export function hasCar(member: Member, day: number): boolean {
+  return memberIncome(member, day) >= BALANCE.living.transport.carFromSalary
+}
+
+/**
+ * Despesa por mês da pessoa: o custo de vida, a mensalidade da escola
+ * particular, o professor particular e o cursinho de quem estuda para
+ * concurso. A moradia é da família inteira (`housingCost`).
  */
 export function memberExpense(member: Member, day: number): number {
   if (!isAlive(member)) return 0
@@ -51,9 +80,7 @@ export function memberExpense(member: Member, day: number): number {
     schoolFee(member.education.school) +
     (member.education.tutorSince !== null ? BALANCE.school.tutor.fee : 0) +
     (member.concurso ? BALANCE.concurso.fee : 0)
-  const age = ageOf(member, day)
-  if (age >= BALANCE.adultAge) return fee
-  return BALANCE.children.expenseBase + BALANCE.children.expensePerYear * age + fee
+  return livingCost(member, day) + fee
 }
 
 export type Rates = {
@@ -68,19 +95,30 @@ export type Rates = {
 }
 
 /**
- * Renda, despesa e saldo da família por mês. O aluguel entra na renda, e a
- * renda inteira dobra enquanto vale o bônus das missões.
+ * Renda, despesa e saldo da família por mês. O aluguel dos imóveis entra na
+ * renda, e a renda inteira dobra enquanto vale o bônus das missões. A despesa
+ * soma o custo de cada pessoa e a moradia: o aluguel dos lugares de quem não
+ * cabe nos imóveis da família e as contas dos imóveis em que ela mora.
+ * `members` pode trazer só as pessoas vivas, para não passar pelos
+ * antepassados.
  */
-export function familyRates(state: GameState): Rates {
-  const caregivers = halfTimeCaregivers(state)
+export function familyRates(
+  state: GameState,
+  members: readonly Member[] = Object.values(state.members),
+): Rates {
+  const caregivers = halfTimeCaregivers(state, members)
   const factor = isBoosted(state) ? 2 : 1
-  const rent = rentPerMonth(state) * factor
+  let living = 0
   let income = 0
   let expense = 0
-  for (const member of Object.values(state.members)) {
+  for (const member of members) {
+    if (!isAlive(member)) continue
+    living += 1
     income += incomeOf(state, member, caregivers)
     expense += memberExpense(member, state.clock.day)
   }
+  const rent = rentPerMonth(state, living) * factor
   income = income * factor + rent
+  expense += housingCost(state, living)
   return { income, rent, expense, net: income - expense }
 }

@@ -38,7 +38,7 @@ export function loveActions(state: GameState): LoveActions {
   const day = state.clock.day
   const seekers: Member[] = []
   const couples: CoupleStatus[] = []
-  const cost = weddingCost(state)
+  const cost = weddingCost()
 
   for (const member of Object.values(state.members)) {
     if (member.deathDay !== null) continue
@@ -57,7 +57,7 @@ export function loveActions(state: GameState): LoveActions {
       lead: member,
       partner,
       check: checkHaveChild(state, member.id),
-      cost: childCost(state, member.id, partner.id),
+      cost: childCost(),
     })
   }
 

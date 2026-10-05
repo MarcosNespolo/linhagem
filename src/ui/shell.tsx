@@ -1,6 +1,12 @@
 'use client'
 
-import { affordableCourses, familyRates, livingMembers, type GameState } from '@/engine'
+import {
+  affordableCourses,
+  affordableProperties,
+  familyRates,
+  livingMembers,
+  type GameState,
+} from '@/engine'
 import { useGameStore } from '@/game/store'
 import { BottomNav } from './bottom-nav'
 import { showMember } from './flows'
@@ -83,7 +89,13 @@ export function Shell({ game }: { game: GameState }) {
           </div>
         )}
       </main>
-      <BottomNav badges={{ love: actions.ready, work: affordableCourses(game).length }} />
+      <BottomNav
+        badges={{
+          love: actions.ready,
+          work: affordableCourses(game).length,
+          properties: affordableProperties(game).length,
+        }}
+      />
       <Toasts game={game} />
       {cloud.conflict && !cloud.conflictHidden ? (
         <ConflictSheet game={game} conflict={cloud.conflict} />

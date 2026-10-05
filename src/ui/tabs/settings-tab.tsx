@@ -65,6 +65,9 @@ export function SettingsTab({ game }: { game: GameState }) {
               <span className="block text-[16px] font-bold">Mostrar quem já faleceu</span>
               <span className="text-ink-soft block text-[14px]">
                 Inclui quem não deixou descendentes vivos. Os ancestrais aparecem sempre.
+                {game.stats.archived > 0
+                  ? ` Para o save não crescer sem limite, a árvore guarda até ${BALANCE.archive.maxMembers} pessoas: ${game.stats.archived} de ramos antigos que já terminaram saíram dela.`
+                  : ''}
               </span>
             </span>
             <input

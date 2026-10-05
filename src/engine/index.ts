@@ -15,6 +15,7 @@ export {
 } from './actions'
 export { advance, advanceTo, isWaiting, type AdvanceResult } from './advance'
 export { inheritAppearance, rollAppearance } from './appearance'
+export { archiveMembers } from './archive'
 export { boostTicksLeft, clockPosition, isBoosted } from './boost'
 export { optionCount, suggestedPicks, type ChoicePick } from './choices'
 export { rollEnem } from './college'
@@ -30,7 +31,10 @@ export {
 export { FAMILY_NAME_MAX_LENGTH } from './constants'
 export {
   familyRates,
+  hasCar,
   incomeOf,
+  isUnemployed,
+  livingCost,
   memberExpense,
   memberIncome,
   salaryPerMonth,
@@ -54,7 +58,18 @@ export {
 export { isLogEvent, isMemberEvent, LOG_LIMIT } from './log'
 export { claimableMissions, incomeReward, isMissionDone } from './missions'
 export { checkMarry, checkSeekPartner, weddingCost, type MarriageCheck } from './marriage'
-export { ageOf, childrenOf, isAdult, isAlive, isRetired, livingMembers, partnerOf } from './members'
+export {
+  ageOf,
+  childrenOf,
+  isAdult,
+  isAlive,
+  isRetired,
+  lifeEndDay,
+  livesAway,
+  livingCount,
+  livingMembers,
+  partnerOf,
+} from './members'
 export {
   CURRENT_SCHEMA_VERSION,
   MIGRATIONS,
@@ -66,11 +81,22 @@ export {
 } from './migrations'
 export { newGame, type NewGameOptions } from './new-game'
 export {
+  affordableProperties,
   checkBuyProperty,
+  freePlaces,
+  homePlaces,
+  homesInUse,
+  housingCost,
+  initialMarket,
   isPropertyUnlocked,
+  isRenting,
+  nextListingDay,
   ownedCount,
+  ownedPlaces,
   paybackYears,
+  propertiesLeft,
   propertyPrice,
+  rentedPlaces,
   rentPerMonth,
   totalProperties,
   visiblePropertyTypes,
@@ -85,18 +111,21 @@ export {
   promotionDay,
   type CourseOffer,
 } from './promotions'
-export { createRng, hashString, pickWeighted, type Rng } from './rng'
+export { createRng, hashString, hashUnit, mix32, pickWeighted, type Rng } from './rng'
 export { deserialize, serialize } from './save'
 export { canHaveTutor, tutorPoints } from './tutor'
 export {
   aptitudeOf,
+  baseAptitude,
   halfTimeCaregivers,
+  inheritAptitude,
   schoolFee,
   schoolScore,
   stageFee,
   stageForAge,
   stagePoints,
   stageYears,
+  suitorAptitude,
   yearlyPoints,
 } from './school'
 export {

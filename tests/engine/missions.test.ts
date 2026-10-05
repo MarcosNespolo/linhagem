@@ -26,6 +26,7 @@ import {
   marryMember,
   play,
   untilParentAge,
+  withHomes,
   withMoney,
   years,
 } from '../helpers'
@@ -109,7 +110,7 @@ describe('missões do dia', () => {
   })
 
   it('conta só o que acontece depois que aparecem e paga meses de renda', () => {
-    let state = withMoney(makeGame(34), 1e7)
+    let state = withHomes(withMoney(makeGame(34), 1e7), { kitnet: 1 })
     const [mother] = founders(state)
     state = expectOk(applyAction(state, { type: 'haveChild', parentId: mother.id })).state
     state = draw(state)
@@ -123,6 +124,7 @@ describe('missões do dia', () => {
     expect(mission(state, 'chaDeBebe').progress).toBe(2)
     expect(claimableMissions(state).map((item) => item.id)).toContain('chaDeBebe')
 
+    expect(familyRates(state).net).toBeGreaterThan(0)
     const reward = 6 * familyRates(state).net
     const claimed = expectOk(applyAction(state, { type: 'claimMission', missionId: 'chaDeBebe' }))
     expect(claimed.state.money).toBeCloseTo(state.money + reward)
@@ -156,7 +158,7 @@ describe('missões do dia', () => {
 
   it('Casa cheia: três pessoas vivas a mais que no sorteio', () => {
     // Dois filhos adultos: os dois casam e um dos casais tem um bebê.
-    let state = withMoney(makeGame(37), 1e9)
+    let state = withHomes(withMoney(makeGame(37), 1e9), { kitnet: 2 })
     const [mother] = founders(state)
     const children: string[] = []
     for (let i = 0; i < 2; i++) {
