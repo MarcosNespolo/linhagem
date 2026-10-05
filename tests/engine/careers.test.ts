@@ -22,6 +22,7 @@ import {
   isMemberEvent,
   memberIncome,
   rollJobOffers,
+  rollSuitor,
   type Formation,
   type GameState,
   type Member,
@@ -31,6 +32,7 @@ import {
   founders,
   makeGame,
   marryMember,
+  meetSomeone,
   setMember,
   withAdultChild,
   withMoney,
@@ -248,44 +250,42 @@ describe('promoções', () => {
   })
 })
 
-describe('quem é sugerido como par', () => {
+describe('quem o membro conhece', () => {
   it('chega com formação, emprego da formação e o nível dos anos de trabalho', () => {
-    const adult = withAdultChild(13)
-    let state = adult.state
+    const { state, childId } = withAdultChild(13)
     const day = state.clock.day
-    for (let i = 0; i < 30; i++) {
-      state = expectOk(applyAction(state, { type: 'findSuitors', memberId: adult.childId })).state
-      for (const suitor of state.suitors[adult.childId]) {
-        const { formation, career } = suitor
-        expect(career.level).toBeLessThanOrEqual(2)
-        expect(career.levelSince).toBeLessThanOrEqual(day)
-        // Só tem faculdade ou curso técnico quem já teve tempo de terminar.
-        const age = (day - suitor.birthDay) / BALANCE.daysPerYear
-        if (formation.level === 'superior') {
-          expect(age).toBeGreaterThanOrEqual(BALANCE.adultAge + degree(formation.degree).years)
-        }
-        if (formation.level === 'tecnico') {
-          expect(age).toBeGreaterThanOrEqual(BALANCE.adultAge + BALANCE.college.technical.years)
-        }
-        if (career.id === PUBLIC_CAREER) continue
-        // Com curso técnico ou faculdade, trabalha na área; com ensino médio, numa carreira dele.
-        if (formation.level === 'medio') expect(MEDIO_CAREERS).toContain(career.id)
-        else expect(career.id).toBe(formationCareer(formation))
-        if (formation.level === 'medio' && age >= BALANCE.adultAge + 3) {
-          expect(career.level).toBeGreaterThanOrEqual(1)
-        }
+    const rng = createRng(13)
+    for (let i = 0; i < 90; i++) {
+      const person = rollSuitor(state, rng, state.members[childId])
+      const { formation, career } = person
+      expect(career.level).toBeLessThanOrEqual(2)
+      expect(career.levelSince).toBeLessThanOrEqual(day)
+      // Só tem faculdade ou curso técnico quem já teve tempo de terminar.
+      const age = (day - person.birthDay) / BALANCE.daysPerYear
+      if (formation.level === 'superior') {
+        expect(age).toBeGreaterThanOrEqual(BALANCE.adultAge + degree(formation.degree).years)
+      }
+      if (formation.level === 'tecnico') {
+        expect(age).toBeGreaterThanOrEqual(BALANCE.adultAge + BALANCE.college.technical.years)
+      }
+      if (career.id === PUBLIC_CAREER) continue
+      // Com curso técnico ou faculdade, trabalha na área; com ensino médio, numa carreira dele.
+      if (formation.level === 'medio') expect(MEDIO_CAREERS).toContain(career.id)
+      else expect(career.id).toBe(formationCareer(formation))
+      if (formation.level === 'medio' && age >= BALANCE.adultAge + 3) {
+        expect(career.level).toBeGreaterThanOrEqual(1)
       }
     }
   })
 
   it('quem casa entra na família com a formação e o emprego que tinha', () => {
     const { state, childId } = withAdultChild(14)
-    const searched = expectOk(applyAction(state, { type: 'findSuitors', memberId: childId })).state
-    const suitor = searched.suitors[childId][0]
-    const married = marryMember(state, childId, 0)
+    const [met] = meetSomeone(state, childId).choices
+    if (met.type !== 'meet') throw new Error('Esperava a escolha de quem apareceu')
+    const married = marryMember(state, childId)
     const spouse = married.members[married.members[childId].partnerId!]
-    expect(spouse.education.formation).toEqual(suitor.formation)
-    expect(spouse.career).toEqual(suitor.career)
+    expect(spouse.education.formation).toEqual(met.person.formation)
+    expect(spouse.career).toEqual(met.person.career)
   })
 })
 
@@ -314,7 +314,6 @@ describe('save da versão 5', () => {
         suggested: 0,
       },
     ]
-    raw.suitors = { m4: [{ ...raw.members.m1, career: { id: 'agro', level: 1, xp: 0 } }] }
     const state = deserialize(JSON.stringify(raw))
     expect(state.choices).toEqual([
       {
@@ -326,8 +325,5 @@ describe('save da versão 5', () => {
         suggested: 0,
       },
     ])
-    const [suitor] = state.suitors.m4
-    expect(suitor.formation).toEqual({ level: 'medio' })
-    expect(suitor.career).toEqual({ id: 'agro', level: 1, levelSince: raw.clock.day })
   })
 })

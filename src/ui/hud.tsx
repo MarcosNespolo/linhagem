@@ -173,5 +173,9 @@ function waitingText(game: GameState): string | null {
       return `Tempo parado: falta escolher o primeiro emprego de ${name}.`
     case 'concurso':
       return `Tempo parado: saiu o resultado do concurso de ${name}.`
+    case 'meet':
+      return `Tempo parado: ${name} conheceu alguém.`
+    case 'propose':
+      return `Tempo parado: ${name} pode casar.`
   }
 }

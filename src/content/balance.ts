@@ -100,19 +100,25 @@ export const BALANCE = {
   marriage: {
     /** Festa e cartório: o custo de um casamento, sempre o mesmo. */
     cost: 30_000,
-    /** Diferença máxima de idade, em anos, entre o membro e as pessoas sugeridas como par. */
+    /** Diferença máxima de idade, em anos, entre o membro e quem ele conhece. */
     maxAgeGapYears: 5,
-    /** Quantas pessoas aparecem a cada busca por par. */
-    suitorsPerSearch: 3,
     /**
-     * Formação de quem é sugerido como par: chance de ter curso técnico e de ter
+     * Formação de quem o membro conhece: chance de ter curso técnico e de ter
      * faculdade. O resto tem ensino médio.
      */
     suitorTechnicalChance: 0.2,
     suitorDegreeChance: 0.2,
-    /** Chance de quem é sugerido como par ser servidor público. */
+    /** Chance de quem o membro conhece ser servidor público. */
     suitorPublicChance: 0.1,
   },
+
+  /**
+   * Namoro. Nas datas de `meetDates` (carnaval e dia dos namorados), cada
+   * solteiro adulto tem `meetChance` de conhecer alguém, e o jogo para para
+   * decidir se namora. Depois de `yearsToPropose` anos de namoro vem o pedido,
+   * que também para o jogo: casar, esperar mais um ano ou terminar.
+   */
+  dating: { meetDates: ['02-15', '06-12'], meetChance: 0.6, yearsToPropose: 1 },
 
   jobs: {
     /** Quantas vagas aparecem na escolha do primeiro emprego. */

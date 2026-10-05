@@ -8,13 +8,11 @@ import {
   applyAction,
   checkBuyProperty,
   checkHaveChild,
-  checkSeekPartner,
   daysToMs,
   familyRates,
   livingMembers,
   serialize,
   visiblePropertyTypes,
-  weddingCost,
   type GameState,
 } from '../engine'
 import { BALANCE } from '../content/balance'
@@ -45,15 +43,13 @@ export const LIMITS = {
 } as const
 
 /**
- * Se a família consegue comprar alguma coisa agora: um filho, um casamento, um
- * curso de promoção ou um imóvel.
+ * Se a família consegue comprar alguma coisa agora: um filho, um curso de
+ * promoção ou um imóvel. O casamento vem no pedido, depois do namoro.
  */
 export function canBuySomething(state: GameState): boolean {
   if (affordableCourses(state).length > 0) return true
   if (visiblePropertyTypes(state).some((type) => checkBuyProperty(state, type.id).ok)) return true
-  const wedding = state.money >= weddingCost()
   for (const member of livingMembers(state)) {
-    if (wedding && checkSeekPartner(state, member.id).ok) return true
     if (member.partnerId && checkHaveChild(state, member.id).ok) return true
   }
   return false

@@ -2,6 +2,7 @@ import { BALANCE } from '../content/balance'
 import { archiveMembers } from './archive'
 import { takeExams } from './concurso'
 import { incomeOf } from './economy'
+import { processDating } from './dating'
 import { isEnrollmentDay, processEnrollment } from './enrollment'
 import { openFirstJobChoice } from './jobs'
 import { processMishaps } from './mishaps'
@@ -16,11 +17,12 @@ import type { GameEvent, GameState, Member } from './types'
  * Processa a virada para o dia atual do relógio: aniversários, maioridade,
  * aposentadoria, morte, as matrículas e o arquivo da árvore de janeiro, as
  * promoções, os imprevistos, os imóveis comerciais que ficam à venda, as
- * provas de concurso e o 13º salário. As escolhas abertas aqui
- * (matrículas, depois do médio, primeiro emprego, resultado do concurso) param
- * o relógio. Altera o rascunho e devolve true quando algo pode ter mudado as
- * taxas de renda e despesa. `living` são as pessoas vivas do rascunho; quem
- * morre no meio pode continuar na lista.
+ * provas de concurso, os namoros e o 13º salário. As escolhas abertas aqui
+ * (matrículas, depois do médio, primeiro emprego, resultado do concurso,
+ * alguém que aparece, pedido de casamento) param o relógio. Altera o rascunho
+ * e devolve true quando algo pode ter mudado as taxas de renda e despesa.
+ * `living` são as pessoas vivas do rascunho; quem morre no meio pode continuar
+ * na lista.
  */
 export function processNewDay(
   draft: GameState,
@@ -41,7 +43,7 @@ export function processNewDay(
 
     if (age >= member.lifespan) {
       member.deathDay = day
-      delete draft.suitors[member.id]
+      member.dating = null
       events.push({ type: 'died', day, memberId: member.id, age })
       continue
     }
@@ -69,6 +71,7 @@ export function processNewDay(
   if (processMishaps(draft, events, living)) changed = true
   processMarket(draft)
   if (takeExams(draft, rng, events)) changed = true
+  processDating(draft, rng, living)
   payThirteenth(draft, events, living)
   return changed
 }

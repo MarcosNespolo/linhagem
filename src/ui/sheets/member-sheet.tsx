@@ -14,12 +14,12 @@ import { BALANCE } from '@/content/balance'
 import { careerLevel } from '@/content/careers'
 import { isHigherStage, techCourseName, type Network } from '@/content/schools'
 import {
+  ageOf,
   ageThisYear,
   aptitudeOf,
   canHaveTutor,
   calendarDate,
   checkHaveChild,
-  checkSeekPartner,
   childCost,
   childrenOf,
   courseFor,
@@ -32,7 +32,6 @@ import {
   partnerOf,
   schoolFee,
   schoolScore,
-  weddingCost,
   type Choice,
   type CourseOffer,
   type Enrollment,
@@ -42,7 +41,7 @@ import {
 import { useGameStore } from '@/game/store'
 import { formatMoney, formatMonthYear, formatRate } from '@/lib/format'
 import { PersonAvatar } from '../avatar/person-avatar'
-import { seekPartner, showMember } from '../flows'
+import { showMember } from '../flows'
 import {
   ageLabel,
   byGender,
@@ -241,6 +240,16 @@ const OPEN_CHOICES = {
     action: 'Ver o resultado do concurso',
     note: (name: string) => `O tempo parou até ${name} decidir sobre o cargo.`,
   },
+  meet: {
+    icon: <Heart size={18} />,
+    action: 'Ver quem apareceu',
+    note: (name: string) => `O tempo parou até ${name} decidir se namora.`,
+  },
+  propose: {
+    icon: <Heart size={18} />,
+    action: 'Ver o pedido de casamento',
+    note: (name: string) => `O tempo parou até ${name} decidir se casa.`,
+  },
 } satisfies Record<Choice['type'], unknown>
 
 /** A pessoa tem uma escolha esperando, e o relógio também. */
@@ -385,29 +394,21 @@ function MemberActions({
 }) {
   const dispatch = useGameStore((store) => store.dispatch)
 
-  const seek = checkSeekPartner(game, member.id)
-  if (seek.ok) {
-    const cost = weddingCost()
-    return (
-      <div className="mt-5">
-        <button
-          type="button"
-          className={`${button.love} w-full`}
-          onClick={() => seekPartner(member.id)}
-        >
-          <Heart size={18} fill="currentColor" />
-          Procurar um par
-        </button>
-        <p className="tabular text-ink-soft mt-2 text-center text-sm">
-          O casamento custa {formatMoney(cost)}
-        </p>
-      </div>
-    )
-  }
-  if (seek.error === 'tooYoung') {
+  if (member.dating) {
+    const { partner: date, askDay } = member.dating
     return (
       <p className="text-ink-soft mt-5 text-center text-sm">
-        Aos 18 anos, {member.firstName} vai poder procurar um par.
+        {member.firstName} namora {date.firstName}. O pedido de casamento vem em{' '}
+        {formatMonthYear(calendarDate(game.startDate, askDay), 'short')}.
+      </p>
+    )
+  }
+  if (member.partnerId === null && member.origin !== 'married' && member.deathDay === null) {
+    return (
+      <p className="text-ink-soft mt-5 text-center text-sm">
+        {ageOf(member, game.clock.day) < BALANCE.adultAge
+          ? `Aos ${BALANCE.adultAge} anos, ${member.firstName} vai poder namorar.`
+          : `${member.firstName} pode conhecer alguém no carnaval e no dia dos namorados.`}
       </p>
     )
   }

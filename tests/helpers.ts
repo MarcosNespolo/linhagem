@@ -4,6 +4,11 @@ import { propertyType, type PropertyId } from '@/content/properties'
 import {
   advance,
   applyAction,
+  canMeet,
+  createRng,
+  MEET_OPTIONS,
+  PROPOSE_OPTIONS,
+  rollSuitor,
   daysToMs,
   msToTicks,
   newGame,
@@ -83,15 +88,23 @@ export function chooseSuggested(state: GameState): GameState {
 /** Como o jogador responde as escolhas abertas. */
 export type Policy = (state: GameState) => ChoicePick[]
 
-/** Depois do médio, vai trabalhar; nas outras escolhas, fica com a sugestão. */
-export const workPolicy: Policy = (state) =>
+/** Recusa quem aparece para namorar; nas outras escolhas, fica com a sugestão. */
+export const singlePolicy: Policy = (state) =>
   state.choices.map((choice) => ({
     memberId: choice.memberId,
-    option:
-      choice.type === 'afterSchool'
-        ? choice.options.findIndex((option) => option.path === 'trabalho')
-        : choice.suggested,
+    option: choice.type === 'meet' ? MEET_OPTIONS.decline : choice.suggested,
   }))
+
+/**
+ * Depois do médio, vai trabalhar e recusa quem aparece para namorar; nas outras
+ * escolhas, fica com a sugestão.
+ */
+export const workPolicy: Policy = (state) =>
+  singlePolicy(state).map((pick, i) => {
+    const choice = state.choices[i]
+    if (choice.type !== 'afterSchool') return pick
+    return { ...pick, option: choice.options.findIndex((option) => option.path === 'trabalho') }
+  })
 
 /**
  * Avança `ms` como um jogador que responde cada escolha (com a sugestão, ou
@@ -129,9 +142,9 @@ function clockMs(state: GameState): number {
 }
 
 /**
- * Partida com um filho do casal fundador já adulto, que passou pela escola com
- * as sugestões, foi trabalhar depois do médio na vaga sugerida e tem dinheiro
- * de sobra. Devolve o id do filho.
+ * Partida com um filho do casal fundador já adulto e solteiro, que passou pela
+ * escola com as sugestões, foi trabalhar depois do médio na vaga sugerida e tem
+ * dinheiro de sobra. Devolve o id do filho.
  */
 export function withAdultChild(seed = 1): { state: GameState; childId: string } {
   const born = withChild(makeGame(seed))
@@ -141,8 +154,9 @@ export function withAdultChild(seed = 1): { state: GameState; childId: string } 
 }
 
 /**
- * Família com dois filhos, nascidos com o intervalo mínimo entre filhos e já
- * adultos: com os fundadores, enche os 4 lugares que a família consegue alugar.
+ * Família com dois filhos solteiros, nascidos com o intervalo mínimo entre
+ * filhos e já adultos: com os fundadores, enche os 4 lugares que a família
+ * consegue alugar.
  */
 export function withAdultChildren(seed = 1): { state: GameState; childIds: [string, string] } {
   const first = withChild(makeGame(seed))
@@ -157,14 +171,50 @@ export function withAdultChildren(seed = 1): { state: GameState; childIds: [stri
  * Avança até o casal recém-casado poder ter filhos: quem casa aos 18 espera a
  * idade mínima, assim como o par mais novo.
  */
-export function untilParentAge(state: GameState): GameState {
-  return play(state, years(BALANCE.children.minParentAge - BALANCE.adultAge))
+export function untilParentAge(state: GameState, answer: Policy = suggestedPicks): GameState {
+  return play(state, years(BALANCE.children.minParentAge - BALANCE.adultAge), undefined, answer)
 }
 
-/** Procura par para o membro e casa com a pessoa de índice `suitorIndex`. */
-export function marryMember(state: GameState, memberId: string, suitorIndex = 0): GameState {
-  const searched = expectOk(applyAction(state, { type: 'findSuitors', memberId })).state
-  return expectOk(applyAction(searched, { type: 'marry', memberId, suitorIndex })).state
+/**
+ * Abre para o membro a escolha de quando alguém aparece, como nas datas de
+ * conhecer alguém, com uma pessoa sorteada pelo gerador do jogo.
+ */
+export function meetSomeone(state: GameState, memberId: string): GameState {
+  const member = state.members[memberId]
+  if (!canMeet(state, member)) throw new Error(`${memberId} não pode conhecer alguém agora`)
+  const rng = createRng(state.rngState)
+  const person = rollSuitor(state, rng, member)
+  const choice: Choice = {
+    type: 'meet',
+    memberId,
+    day: state.clock.day,
+    person,
+    suggested: MEET_OPTIONS.date,
+  }
+  return { ...state, rngState: rng.state, choices: [...state.choices, choice] }
+}
+
+/** Responde a escolha aberta do membro com a opção pedida. */
+export function answer(state: GameState, memberId: string, option: number): GameState {
+  return expectOk(applyAction(state, { type: 'choose', picks: [{ memberId, option }] })).state
+}
+
+/**
+ * O membro conhece alguém, namora e casa no pedido, pagando o casamento. Quem
+ * já namora casa com quem namora.
+ */
+export function marryMember(state: GameState, memberId: string): GameState {
+  const dating = state.members[memberId].dating
+    ? state
+    : answer(meetSomeone(state, memberId), memberId, MEET_OPTIONS.date)
+  const proposal: Choice = {
+    type: 'propose',
+    memberId,
+    day: dating.clock.day,
+    suggested: PROPOSE_OPTIONS.marry,
+  }
+  const asked = { ...dating, choices: [...dating.choices, proposal] }
+  return answer(asked, memberId, PROPOSE_OPTIONS.marry)
 }
 
 /** Dá ao membro a aptidão pedida. */

@@ -83,12 +83,11 @@ describe('save', () => {
     expect(errorFrom(() => migrate(v0, {}, 1)).code).toBe('missingMigration')
   })
 
-  it('a versão 1 ganha aparência, origem, sugestões e histórico, sempre iguais', () => {
+  it('a versão 1 ganha aparência, origem e histórico, sempre iguais', () => {
     const json = readFileSync(new URL('save-v1.json', FIXTURES), 'utf8')
     const v1 = JSON.parse(json) as { members: Record<string, { generation: number }> }
     const state = deserialize(json)
 
-    expect(state.suitors).toEqual({})
     expect(state.log).toEqual([])
     for (const member of Object.values(state.members)) {
       const before = v1.members[member.id]
@@ -110,18 +109,32 @@ describe('save', () => {
     expect(state.clock).toEqual(v2.clock)
     expect(state.choices).toEqual([])
     for (const [id, member] of Object.entries(state.members)) {
-      const { education, concurso, career, aptitude, unemployedUntil, ...rest } = member
+      const { education, concurso, career, aptitude, unemployedUntil, dating, ...rest } = member
       const { career: before, ...restBefore } = v2.members[id]
       expect(rest).toEqual(restBefore)
       expect(education.formation).toEqual({ level: 'medio' })
       expect(concurso).toBeNull()
       expect(aptitude).toBe(baseAptitude(member.avatarSeed, id))
       expect(unemployedUntil).toBeNull()
+      expect(dating).toBeNull()
       // A carreira fica no mesmo nível, com o tempo contando a partir da migração.
       expect(career).toEqual(
         before && { id: before.id, level: before.level, levelSince: v2.clock.day },
       )
     }
+  })
+
+  it('a versão 14 começa sem namoros e sem as pessoas sugeridas pela busca antiga', () => {
+    const v14 = JSON.parse(readFileSync(new URL('save-v14.json', FIXTURES), 'utf8')) as GameState
+    const [single] = Object.keys(v14.members)
+    const save = { ...v14, suitors: { [single]: [v14.members[single]] } }
+    const state = deserialize(JSON.stringify(save))
+    expect('suitors' in state).toBe(false)
+    for (const [id, member] of Object.entries(state.members)) {
+      expect(member).toEqual({ ...v14.members[id], dating: null })
+    }
+    expect(state.choices).toEqual(v14.choices)
+    expect(state.money).toBe(v14.money)
   })
 
   it('a versão 13 traz de volta quem saiu de casa e começa no azul', () => {
@@ -176,7 +189,7 @@ describe('save', () => {
     const state = deserialize(json)
     expect(state.stats).toEqual({ ...v10.stats, archived: 0 })
     for (const [id, member] of Object.entries(state.members)) {
-      expect(member).toEqual({ ...v10.members[id], unemployedUntil: null })
+      expect(member).toEqual({ ...v10.members[id], unemployedUntil: null, dating: null })
     }
     expect(state.properties).toEqual(v10.properties)
     expect(state.money).toBe(v10.money)

@@ -1,10 +1,10 @@
 /**
  * Jogador automático da simulação de balanceamento, com a estratégia do
- * plano: casa todos e tem até 4 filhos por casal; põe os filhos no colégio
- * particular quando a renda cobre, tenta a federal e paga a faculdade
- * particular quando não passa; escolhe a vaga de maior salário, paga os cursos
- * de promoção, compra o imóvel que se paga mais rápido e pega as recompensas
- * das missões.
+ * plano: namora quem aparece, casa quando o casamento cabe no dinheiro e tem
+ * até 4 filhos por casal; põe os filhos no colégio particular quando a renda
+ * cobre, tenta a federal e paga a faculdade particular quando não passa;
+ * escolhe a vaga de maior salário, paga os cursos de promoção, compra o imóvel
+ * que se paga mais rápido e pega as recompensas das missões.
  *
  * A família vem primeiro: filhos e casamentos saem antes dos investimentos,
  * mas a estratégia guarda alguns meses de despesa e só tem mais um filho com
@@ -24,13 +24,13 @@ import {
   advance,
   applyAction,
   checkHaveChild,
-  checkSeekPartner,
   claimableMissions,
   familyRates,
   isPropertyUnlocked,
   livingMembers,
   msToTicks,
   newGame,
+  PROPOSE_OPTIONS,
   propertiesLeft,
   propertyPrice,
   rentedPlaces,
@@ -122,7 +122,10 @@ export function runClock(play: Autoplay, ms: number): void {
     // No vermelho o jogo pausa para avisar; o jogador despausa e segue.
     if (play.state.clock.paused) act(play, { type: 'resume' })
     else if (play.state.choices.length > 0) {
-      if (!act(play, { type: 'choose', picks: strategyPicks(play.state) })) break
+      const result = applyAction(play.state, { type: 'choose', picks: strategyPicks(play.state) })
+      if (!result.ok) break
+      play.state = result.state
+      play.counters.weddings += count(result.events, 'married')
     } else break
   }
   play.elapsedMs += ms
@@ -135,18 +138,22 @@ const SAVINGS_SHARE = 0.25
  * Respostas da estratégia para as escolhas abertas. As mensalidades escolhidas
  * saem do que sobra para a família depois de guardar `SAVINGS_SHARE` da renda,
  * uma escolha depois da outra, para várias matrículas no mesmo janeiro não
- * passarem juntas do orçamento.
+ * passarem juntas do orçamento. Os casamentos saem do dinheiro guardado, sem
+ * gastar a reserva, também um depois do outro.
  */
 export function strategyPicks(state: GameState): ChoicePick[] {
-  const { net, income } = familyRates(state)
-  const budget = { left: net - SAVINGS_SHARE * income }
+  const { net, income, expense } = familyRates(state)
+  const budget = {
+    left: net - SAVINGS_SHARE * income,
+    money: state.money - RESERVE_MONTHS * expense,
+  }
   return state.choices.map((choice) => ({
     memberId: choice.memberId,
     option: pick(choice, budget),
   }))
 }
 
-function pick(choice: Choice, budget: { left: number }): number {
+function pick(choice: Choice, budget: { left: number; money: number }): number {
   const afford = (fee: number) => {
     if (budget.left < fee) return false
     budget.left -= fee
@@ -187,7 +194,13 @@ function pick(choice: Choice, budget: { left: number }): number {
     }
     case 'firstJob':
     case 'concurso':
+    case 'meet':
       return choice.suggested
+    case 'propose':
+      // Casa quando o casamento cabe no dinheiro; senão, espera mais um ano.
+      if (budget.money < weddingCost()) return PROPOSE_OPTIONS.wait
+      budget.money -= weddingCost()
+      return PROPOSE_OPTIONS.marry
   }
 }
 
@@ -223,14 +236,6 @@ export function spend(play: Autoplay): void {
     const check = checkHaveChild(play.state, member.id)
     if (!check.ok || play.state.money < check.cost + reserve()) continue
     if (act(play, { type: 'haveChild', parentId: member.id })) play.counters.births += 1
-  }
-
-  for (const member of livingMembers(play.state)) {
-    if (!checkSeekPartner(play.state, member.id).ok) continue
-    if (play.state.money < weddingCost() + reserve()) break
-    if (!act(play, { type: 'findSuitors', memberId: member.id })) continue
-    const suitorIndex = bestSuitor(play.state, member.id)
-    if (act(play, { type: 'marry', memberId: member.id, suitorIndex })) play.counters.weddings += 1
   }
 
   for (;;) {
@@ -292,14 +297,6 @@ function propertyToBuy(state: GameState, budget: number): { id: PropertyId; pric
   return (
     options.find((option) => option.price <= budget && option.payback <= 2 * best.payback) ?? null
   )
-}
-
-/** Entre as pessoas sugeridas como par, a de maior salário. */
-function bestSuitor(state: GameState, memberId: string): number {
-  const suitors = state.suitors[memberId] ?? []
-  const salary = (index: number) =>
-    careerLevel(suitors[index].career.id, suitors[index].career.level).salaryPerMonth
-  return suitors.reduce((best, _suitor, index) => (salary(index) > salary(best) ? index : best), 0)
 }
 
 /** Data das missões no dia simulado, a partir de 1º de janeiro de 2026. */

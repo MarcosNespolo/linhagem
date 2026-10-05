@@ -25,6 +25,7 @@ import {
   lastMember,
   marryMember,
   play,
+  singlePolicy,
   untilParentAge,
   withHomes,
   withMoney,
@@ -166,11 +167,11 @@ describe('missões do dia', () => {
       children.push(lastMember(state).id)
       state = play(state, days(BALANCE.children.cooldownDays))
     }
-    state = draw(play(state, years(BALANCE.adultAge)))
+    state = draw(play(state, years(BALANCE.adultAge), undefined, singlePolicy))
     const full = mission(state, 'casaCheia')
     expect(full.base).toBe(Object.values(state.members).filter((m) => m.deathDay === null).length)
     for (const childId of children) state = marryMember(state, childId)
-    state = untilParentAge(state)
+    state = untilParentAge(state, singlePolicy)
     state = expectOk(applyAction(state, { type: 'haveChild', parentId: children[0] })).state
     expect(mission(state, 'casaCheia').progress).toBe(3)
   })

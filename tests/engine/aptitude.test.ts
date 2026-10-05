@@ -4,9 +4,11 @@ import { BALANCE } from '@/content/balance'
 import {
   applyAction,
   baseAptitude,
+  createRng,
   deserialize,
   hashString,
   inheritAptitude,
+  rollSuitor,
   schoolScore,
   suitorAptitude,
   type GameState,
@@ -17,6 +19,8 @@ import {
   founders,
   lastMember,
   makeGame,
+  marryMember,
+  meetSomeone,
   untilParentAge,
   withAdultChild,
   withAptitude,
@@ -102,21 +106,21 @@ describe('aptidão', () => {
     expect(new Set(siblings.map((sibling) => sibling.aptitude)).size).toBeGreaterThan(1)
   })
 
-  it('quem casa traz a aptidão que tinha como par, e os netos herdam dela também', () => {
+  it('quem casa traz a aptidão que tinha ao ser conhecido, e os netos herdam dela também', () => {
     const { state: start, childId } = withAdultChild(4)
-    const searched = expectOk(applyAction(start, { type: 'findSuitors', memberId: childId })).state
-    const suitors = searched.suitors[childId]
-    for (const suitor of suitors) {
-      expect(suitor.aptitude).toBe(suitorAptitude(suitor.avatarSeed))
-      expect(suitor.aptitude).toBeGreaterThanOrEqual(min)
-      expect(suitor.aptitude).toBeLessThanOrEqual(max)
+    const rng = createRng(4)
+    for (let i = 0; i < 10; i++) {
+      const person = rollSuitor(start, rng, start.members[childId])
+      expect(person.aptitude).toBe(suitorAptitude(person.avatarSeed))
+      expect(person.aptitude).toBeGreaterThanOrEqual(min)
+      expect(person.aptitude).toBeLessThanOrEqual(max)
     }
-    const married = expectOk(
-      applyAction(searched, { type: 'marry', memberId: childId, suitorIndex: 1 }),
-    ).state
+    const [met] = meetSomeone(start, childId).choices
+    if (met.type !== 'meet') throw new Error('Esperava a escolha de quem apareceu')
+    const married = marryMember(start, childId)
     const spouse = lastMember(married)
     expect(spouse.origin).toBe('married')
-    expect(spouse.aptitude).toBe(suitors[1].aptitude)
+    expect(spouse.aptitude).toBe(met.person.aptitude)
 
     const ready = withHomes(withMoney(untilParentAge(married), 50_000_000), { kitnet: 1 })
     const born = expectOk(applyAction(ready, { type: 'haveChild', parentId: childId })).state
@@ -135,8 +139,7 @@ describe('aptidão', () => {
     expect(schoolScore(member)).toBe(690 + member.education.points)
   })
 
-  it('o save antigo mantém a aptidão de cada pessoa, e quem aparece como par ganha a sua', () => {
-    let suitors = 0
+  it('o save antigo mantém a aptidão de cada pessoa', () => {
     for (const version of [4, 9]) {
       const json = readFileSync(
         new URL(`../fixtures/save-v${version}.json`, import.meta.url),
@@ -147,12 +150,6 @@ describe('aptidão', () => {
       for (const [id, member] of Object.entries(state.members)) {
         expect(member.aptitude).toBe(oldAptitude(raw.members[id].avatarSeed, id))
       }
-      for (const suitor of Object.values(state.suitors).flat()) {
-        expect(suitor.aptitude).toBe(suitorAptitude(suitor.avatarSeed))
-        suitors += 1
-      }
     }
-    // O save da versão 4 tem pessoas sugeridas como par.
-    expect(suitors).toBeGreaterThan(0)
   })
 })

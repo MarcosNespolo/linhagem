@@ -10,13 +10,14 @@ import {
   marryMember,
   play,
   setMember,
+  singlePolicy,
   untilParentAge,
   withHomes,
   withMoney,
   years,
 } from '../helpers'
 
-/** Família com três filhos, o mais velho casado e com um filho. */
+/** Família com três filhos, o mais velho casado e com um filho; os outros dois solteiros. */
 function bigFamily(): GameState {
   let state = withHomes(withMoney(makeGame(12), 1e9), { kitnet: 2 })
   const [mother] = founders(state)
@@ -24,9 +25,9 @@ function bigFamily(): GameState {
     state = expectOk(applyAction(state, { type: 'haveChild', parentId: mother.id })).state
     state = play(state, days(BALANCE.children.cooldownDays))
   }
-  state = play(state, years(BALANCE.adultAge))
+  state = play(state, years(BALANCE.adultAge), undefined, singlePolicy)
   const firstChild = Object.values(state.members).find((member) => member.generation === 1)!
-  state = untilParentAge(marryMember(state, firstChild.id))
+  state = untilParentAge(marryMember(state, firstChild.id), singlePolicy)
   state = expectOk(applyAction(state, { type: 'haveChild', parentId: firstChild.id })).state
   return state
 }

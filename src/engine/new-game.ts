@@ -38,7 +38,6 @@ export function newGame({ seed, now, startDate, familyName }: NewGameOptions): G
     bankruptDay: null,
     members: {},
     nextMemberId: 1,
-    suitors: {},
     choices: [],
     properties: {},
     market: initialMarket(),

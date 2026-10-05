@@ -13,7 +13,6 @@ export type PropertiesView = 'map' | 'list'
 
 export type Sheet =
   | { kind: 'member'; memberId: MemberId }
-  | { kind: 'partner'; memberId: MemberId }
   | { kind: 'rename' }
   | { kind: 'confirmNewFamily' }
   | { kind: 'cloudLogin' }

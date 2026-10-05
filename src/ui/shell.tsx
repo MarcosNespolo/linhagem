@@ -21,7 +21,6 @@ import { ConflictSheet } from './sheets/conflict-sheet'
 import { DebtSheet } from './sheets/debt-sheet'
 import { MemberSheet } from './sheets/member-sheet'
 import { MissionsSheet } from './sheets/missions-sheet'
-import { PartnerSheet } from './sheets/partner-sheet'
 import { LotSheet } from './sheets/lot-sheet'
 import { RenameSheet } from './sheets/rename-sheet'
 import { button } from './styles'
@@ -86,7 +85,7 @@ export function Shell({ game }: { game: GameState }) {
                   <FamilyTree
                     game={game}
                     showDeceased={showDeceased}
-                    actions={nodeActions(actions, game.money)}
+                    actions={nodeActions(actions)}
                     selectedId={selectedId}
                     onSelect={showMember}
                   />
@@ -143,10 +142,6 @@ function SheetHost({ game, sheet }: { game: GameState; sheet: Sheet }) {
     case 'member': {
       const member = game.members[sheet.memberId]
       return member ? <MemberSheet game={game} member={member} /> : null
-    }
-    case 'partner': {
-      const member = game.members[sheet.memberId]
-      return member ? <PartnerSheet game={game} member={member} /> : null
     }
     case 'rename':
       return <RenameSheet game={game} />
@@ -275,9 +270,9 @@ function FamilyHint({ game, actions }: { game: GameState; actions: LoveActions }
     }
   } else if (!members.some((member) => member.origin === 'married')) {
     hint =
-      actions.seekers.length > 0
-        ? 'Quem tem um coração já pode casar. Toque na pessoa para procurar um par.'
-        : 'Aos 18 anos, os filhos podem casar e continuar a família.'
+      actions.dating.length > 0
+        ? 'Quem tem um coração está namorando. Depois de um ano, vem o pedido de casamento.'
+        : 'Aos 18 anos, os filhos podem conhecer alguém e namorar.'
   }
   if (!hint) return null
   return (
