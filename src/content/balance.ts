@@ -81,8 +81,14 @@ export const BALANCE = {
    * `PROPERTY_TYPES`).
    */
   housing: {
-    /** Aluguel por mês de cada lugar alugado. */
+    /** Aluguel por mês de cada um dos primeiros `basePlaces` lugares alugados. */
     rentPerPlace: 600,
+    basePlaces: 6,
+    /**
+     * Daí em diante, cada lugar alugado custa esta parte a mais que o anterior.
+     * Com o aluguel sem limite, é o preço que segura o tamanho da família.
+     */
+    rentGrowth: 0.4,
   },
 
   /**

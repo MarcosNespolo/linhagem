@@ -13,14 +13,15 @@ import {
   Warehouse,
   type LucideIcon,
 } from 'lucide-react'
-import { BALANCE } from '@/content/balance'
 import { PROPERTY_TYPES, type PropertyId, type PropertyType } from '@/content/properties'
 import {
+  extraHousingCost,
   homesInUse,
   housingCost,
   isPropertyUnlocked,
   livingCount,
   ownedCount,
+  ownedPlaces,
   paybackYears,
   propertiesLeft,
   propertyPrice,
@@ -33,7 +34,7 @@ import {
 import { useGameStore } from '@/game/store'
 import { formatMoney, formatRate } from '@/lib/format'
 import { showLot } from '../flows'
-import { marketLine, paybackLabel } from '../labels'
+import { lowerFirst, marketLine, paybackLabel } from '../labels'
 import { Pin } from '../neighborhood/buildings'
 import { cachedNeighborhoodLayout } from '../neighborhood/layout'
 import { NeighborhoodMap } from '../neighborhood/neighborhood-map'
@@ -79,9 +80,8 @@ function NeighborhoodView({ game }: { game: GameState }) {
           <p className="tabular text-expense text-[20px] leading-7 font-black">
             {housing > 0 ? formatRate(-housing) : 'Nenhuma'}
           </p>
-          <p className="tabular text-ink-soft text-[13px]">
-            {rentersLine(rentedPlaces(game, living))}
-          </p>
+          <p className="tabular text-ink-soft text-[13px]">{rentersLine(game, living)}</p>
+          <p className="tabular text-ink-soft text-[13px]">{nextPlaceLine(game, living)}</p>
         </section>
         <section className={`${card} p-3`}>
           <p className="text-ink-soft text-[13px] font-semibold">Aluguel</p>
@@ -142,7 +142,6 @@ function PropertiesList({ game }: { game: GameState }) {
   const living = livingCount(game)
   const rent = rentPerMonth(game, living)
   const total = totalProperties(game)
-  const rented = rentedPlaces(game, living)
   const housing = housingCost(game, living)
 
   return (
@@ -153,8 +152,7 @@ function PropertiesList({ game }: { game: GameState }) {
           {housing > 0 ? formatRate(-housing) : 'Nenhuma'}
         </p>
         <p className="tabular text-ink-soft text-[14px]">
-          {rentersLine(rented)}
-          {rented > 0 ? ` · ${formatMoney(BALANCE.housing.rentPerPlace)} por pessoa` : ''}
+          {rentersLine(game, living)} · {lowerFirst(nextPlaceLine(game, living))}
         </p>
       </section>
 
@@ -268,7 +266,17 @@ function PropertyCard({
 }
 
 /** Quantas pessoas da família moram de aluguel. */
-function rentersLine(rented: number): string {
-  if (rented === 0) return 'Todos em imóveis da família'
-  return rented === 1 ? '1 pessoa de aluguel' : `${rented} pessoas de aluguel`
+/** Quem mora de aluguel, ou os lugares que sobram nos imóveis da família. */
+function rentersLine(game: GameState, living: number): string {
+  const rented = rentedPlaces(game, living)
+  if (rented > 0) return rented === 1 ? '1 pessoa de aluguel' : `${rented} pessoas de aluguel`
+  const free = ownedPlaces(game) - living
+  if (free <= 0) return 'Todos em imóveis da família'
+  return free === 1 ? '1 lugar livre em casa' : `${free} lugares livres em casa`
+}
+
+/** O que custa por mês o lugar de mais uma pessoa na família. */
+function nextPlaceLine(game: GameState, living: number): string {
+  const extra = extraHousingCost(game, 1, living)
+  return extra > 0 ? `Mais um: ${formatRate(-extra)}` : 'Mais um: sem custo'
 }

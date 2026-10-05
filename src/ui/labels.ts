@@ -17,6 +17,7 @@ import {
   childCooldownDaysLeft,
   courseOffer,
   daysToSeconds,
+  extraHousingCost,
   hasCar,
   isAlive,
   isUnemployed,
@@ -365,14 +366,22 @@ export function eventYear(state: GameState, event: GameEvent): string {
   return calendarDate(state.startDate, event.day).slice(0, 4)
 }
 
-/** Status do casal para ter um filho: o custo, ou o que falta para poder. */
+/** Quanto a moradia da família sobe por mês com mais uma pessoa, para somar ao custo. */
+export function extraHousingLabel(state: GameState): string {
+  const extra = extraHousingCost(state)
+  return extra > 0 ? `+${formatMoney(extra)}/mês de moradia` : ''
+}
+
+/** Status do casal para ter um filho: o custo e a moradia a mais, ou o que falta para poder. */
 export function childStatus(
   state: GameState,
   parent: Member,
   check: ChildCheck,
   cost: number,
 ): string {
-  if (check.ok) return `Custa ${formatMoney(cost)}`
+  if (check.ok) {
+    return [`Custa ${formatMoney(cost)}`, extraHousingLabel(state)].filter(Boolean).join(' · ')
+  }
   switch (check.error) {
     case 'tooYoung':
       return `A partir dos ${BALANCE.children.minParentAge} anos`

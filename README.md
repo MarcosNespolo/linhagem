@@ -50,9 +50,10 @@ Jogue em [linhagem.vercel.app](https://linhagem.vercel.app).
 
 A família começa com R$ 0. Os preços são fixos: um filho custa R$ 15 mil, um casamento, R$ 30 mil,
 e cada imóvel, sempre o mesmo. O que limita a família é o dinheiro: quem não cabe nos imóveis
-dela paga aluguel, e para ter mais filhos é preciso ganhar mais. Se o saldo fica negativo, o jogo
-para e avisa, e a família tem um ano do jogo para voltar ao azul antes da falência. O que limita o
-aluguel que ela recebe é haver poucos imóveis comerciais à venda de cada vez.
+dela paga aluguel, que fica mais caro a cada lugar, e para ter mais filhos é preciso ganhar mais.
+Se o saldo fica negativo, o jogo para e avisa, e a família tem um ano do jogo para voltar ao azul
+antes da falência. O que limita o aluguel que ela recebe é haver poucos imóveis comerciais à
+venda de cada vez.
 
 ## Stack
 
@@ -236,9 +237,13 @@ continuam cobrando só o que cabe no caixa, para a falência vir das escolhas, e
 ## Moradia e imóveis
 
 Cada pessoa da família precisa de um lugar em casa. Kitnet tem 2 lugares, apartamento 4 e casa 6,
-e o bairro tem 10 de cada, com preço fixo: R$ 80 mil, R$ 450 mil e R$ 1,5 milhão. Quem não cabe nos
-imóveis da família mora de aluguel, a R$ 600 por pessoa por mês, sem limite: ninguém sai da
-família por falta de lugar. A família mora primeiro nos imóveis que rendem menos aluguel por
+e o bairro tem 10 de cada, com preço fixo: R$ 80 mil, R$ 400 mil e R$ 1,2 milhão. Quem não cabe nos
+imóveis da família mora de aluguel, sem limite de lugares: ninguém sai da família por falta de
+lugar. Os 6 primeiros lugares alugados custam R$ 600 por mês cada, e cada lugar a mais custa 40% a
+mais que o anterior (`placeRent`): o 10º sai por cerca de R$ 2.300, e o 20º, por cerca de R$ 67 mil.
+Com 120 lugares nas casas do bairro, é esse preço que segura o tamanho da família. A aba Imóveis
+mostra quanto custa o lugar de mais uma pessoa, e ter um filho e o pedido de casamento mostram a
+moradia a mais (`extraHousingCost`). A família mora primeiro nos imóveis que rendem menos aluguel por
 lugar (kitnets, depois apartamentos e casas) e paga as contas deles, de condomínio, IPTU e
 manutenção; os outros ficam alugados. Em saves antigos, quem tinha saído de casa por falta de
 lugar volta para a família.
@@ -247,7 +252,7 @@ Os comerciais, da sala comercial ao shopping, também têm preço fixo, mas fica
 cada vez: até 2 de cada tipo, e um novo aparece num calendário fixo, a cada 2 anos do jogo na sala
 comercial e a cada 9 no shopping. Com os 2 à venda, o novo não aparece. A aba Imóveis mostra
 quantos há à venda e quando aparece o próximo, e o número na aba diz quantos tipos à venda cabem no
-dinheiro. Alugados, os de moradia se pagam em 10 a 13 anos do jogo, e os comerciais em 45 a 70: com
+dinheiro. Alugados, os de moradia se pagam em cerca de 10 anos do jogo, e os comerciais em 45 a 70: com
 um ano por minuto, aluguéis que se pagassem em 15 a 30 anos, como na vida real, fariam a renda
 saltar 24 vezes na segunda hora de jogo. Cada tipo libera com a primeira compra do anterior, e a
 compra é de um em um, sem venda nem financiamento por enquanto.
@@ -293,11 +298,19 @@ jogo (`npm run sim`). Um jogador automático (`src/sim/autoplay.ts`) namora quem
 pedido quando o casamento cabe no dinheiro e tem até 4 filhos por casal; põe os filhos no colégio
 particular quando sobra renda depois de guardar um quarto dela, tenta a federal e paga a faculdade
 particular quando não passa; escolhe a vaga de maior salário, começa os cursos no ritmo normal
-quando a mensalidade deixa folga de R$ 2 mil na renda e pega as recompensas das missões. Filhos e casamentos vêm primeiro, mas a
-estratégia guarda 3 meses de despesa e só tem mais um filho com folga de R$ 2 mil na renda, para
-não ir à falência. O resto vai para o imóvel que se paga mais rápido; os de moradia contam o
-aluguel que a família deixa de pagar morando neles. O dia das missões vira a cada hora, como quem
-joga uma hora por dia.
+quando a mensalidade deixa folga de R$ 500 na renda e pega as recompensas das missões. Filhos e
+casamentos vêm primeiro, mas a estratégia guarda 3 meses de despesa e só tem mais um filho com
+folga de R$ 2 mil na renda, para não ir à falência. O resto vai para o imóvel que se paga mais
+rápido; os de moradia contam o aluguel que a família deixa de pagar morando neles. O dia das
+missões vira a cada hora, como quem joga uma hora por dia.
+
+Como o aluguel sobe a cada lugar, a estratégia também olha a moradia a mais. Ela casa quando o
+lugar de quem chega custa até um quarto da renda, ou o salário dessa pessoa. Mais um filho só vem
+quando o lugar dele e o de quem um dia vai casar com ele custam até 2% da renda, a metade disso a
+cada filho que o casal já tem, e esses lugares contam depois dos de quem ainda vai casar na
+família. Os casais com menos filhos vêm primeiro, e entre eles os mais velhos. Sem isso, uma
+geração que nasce toda de uma vez ocupa os lugares, os filhos dela passam da idade de ter filhos
+esperando lugar para casar, e a família acaba em poucas horas.
 
 A simulação confere sete limites (`src/sim/limits.ts`) e sai com erro se algum falhar:
 
@@ -311,17 +324,13 @@ A simulação confere sete limites (`src/sim/limits.ts`) e sai com erro se algum
 | Relógio       | cada segundo de jogo custa menos de 2 ms com a família do fim                 |
 | Volta ao jogo | 5 anos de progresso offline em menos de 200 ms                                |
 
-Os resultados abaixo são de antes do aluguel sem limite (etapa 4.9), do namoro (4.10) e dos cursos
-de promoção (4.11). O aluguel e o namoro deixam a família crescer sem teto: com a seed 1, ela passa
-de 1.900 pessoas vivas no ano 110 do jogo, e a simulação longa fica lenta. O balanceamento das
-regras novas (etapa 4.14) refaz os números.
-
-Com as seeds de 1 a 4, a família chega a 124 pessoas, o máximo que as casas do bairro e o aluguel
-comportam, em cerca de 1 hora e meia, e fica entre 118 e 124 dali em diante. A renda vai de cerca
-de R$ 750 mil por mês na primeira hora a R$ 400 milhões na décima, crescendo até 6 vezes na segunda
-hora e 1,2 vez na última. O save fica perto de 560 KB, cada segundo de jogo custa cerca de 1 ms, e 5
-anos de progresso offline, menos de 80 ms. O CI roda uma versão de 1 hora com duas seeds
-(`tests/sim/balance.test.ts`), com os limites que já valem nesse tempo.
+Com as seeds de 1 a 4, a família passa de 120 pessoas vivas por volta dos 80 minutos e fica entre
+100 e 147 dali em diante, subindo e descendo à medida que as gerações nascem e morrem. A renda vai
+de cerca de R$ 800 mil por mês na primeira hora a R$ 410 milhões na décima, crescendo de 7 a 9
+vezes na segunda hora e 1,2 vez na última. A família nunca entra no vermelho. O save fica perto de
+560 KB, cada segundo de jogo custa cerca de 1,2 ms, e 5 anos de progresso offline, cerca de 110 ms.
+Cada seed leva uns 2 minutos para simular as 10 horas. O CI roda uma versão de 1 hora com duas
+seeds (`tests/sim/balance.test.ts`), com os limites que já valem nesse tempo.
 
 ## Avatares
 

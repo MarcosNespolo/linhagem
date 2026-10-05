@@ -169,14 +169,47 @@ export function rentedPlaces(state: GameState, living: number = livingCount(stat
 }
 
 /**
+ * Aluguel por mês do lugar alugado número `place`, a contar de 1: o preço base
+ * até `basePlaces`, e daí em diante `rentGrowth` a mais que o lugar anterior.
+ */
+export function placeRent(place: number): number {
+  const { rentPerPlace, basePlaces, rentGrowth } = BALANCE.housing
+  return rentPerPlace * (1 + rentGrowth) ** Math.max(0, place - basePlaces)
+}
+
+/** Aluguel por mês de `places` lugares alugados, somando o preço de cada um. */
+export function rentFor(places: number): number {
+  const { rentPerPlace, basePlaces, rentGrowth } = BALANCE.housing
+  const base = Math.min(places, basePlaces) * rentPerPlace
+  const extra = Math.max(0, places - basePlaces)
+  if (extra === 0) return base
+  // Soma da progressão: o 1º lugar acima da base custa rentPerPlace × (1 + rentGrowth).
+  const growth = 1 + rentGrowth
+  return base + (rentPerPlace * growth * (growth ** extra - 1)) / rentGrowth
+}
+
+/**
  * Custo da moradia por mês: as contas dos imóveis em que a família mora e o
  * aluguel dos lugares de quem não cabe neles.
  */
 export function housingCost(state: GameState, living: number = livingCount(state)): number {
   const inUse = homesInUse(state, living)
-  let cost = rentedPlaces(state, living) * BALANCE.housing.rentPerPlace
+  let cost = rentFor(rentedPlaces(state, living))
   for (const type of HOME_TYPES) cost += (inUse[type.id] ?? 0) * type.home!.billsPerMonth
   return cost
+}
+
+/**
+ * Quanto a moradia da família sobe por mês com `extra` pessoas a mais: o
+ * aluguel dos lugares novos, ou as contas de um imóvel da família que passa a
+ * ter gente morando.
+ */
+export function extraHousingCost(
+  state: GameState,
+  extra: number = 1,
+  living: number = livingCount(state),
+): number {
+  return housingCost(state, living + extra) - housingCost(state, living)
 }
 
 /** Tipos liberados com algum imóvel à venda que cabe no dinheiro da família agora. */
