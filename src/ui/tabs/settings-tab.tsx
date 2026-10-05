@@ -1,6 +1,6 @@
 'use client'
 
-import { ExternalLink, Pencil } from 'lucide-react'
+import { BookOpen, ExternalLink, Pencil } from 'lucide-react'
 import { useState } from 'react'
 import { BALANCE } from '@/content/balance'
 import { livingMembers, type GameState } from '@/engine'
@@ -24,6 +24,15 @@ export function SettingsTab({ game }: { game: GameState }) {
 
   return (
     <div className="mx-auto w-full max-w-md space-y-6 px-4 pt-5 pb-10">
+      <button
+        type="button"
+        className={`${button.secondary} w-full`}
+        onClick={() => openSheet({ kind: 'howToPlay' })}
+      >
+        <BookOpen size={16} />
+        Como jogar
+      </button>
+
       <section>
         <h2 className="px-1 text-lg font-extrabold">Família {game.familyName}</h2>
         <p className="tabular text-ink-soft px-1 text-[14px]">

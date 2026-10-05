@@ -20,6 +20,7 @@ import { ConfirmNewFamilySheet } from './sheets/confirm-new-family-sheet'
 import { ConflictSheet } from './sheets/conflict-sheet'
 import { CourseSheet } from './sheets/course-sheet'
 import { DebtSheet } from './sheets/debt-sheet'
+import { HowToPlaySheet } from './sheets/how-to-play-sheet'
 import { MemberSheet } from './sheets/member-sheet'
 import { MissionsSheet } from './sheets/missions-sheet'
 import { LotSheet } from './sheets/lot-sheet'
@@ -148,6 +149,8 @@ function SheetHost({ game, sheet }: { game: GameState; sheet: Sheet }) {
       const member = game.members[sheet.memberId]
       return member ? <CourseSheet game={game} member={member} /> : null
     }
+    case 'howToPlay':
+      return <HowToPlaySheet />
     case 'rename':
       return <RenameSheet game={game} />
     case 'confirmNewFamily':
