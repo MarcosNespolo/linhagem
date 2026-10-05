@@ -114,7 +114,7 @@ export function Hud({ game, net }: { game: GameState; net: number }) {
         </p>
       ) : paused && !ended ? (
         <p className="bg-gold-soft text-gold mx-auto mt-2 max-w-3xl rounded-xl px-3 py-1.5 text-center text-[13px] font-bold">
-          Tempo pausado. Ninguém envelhece e o dinheiro não entra.
+          Tempo pausado
         </p>
       ) : boostLeft > 0 ? (
         <p className="bg-gold-soft text-gold mx-auto mt-2 flex max-w-3xl items-center justify-center gap-1.5 rounded-xl px-3 py-1.5 text-[13px] font-bold">
@@ -161,21 +161,21 @@ function waitingText(game: GameState): string | null {
     const allSchool = choices.every(
       (choice) => choice.type === 'school' || choice.type === 'afterSchool',
     )
-    return `Tempo parado: ${choices.length} ${allSchool ? 'matrículas' : 'escolhas'} esperando você.`
+    return `Tempo parado: ${choices.length} ${allSchool ? 'matrículas' : 'escolhas'}`
   }
   const name = game.members[first.memberId]?.firstName ?? 'alguém'
   switch (first.type) {
     case 'school':
-      return `Tempo parado: falta a matrícula de ${name}.`
+      return `Tempo parado: matrícula de ${name}`
     case 'afterSchool':
-      return `Tempo parado: falta decidir o que ${name} faz depois do médio.`
+      return `Tempo parado: ${name} terminou o médio`
     case 'firstJob':
-      return `Tempo parado: falta escolher o primeiro emprego de ${name}.`
+      return `Tempo parado: primeiro emprego de ${name}`
     case 'concurso':
-      return `Tempo parado: saiu o resultado do concurso de ${name}.`
+      return `Tempo parado: concurso de ${name}`
     case 'meet':
-      return `Tempo parado: ${name} conheceu alguém.`
+      return `Tempo parado: ${name} conheceu alguém`
     case 'propose':
-      return `Tempo parado: ${name} pode casar.`
+      return `Tempo parado: pedido de casamento de ${name}`
   }
 }

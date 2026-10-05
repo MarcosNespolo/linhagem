@@ -14,7 +14,6 @@ import { useState } from 'react'
 import { BALANCE } from '@/content/balance'
 import { isHigherStage, techCourseName, type Network } from '@/content/schools'
 import {
-  ageOf,
   agePoints,
   ageThisYear,
   aptitudeOf,
@@ -33,6 +32,8 @@ import {
   partnerOf,
   schoolFee,
   schoolScore,
+  stageFee,
+  yearlyPoints,
   type Choice,
   type Enrollment,
   type GameState,
@@ -209,7 +210,7 @@ export function MemberSheet({ game, member }: { game: GameState; member: Member 
         ) : null}
       </dl>
 
-      {alive && choice ? <OpenChoice member={member} choice={choice} /> : null}
+      {alive && choice ? <OpenChoice choice={choice} /> : null}
       {working && !choice ? <CourseBlock game={game} member={member} /> : null}
       {alive && school && !choice ? <SchoolChange member={member} school={school} /> : null}
       {alive && !choice && canHaveTutor(member) ? <Tutor game={game} member={member} /> : null}
@@ -218,52 +219,25 @@ export function MemberSheet({ game, member }: { game: GameState; member: Member 
   )
 }
 
-/** O que cada escolha aberta pede, para o botão e o aviso do painel da pessoa. */
+/** O botão de cada escolha aberta no painel da pessoa. */
 const OPEN_CHOICES = {
-  school: {
-    icon: <School size={18} />,
-    action: 'Fazer a matrícula',
-    note: (name: string) => `O tempo parou até a matrícula de ${name}.`,
-  },
-  afterSchool: {
-    icon: <GraduationCap size={18} />,
-    action: 'Escolher o que vem depois do médio',
-    note: (name: string) => `O tempo parou até ${name} escolher o caminho.`,
-  },
-  firstJob: {
-    icon: <Briefcase size={18} />,
-    action: 'Escolher o primeiro emprego',
-    note: (name: string) => `O tempo parou até ${name} ter um emprego.`,
-  },
-  concurso: {
-    icon: <Landmark size={18} />,
-    action: 'Ver o resultado do concurso',
-    note: (name: string) => `O tempo parou até ${name} decidir sobre o cargo.`,
-  },
-  meet: {
-    icon: <Heart size={18} />,
-    action: 'Ver quem apareceu',
-    note: (name: string) => `O tempo parou até ${name} decidir se namora.`,
-  },
-  propose: {
-    icon: <Heart size={18} />,
-    action: 'Ver o pedido de casamento',
-    note: (name: string) => `O tempo parou até ${name} decidir se casa.`,
-  },
+  school: { icon: <School size={18} />, action: 'Fazer a matrícula' },
+  afterSchool: { icon: <GraduationCap size={18} />, action: 'Escolher o que vem depois do médio' },
+  firstJob: { icon: <Briefcase size={18} />, action: 'Escolher o primeiro emprego' },
+  concurso: { icon: <Landmark size={18} />, action: 'Ver o resultado do concurso' },
+  meet: { icon: <Heart size={18} />, action: 'Ver quem apareceu' },
+  propose: { icon: <Heart size={18} />, action: 'Ver o pedido de casamento' },
 } satisfies Record<Choice['type'], unknown>
 
-/** A pessoa tem uma escolha esperando, e o relógio também. */
-function OpenChoice({ member, choice }: { member: Member; choice: Choice }) {
+/** A pessoa tem uma escolha esperando, com o relógio parado. */
+function OpenChoice({ choice }: { choice: Choice }) {
   const showChoices = useUiStore((store) => store.showChoices)
-  const { icon, action, note } = OPEN_CHOICES[choice.type]
+  const { icon, action } = OPEN_CHOICES[choice.type]
   return (
-    <div className="mt-5">
-      <button type="button" className={`${button.primary} w-full`} onClick={showChoices}>
-        {icon}
-        {action}
-      </button>
-      <p className="text-ink-soft mt-2 text-center text-sm">{note(member.firstName)}</p>
-    </div>
+    <button type="button" className={`${button.primary} mt-5 w-full`} onClick={showChoices}>
+      {icon}
+      {action}
+    </button>
   )
 }
 
@@ -337,14 +311,15 @@ function Tutor({ game, member }: { game: GameState; member: Member }) {
   const since = member.education.tutorSince
   const toggle = (active: boolean) => dispatch({ type: 'setTutor', memberId: member.id, active })
 
+  const terms = `${formatMoney(fee)}/mês · +${pointsPerYear} na nota por ano`
+
   if (since !== null) {
     return (
       <div className="mt-5 text-center">
         <p className="text-[14px] font-semibold">
-          {member.firstName} tem professor particular desde{' '}
-          {formatMonthYear(calendarDate(game.startDate, since))}: +{pointsPerYear} na nota por ano,
-          por {formatMoney(fee)}/mês.
+          Professor particular desde {formatMonthYear(calendarDate(game.startDate, since), 'short')}
         </p>
+        <p className="tabular text-ink-soft text-sm">{terms}</p>
         <button type="button" className={`${button.quiet} mt-1`} onClick={() => toggle(false)}>
           Dispensar o professor
         </button>
@@ -357,9 +332,7 @@ function Tutor({ game, member }: { game: GameState; member: Member }) {
         <UserRoundCheck size={16} />
         Contratar professor particular
       </button>
-      <p className="tabular text-ink-soft mt-2 text-center text-sm">
-        {formatMoney(fee)}/mês e +{pointsPerYear} na nota por ano, contado em proporção ao tempo.
-      </p>
+      <p className="tabular text-ink-soft mt-2 text-center text-sm">{terms}</p>
     </div>
   )
 }
@@ -371,6 +344,7 @@ function SchoolChange({ member, school }: { member: Member; school: Enrollment }
     return null
   }
   const other = school.network === 'particular' ? 'publica' : 'particular'
+  const fee = stageFee(school.stage, other)
   const change = (network: Network) =>
     dispatch({ type: 'changeSchool', memberId: member.id, network })
 
@@ -397,10 +371,9 @@ function SchoolChange({ member, school }: { member: Member; school: Enrollment }
         <School size={16} />
         Mudar para {schoolNameInSentence(school.stage, other)} em janeiro
       </button>
-      <p className="text-ink-soft mt-2 text-center text-sm">
-        {other === 'particular'
-          ? `A mensalidade é de ${formatMoney(schoolFee({ stage: school.stage, network: other }))} e soma pontos na nota.`
-          : 'A escola pública é gratuita, mas não soma pontos na nota.'}
+      <p className="tabular text-ink-soft mt-2 text-center text-sm">
+        {fee > 0 ? `${formatMoney(fee)}/mês` : 'Gratuita'} · +
+        {decimal(yearlyPoints(school.stage, other))} na nota por ano
       </p>
     </div>
   )
@@ -421,17 +394,8 @@ function MemberActions({
     const { partner: date, askDay } = member.dating
     return (
       <p className="text-ink-soft mt-5 text-center text-sm">
-        {member.firstName} namora {date.firstName}. O pedido de casamento vem em{' '}
-        {formatMonthYear(calendarDate(game.startDate, askDay), 'short')}.
-      </p>
-    )
-  }
-  if (member.partnerId === null && member.origin !== 'married' && member.deathDay === null) {
-    return (
-      <p className="text-ink-soft mt-5 text-center text-sm">
-        {ageOf(member, game.clock.day) < BALANCE.adultAge
-          ? `Aos ${BALANCE.adultAge} anos, ${member.firstName} vai poder namorar.`
-          : `${member.firstName} pode conhecer alguém no carnaval e no dia dos namorados.`}
+        Namora {date.firstName} · pedido em{' '}
+        {formatMonthYear(calendarDate(game.startDate, askDay), 'short')}
       </p>
     )
   }
@@ -459,6 +423,9 @@ function MemberActions({
 }
 
 const mean = (values: number[]) => values.reduce((sum, value) => sum + value, 0) / values.length
+
+/** Número com uma casa decimal, se tiver, e vírgula: 3,6. */
+const decimal = (value: number) => String(Math.round(value * 10) / 10).replace('.', ',')
 
 function Fact({ label, children }: { label: string; children: React.ReactNode }) {
   return (

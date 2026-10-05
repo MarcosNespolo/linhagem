@@ -86,9 +86,6 @@ export function HistoryTab({ game }: { game: GameState }) {
       <div className="mx-auto w-full max-w-md px-4 pt-5">
         <div className={`${card} p-5 text-center`}>
           <p className="text-[16px] font-bold">A história da família começa agora</p>
-          <p className="text-ink-soft mt-1 text-[15px]">
-            Nascimentos, casamentos e aniversários importantes aparecem aqui.
-          </p>
         </div>
       </div>
     )
@@ -128,7 +125,7 @@ export function HistoryTab({ game }: { game: GameState }) {
       ))}
       {game.log.length >= LOG_LIMIT ? (
         <p className="text-ink-soft px-1 text-center text-[13px]">
-          O histórico guarda os {LOG_LIMIT} acontecimentos mais recentes.
+          Os {LOG_LIMIT} acontecimentos mais recentes
         </p>
       ) : null}
     </div>

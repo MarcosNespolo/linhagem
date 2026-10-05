@@ -20,24 +20,16 @@ export function AwaySheet({ game, away }: { game: GameState; away: AwaySummary }
 
   return (
     <Sheet title="Enquanto você esteve fora" onClose={dismiss}>
-      <p className="mt-2 text-[16px]">
-        Passaram <strong>{formatGameSpan(away.days, BALANCE.daysPerYear)}</strong> na família e
-        entraram <strong className="tabular text-gold">{formatMoney(away.earned)}</strong>
-        {away.rent > 0 ? (
-          <>
-            , <strong className="tabular text-gold">{formatMoney(away.rent)}</strong> deles do
-            aluguel dos imóveis
-          </>
-        ) : null}
-        .
+      <p className="tabular mt-2 text-[16px]">
+        <strong>{formatGameSpan(away.days, BALANCE.daysPerYear)}</strong> · entraram{' '}
+        <strong className="text-gold">{formatMoney(away.earned)}</strong>
+        {away.rent > 0 ? <> ({formatMoney(away.rent)} de aluguel)</> : null}
       </p>
       {away.waiting ? (
-        <p className="text-ink-soft mt-2 text-[14px]">
-          O tempo parou numa escolha e está esperando você.
-        </p>
+        <p className="text-ink-soft mt-2 text-[14px]">Tempo parado numa escolha</p>
       ) : away.capped ? (
         <p className="text-ink-soft mt-2 text-[14px]">
-          Com o jogo fechado, o tempo anda no máximo {BALANCE.offlineCapYears} anos.
+          Máximo de {BALANCE.offlineCapYears} anos com o jogo fechado
         </p>
       ) : null}
       {shown.length > 0 ? (
@@ -45,7 +37,7 @@ export function AwaySheet({ game, away }: { game: GameState; away: AwaySummary }
           {shown.map((event, index) => (
             <li key={`${event.type}-${event.day}-${index}`}>{describeEvent(game, event)}</li>
           ))}
-          {hidden > 0 ? <li className="text-ink-soft">E mais {hidden} no histórico.</li> : null}
+          {hidden > 0 ? <li className="text-ink-soft">E mais {hidden} no histórico</li> : null}
         </ul>
       ) : null}
       <button type="button" className={`${button.primary} mt-5 w-full`} onClick={dismiss}>

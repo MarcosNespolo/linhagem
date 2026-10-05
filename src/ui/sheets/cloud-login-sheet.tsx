@@ -84,10 +84,7 @@ export function CloudLoginSheet() {
             void send(trimmed)
           }}
         >
-          <p className="text-ink-soft text-[15px]">
-            Guarde a família na nuvem e continue em outro aparelho. Não precisa de senha: mandamos
-            um código para o seu e-mail.
-          </p>
+          <p className="text-ink-soft text-[15px]">Sem senha: um código chega no seu e-mail.</p>
           <label htmlFor="cloud-email" className="mt-4 block text-[15px] font-bold">
             E-mail
           </label>
@@ -118,8 +115,7 @@ export function CloudLoginSheet() {
           }}
         >
           <p className="text-ink-soft text-[15px]">
-            Mandamos um código para <strong className="text-ink break-all">{sentTo}</strong>. Digite
-            o código aqui ou abra o link do e-mail neste aparelho.
+            Código enviado para <strong className="text-ink break-all">{sentTo}</strong>
           </p>
           <label htmlFor="cloud-code" className="mt-4 block text-[15px] font-bold">
             Código

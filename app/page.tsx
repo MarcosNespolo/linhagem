@@ -1,5 +1,10 @@
 import Link from 'next/link'
+import { BALANCE } from '@/content/balance'
+import { formatDuration } from '@/lib/format'
 import { FamilyMark } from '@/ui/family-mark'
+
+/** Quanto dura um ano do jogo em tempo real. */
+const yearTime = formatDuration(12 * BALANCE.secondsPerGameMonth)
 
 export default function Home() {
   return (
@@ -11,8 +16,8 @@ export default function Home() {
           Comece com um casal, tenha filhos, case os filhos e veja a família atravessar gerações.
         </p>
         <p className="text-ink-soft text-[15px]">
-          Um idle game sem anúncios e sem compras. O tempo passa a um mês por segundo e, com o jogo
-          fechado, a família segue vivendo por até 5 anos.
+          Sem anúncios e sem compras. 1 ano a cada {yearTime}; com o jogo fechado, até{' '}
+          {BALANCE.offlineCapYears} anos.
         </p>
       </div>
       <Link

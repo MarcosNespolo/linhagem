@@ -23,7 +23,7 @@ export function RenameSheet({ game }: { game: GameState }) {
     <Sheet title="Nome da família" onClose={closeSheet}>
       <form onSubmit={save} className="mt-3">
         <label htmlFor="family-name" className="text-ink-soft text-[15px]">
-          Sobrenome que aparece no topo do jogo
+          Sobrenome
         </label>
         <input
           id="family-name"

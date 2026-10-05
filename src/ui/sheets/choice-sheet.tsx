@@ -39,7 +39,7 @@ import {
   type Suitor,
 } from '@/engine'
 import { useGameStore } from '@/game/store'
-import { formatAge, formatMoney, formatMonthYear, formatRate } from '@/lib/format'
+import { formatAge, formatGameSpan, formatMoney, formatMonthYear, formatRate } from '@/lib/format'
 import { PersonAvatar } from '../avatar/person-avatar'
 import { MemberStats } from '../member-stats'
 import { ageLabel, careerLine, formationLabel, levelTitle, lowerFirst, schoolName } from '../labels'
@@ -55,6 +55,10 @@ type ProposeChoice = Extract<Choice, { type: 'propose' }>
 
 /** Uma escolha por tipo e pessoa: trabalhar depois do médio abre a do emprego para a mesma pessoa. */
 const keyOf = (choice: Choice) => `${choice.type}:${choice.memberId}`
+
+/** O detalhe de uma opção, com "sugestão" no fim quando for a sugerida. */
+const withSuggestion = (detail: string | undefined, suggested: boolean) =>
+  [detail, suggested ? 'sugestão' : ''].filter(Boolean).join(' · ')
 
 /**
  * Escolhas que esperam o jogador, com a sugestão de cada uma já marcada. O
@@ -79,10 +83,7 @@ export function ChoiceSheet({ game, onHide }: { game: GameState; onHide: () => v
 
   return (
     <Sheet title={sheetTitle(game)} onClose={onHide}>
-      <p className="text-ink-soft mt-1 text-[15px]">
-        O tempo parou até você escolher. A sugestão já vem marcada.
-      </p>
-      <div className="mt-4 space-y-6">
+      <div className="mt-3 space-y-6">
         {rows.map(({ choice, option }) => {
           const key = keyOf(choice)
           const common = { game, selected: option, onSelect: select(choice) }
@@ -171,13 +172,12 @@ function JobChoiceCard({
   const member = game.members[choice.memberId]
   if (!member) return null
   const { formation } = member.education
-  const question = 'Qual vai ser o primeiro emprego?'
   return (
     <ChoiceCard
       game={game}
       member={member}
       heading={`${member.firstName}, ${ageLabel(member, game.clock.day).toLowerCase()}`}
-      question={formation ? `${formationLabel(member, formation)}. ${question}` : question}
+      question={formation ? formationLabel(member, formation) : 'Sem formação'}
       label={`Primeiro emprego de ${member.firstName}`}
     >
       {choice.offers.map((offer, index) => (
@@ -186,7 +186,10 @@ function JobChoiceCard({
           active={index === selected}
           icon={<Briefcase size={17} />}
           title={levelTitle(member, offer.careerId, offer.level)}
-          detail={`${careerLine(offer.careerId, offer.level)}${index === choice.suggested ? ' · sugestão' : ''}`}
+          detail={withSuggestion(
+            careerLine(offer.careerId, offer.level),
+            index === choice.suggested,
+          )}
           value={formatRate(offerSalary(offer))}
           onSelect={() => onSelect(index)}
         />
@@ -206,13 +209,13 @@ function JobChoiceCard({
   )
 }
 
-/** Como funciona o concurso para a pessoa: duração, provas e o corte do cargo mais alto. */
+/** O concurso para a pessoa: as provas, sem salário, e o corte e o salário do cargo mais alto. */
 function concursoDetail(member: Member): string {
   const level = highestCargo(member)
   const cargo = levelTitle(member, PUBLIC_CAREER, level)
   const { cutoffs, maxExams } = BALANCE.concurso
   const salary = formatMoney(careerLevel(PUBLIC_CAREER, level).salaryPerMonth)
-  return `Até 1 ano, sem salário, com ${maxExams} provas. ${cargo} ganha ${salary}/mês e pede nota ${cutoffs[level]}`
+  return `${maxExams} provas sem salário · ${cargo}: nota ${cutoffs[level]}, ${salary}/mês`
 }
 
 /** Resultado do concurso: tomar posse, continuar estudando ou procurar outro emprego. */
@@ -234,7 +237,7 @@ function ConcursoChoiceCard({
       game={game}
       member={member}
       heading={`${member.firstName} passou no concurso`}
-      question={`Nota ${choice.score} na prova. O que vem agora?`}
+      question={`Nota ${choice.score}`}
       label={`Concurso de ${member.firstName}`}
     >
       {choice.options.map((option, index) => (
@@ -255,12 +258,11 @@ function describeConcursoOption(
   option: ConcursoOption,
   suggested: boolean,
 ): { title: string; detail: string; value: string; expense?: boolean } {
-  const suggestion = suggested ? ' · sugestão' : ''
   switch (option.kind) {
     case 'posse':
       return {
         title: `Tomar posse como ${lowerFirst(levelTitle(member, PUBLIC_CAREER, option.level))}`,
-        detail: `${careerLine(PUBLIC_CAREER, option.level)}, promoção só com o tempo${suggestion}`,
+        detail: withSuggestion(careerLine(PUBLIC_CAREER, option.level), suggested),
         value: formatRate(careerLevel(PUBLIC_CAREER, option.level).salaryPerMonth),
       }
     case 'estudar': {
@@ -268,7 +270,7 @@ function describeConcursoOption(
       const cargo = lowerFirst(levelTitle(member, PUBLIC_CAREER, level))
       return {
         title: `Continuar estudando para ${cargo}`,
-        detail: `Pede nota ${BALANCE.concurso.cutoffs[level]} nas próximas provas${suggestion}`,
+        detail: withSuggestion(`Nota ${BALANCE.concurso.cutoffs[level]}`, suggested),
         value: formatRate(-BALANCE.concurso.fee),
         expense: true,
       }
@@ -276,16 +278,16 @@ function describeConcursoOption(
     case 'privada':
       return {
         title: 'Procurar outro emprego',
-        detail: `Escolher entre ${BALANCE.jobs.offersPerChoice} vagas fora do serviço público${suggestion}`,
+        detail: withSuggestion(`${BALANCE.jobs.offersPerChoice} vagas`, suggested),
         value: 'Salário',
       }
   }
 }
 
 const QUESTIONS = {
-  creche: (name: string) => `Quem cuida de ${name} até a escola?`,
-  escola: (name: string) => `${name} começa a escola. Onde vai estudar?`,
-  medio: (name: string) => `${name} começa o ensino médio. Onde vai estudar?`,
+  creche: 'Até a escola',
+  escola: 'Começa a escola',
+  medio: 'Começa o ensino médio',
 }
 
 function SchoolChoiceCard({
@@ -306,12 +308,11 @@ function SchoolChoiceCard({
       game={game}
       member={member}
       heading={`${member.firstName}, ${ageLabel(member, game.clock.day).toLowerCase()}`}
-      question={QUESTIONS[choice.stage](member.firstName)}
+      question={QUESTIONS[choice.stage]}
       label={`Matrícula de ${member.firstName}`}
     >
       {choice.options.map((option, index) => {
         const { title, detail, value, expense } = describeOption(game, member, choice, option)
-        const suggestion = index === choice.suggested ? ' · sugestão' : ''
         return (
           <OptionButton
             key={`${option.network}-${option.course ?? ''}`}
@@ -319,7 +320,7 @@ function SchoolChoiceCard({
             disabled={!option.available}
             icon={<School size={17} />}
             title={title}
-            detail={`${detail}${suggestion}`}
+            detail={withSuggestion(detail, index === choice.suggested)}
             value={value}
             expense={expense}
             onSelect={() => onSelect(index)}
@@ -350,7 +351,7 @@ function describeOption(
       const score = Math.floor(schoolScore(member, game.clock.day))
       return {
         title,
-        detail: `Nota ${score} na prova; precisava de ${BALANCE.school.federalCutoff}`,
+        detail: `Nota ${score} · corte ${BALANCE.school.federalCutoff}`,
         value: 'Gratuito',
       }
     }
@@ -375,9 +376,9 @@ function describeOption(
     }
   }
   if (option.network === 'publica' && !option.available) {
-    return { title, detail: 'Não saiu vaga este ano', value: 'Gratuita' }
+    return { title, detail: 'Sem vaga', value: 'Gratuita' }
   }
-  return { title, detail: bonus || 'Sem pontos na nota', value: price, expense: fee > 0 }
+  return { title, detail: bonus, value: price, expense: fee > 0 }
 }
 
 type PathGroup = 'federal' | 'particular' | 'tecnico' | 'cursinho' | 'trabalho'
@@ -410,7 +411,7 @@ function PathChoiceCard({
       game={game}
       member={member}
       heading={`${member.firstName} terminou ${member.education.past.cursinho ? 'o cursinho' : 'o ensino médio'}`}
-      question={`ENEM: ${choice.enem} pontos. O que vem agora?`}
+      question={`ENEM ${choice.enem}`}
       label={`Depois do médio de ${member.firstName}`}
     >
       {PATH_GROUPS.map((group) => {
@@ -433,7 +434,10 @@ function PathChoiceCard({
               disabled={!enabled}
               icon={group === 'trabalho' ? <Briefcase size={17} /> : <GraduationCap size={17} />}
               title={text.title}
-              detail={`${text.detail}${entries.some(({ index }) => index === choice.suggested) ? ' · sugestão' : ''}`}
+              detail={withSuggestion(
+                text.detail,
+                entries.some(({ index }) => index === choice.suggested),
+              )}
               value={text.value}
               note={text.note}
               expense={text.expense}
@@ -496,8 +500,8 @@ function describeGroup(
         title: 'Universidade federal',
         detail:
           passed > 0
-            ? `${passed === 1 ? '1 curso' : `${passed} cursos`} que a nota alcança`
-            : `A nota não alcança nenhum curso: o corte mais baixo é ${lowest}`,
+            ? `${passed === 1 ? '1 curso' : `${passed} cursos`} pela nota`
+            : `Corte a partir de ${lowest}`,
         value: 'Gratuita',
       }
     }
@@ -506,7 +510,7 @@ function describeGroup(
       const fee = selected ? courseFee(selected) : Math.min(...DEGREES.map((course) => course.fee))
       return {
         title: 'Faculdade particular',
-        detail: 'Qualquer curso, sem nota de corte',
+        detail: 'Sem nota de corte',
         value: `${formatMoney(fee)}/mês`,
         note: selected ? undefined : 'desde',
         expense: true,
@@ -520,8 +524,8 @@ function describeGroup(
       return {
         title: 'Curso técnico',
         detail: federal
-          ? `${years} anos no instituto federal`
-          : `${years} anos; para o federal, precisava de ${BALANCE.college.federalTechCutoff} no ENEM`,
+          ? `${years} anos · instituto federal`
+          : `${years} anos · federal: corte ${BALANCE.college.federalTechCutoff}`,
         value: federal ? 'Gratuito' : `${formatMoney(BALANCE.college.technical.fee)}/mês`,
         expense: !federal,
       }
@@ -529,14 +533,14 @@ function describeGroup(
     case 'cursinho':
       return {
         title: 'Cursinho',
-        detail: `1 ano de estudo, e o próximo ENEM vem com ${Math.min(1000, choice.enem + BALANCE.college.prep.points)} (hoje ${choice.enem})`,
+        detail: `1 ano · +${BALANCE.college.prep.points} no ENEM`,
         value: `${formatMoney(BALANCE.college.prep.fee)}/mês`,
         expense: true,
       }
     case 'trabalho':
       return {
         title: 'Trabalhar agora',
-        detail: `Escolher entre ${BALANCE.jobs.offersPerChoice} vagas`,
+        detail: `${BALANCE.jobs.offersPerChoice} vagas`,
         value: 'Salário',
       }
   }
@@ -612,7 +616,7 @@ function MeetChoiceCard({
         active={selected === MEET_OPTIONS.date}
         icon={<Heart size={17} />}
         title="Namorar"
-        detail="O pedido de casamento vem em 1 ano"
+        detail={`Pedido em ${formatGameSpan(BALANCE.dating.yearsToPropose * BALANCE.daysPerYear, BALANCE.daysPerYear)}`}
         value=""
         onSelect={() => onSelect(MEET_OPTIONS.date)}
       />
@@ -620,7 +624,6 @@ function MeetChoiceCard({
         active={selected === MEET_OPTIONS.decline}
         icon={<X size={17} />}
         title="Agora não"
-        detail="Outra pessoa pode aparecer depois"
         value=""
         onSelect={() => onSelect(MEET_OPTIONS.decline)}
       />
@@ -654,7 +657,7 @@ function ProposeChoiceCard({
       game={game}
       member={member}
       heading={`${member.firstName} e ${dating.partner.firstName}`}
-      question={`Namoram desde ${since}. Casar?`}
+      question={`Namoram desde ${since}`}
       label={`Pedido de casamento de ${member.firstName}`}
       extra={<PersonCard game={game} person={dating.partner} />}
     >
@@ -663,11 +666,7 @@ function ProposeChoiceCard({
         disabled={missing > 0}
         icon={<Heart size={17} />}
         title="Casar"
-        detail={
-          missing > 0
-            ? `Faltam ${formatMoney(missing)}`
-            : `${dating.partner.firstName} vem morar com a família`
-        }
+        detail={missing > 0 ? `Faltam ${formatMoney(missing)}` : undefined}
         value={formatMoney(cost)}
         expense
         onSelect={() => onSelect(PROPOSE_OPTIONS.marry)}
@@ -676,7 +675,6 @@ function ProposeChoiceCard({
         active={selected === PROPOSE_OPTIONS.wait}
         icon={<Clock size={17} />}
         title="Esperar mais um ano"
-        detail="O pedido volta em 1 ano"
         value=""
         onSelect={() => onSelect(PROPOSE_OPTIONS.wait)}
       />
@@ -684,7 +682,6 @@ function ProposeChoiceCard({
         active={selected === PROPOSE_OPTIONS.breakUp}
         icon={<HeartCrack size={17} />}
         title="Terminar"
-        detail="Outra pessoa pode aparecer depois"
         value=""
         onSelect={() => onSelect(PROPOSE_OPTIONS.breakUp)}
       />
@@ -783,7 +780,7 @@ function OptionButton({
   disabled?: boolean
   icon: ReactNode
   title: string
-  detail: string
+  detail?: string
   value: string
   /** Texto pequeno em cima do valor, como "desde". */
   note?: string
@@ -810,7 +807,7 @@ function OptionButton({
       </span>
       <span className="min-w-0 flex-1">
         <span className="block text-[16px] leading-snug font-bold">{title}</span>
-        <span className="text-ink-soft block text-[13px]">{detail}</span>
+        {detail ? <span className="text-ink-soft block text-[13px]">{detail}</span> : null}
       </span>
       <span
         className={`tabular shrink-0 text-right text-[14px] font-bold ${expense ? 'text-expense' : 'text-income'}`}

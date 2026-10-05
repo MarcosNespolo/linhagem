@@ -28,10 +28,7 @@ export function MissionsSheet({ game }: { game: GameState }) {
 
   return (
     <Sheet title="Missões de hoje" onClose={closeSheet}>
-      <p className="text-ink-soft mt-1 text-[15px]">
-        Valem até a meia-noite e contam o que acontece depois que aparecem. A recompensa é para
-        pegar no mesmo dia.
-      </p>
+      <p className="text-ink-soft mt-1 text-[15px]">Até a meia-noite</p>
       {boostLeft > 0 ? (
         <p className="bg-gold-soft text-gold mt-3 flex items-center gap-2 rounded-2xl px-3 py-2 text-[14px] font-bold">
           <Zap size={16} fill="currentColor" aria-hidden="true" />

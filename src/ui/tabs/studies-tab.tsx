@@ -44,10 +44,6 @@ export function StudiesTab({ game }: { game: GameState }) {
       <div className="mx-auto w-full max-w-md px-4 pt-5">
         <div className={`${card} p-5 text-center`}>
           <p className="text-[16px] font-bold">Ninguém estudando agora</p>
-          <p className="text-ink-soft mt-1 text-[15px]">
-            As crianças entram na creche no primeiro janeiro depois de nascer. As matrículas são
-            todo janeiro.
-          </p>
         </div>
       </div>
     )
@@ -61,10 +57,6 @@ export function StudiesTab({ game }: { game: GameState }) {
         </p>
         <p className="tabular text-ink-soft text-[14px]">
           Mensalidades: {fees > 0 ? `${formatMoney(fees)} por mês` : 'nenhuma'}
-        </p>
-        <p className="text-ink-soft mt-2 text-[13px]">
-          As matrículas são todo janeiro, e as formaturas também. Toque em alguém da escola para
-          trocar de rede no ano seguinte ou contratar um professor particular.
         </p>
       </section>
 

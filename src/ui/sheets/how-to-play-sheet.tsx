@@ -18,7 +18,7 @@ import type { ReactNode } from 'react'
 import { BALANCE } from '@/content/balance'
 import { MISSIONS } from '@/content/missions'
 import { propertyType, type PropertyId } from '@/content/properties'
-import { formatGameSpan, formatMoney } from '@/lib/format'
+import { formatDuration, formatGameSpan, formatMoney } from '@/lib/format'
 import { card } from '../styles'
 import { useUiStore } from '../ui-store'
 import { Sheet } from './sheet'
@@ -44,7 +44,7 @@ function topics(): Topic[] {
       title: 'Tempo',
       icon: <Clock size={18} />,
       lines: [
-        `1 ano a cada ${12 * BALANCE.secondsPerGameMonth} segundos.`,
+        `1 ano a cada ${formatDuration(12 * BALANCE.secondsPerGameMonth)}.`,
         'Para nas escolhas e na pausa.',
         `Com o jogo fechado, passam até ${BALANCE.offlineCapYears} anos.`,
       ],

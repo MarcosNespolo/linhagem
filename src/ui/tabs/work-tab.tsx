@@ -61,10 +61,6 @@ export function WorkTab({ game }: { game: GameState }) {
           {pensions > 0 ? ` · aposentadorias: ${formatMoney(pensions)} por mês` : ''}
           {courseFees > 0 ? ` · cursos: ${formatMoney(courseFees)} por mês` : ''}
         </p>
-        <p className="text-ink-soft mt-2 text-[13px]">
-          Cada nível pede um curso, pago por mês. Com dedicação, dura a metade e custa o dobro, sem
-          namoro nem filho. No serviço público, a promoção vem com o tempo.
-        </p>
       </section>
 
       <Courses game={game} />
@@ -188,7 +184,7 @@ function ConcursoRow({ game, member }: { game: GameState; member: Member }) {
       game={game}
       member={member}
       title={`Prova em ${month}`}
-      detail={`Nota esperada ${expected}; ${cargo} pede ${cutoff}. ${left === 1 ? 'Última prova' : `${left} provas pela frente`}${study.lastScore !== null ? `, a última deu ${study.lastScore}` : ''}.`}
+      detail={`Nota ${expected} · ${cargo}: ${cutoff} · ${left === 1 ? 'última prova' : `${left} provas`}`}
       value={formatRate(-BALANCE.concurso.fee)}
       expense
     />

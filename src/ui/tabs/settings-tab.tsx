@@ -2,7 +2,6 @@
 
 import { BookOpen, ExternalLink, Pencil } from 'lucide-react'
 import { useState } from 'react'
-import { BALANCE } from '@/content/balance'
 import { livingMembers, type GameState } from '@/engine'
 import { useGameStore, type CloudState } from '@/game/store'
 import { formatDuration } from '@/lib/format'
@@ -49,10 +48,7 @@ export function SettingsTab({ game }: { game: GameState }) {
               Mudar
             </button>
           </Row>
-          <Row
-            label="Tempo"
-            detail={`1 ano por minuto, parando nas escolhas. Com o jogo fechado, passam até ${BALANCE.offlineCapYears} anos.`}
-          >
+          <Row label="Tempo" detail={paused ? 'Pausado' : 'Andando'}>
             <button
               type="button"
               className={button.secondary}
@@ -72,12 +68,11 @@ export function SettingsTab({ game }: { game: GameState }) {
           <label className="flex cursor-pointer items-center justify-between gap-4 p-4">
             <span>
               <span className="block text-[16px] font-bold">Mostrar quem já faleceu</span>
-              <span className="text-ink-soft block text-[14px]">
-                Inclui quem não deixou descendentes vivos. Os ancestrais aparecem sempre.
-                {game.stats.archived > 0
-                  ? ` Para o save não crescer sem limite, a árvore guarda até ${BALANCE.archive.maxMembers} pessoas: ${game.stats.archived} de ramos antigos que já terminaram saíram dela.`
-                  : ''}
-              </span>
+              {game.stats.archived > 0 ? (
+                <span className="tabular text-ink-soft block text-[14px]">
+                  {game.stats.archived} de ramos antigos fora da árvore
+                </span>
+              ) : null}
             </span>
             <input
               type="checkbox"
@@ -93,9 +88,7 @@ export function SettingsTab({ game }: { game: GameState }) {
         <h2 className="px-1 text-lg font-extrabold">Partida</h2>
         <div className={`${card} mt-3 p-4`}>
           <p className="text-ink-soft text-[15px]">
-            {signedIn
-              ? 'O progresso fica salvo neste aparelho e na nuvem. Começar outra família substitui a atual nos dois.'
-              : 'O progresso fica salvo neste aparelho. Começar outra família substitui a atual.'}
+            {signedIn ? 'Salvo neste aparelho e na nuvem' : 'Salvo neste aparelho'}
           </p>
           <button
             type="button"
@@ -159,7 +152,7 @@ function CloudSection({ now }: { now: number }) {
             </button>
           </Row>
         ) : (
-          <Row label="Salvar na nuvem" detail="Guarde a família e continue em outro aparelho.">
+          <Row label="Salvar na nuvem" detail="Continue em outro aparelho">
             <button
               type="button"
               className={button.secondary}
@@ -201,14 +194,14 @@ function CloudSection({ now }: { now: number }) {
 }
 
 function cloudStatus(cloud: CloudState, now: number): string {
-  if (cloud.conflict) return 'Sincronização parada até você escolher a versão da família.'
+  if (cloud.conflict) return 'Parada até você escolher a versão.'
   switch (cloud.problem) {
     case 'offline':
-      return 'Sem conexão. A família segue salva neste aparelho e vai para a nuvem quando a conexão voltar.'
+      return 'Sem conexão. Salvo neste aparelho.'
     case 'failed':
-      return 'Não deu para sincronizar agora. O jogo tenta de novo sozinho.'
+      return 'Não sincronizou. Tentando de novo.'
     case 'futureVersion':
-      return 'A nuvem tem a família salva por uma versão mais nova do jogo. Recarregue a página para atualizar.'
+      return 'Versão mais nova na nuvem. Recarregue a página.'
     case 'unreadable':
       return 'O save da nuvem não pôde ser lido.'
     case null:

@@ -36,9 +36,7 @@ export function NewFamily({ draft, current }: { draft: SetupDraft; current: Game
     <main className="mx-auto flex min-h-dvh max-w-md flex-col px-5 pt-[max(env(safe-area-inset-top),2.5rem)] pb-10">
       <FamilyMark className="size-14" />
       <h1 className="mt-5 text-[32px] leading-9 font-black tracking-tight">Comece uma família</h1>
-      <p className="text-ink-soft mt-2 text-[16px]">
-        Este é o casal que começa a linhagem. Se quiser, sorteie outro.
-      </p>
+      <p className="text-ink-soft mt-2 text-[16px]">O casal fundador</p>
 
       <ul className="mt-6 grid grid-cols-2 gap-3">
         {founders.map((founder) => (
@@ -96,12 +94,10 @@ function CloudStart() {
 
   let status: string | null = null
   if (cloud.mode === 'signedIn') {
-    if (cloud.problem === 'offline') status = 'Sem conexão para buscar a família na nuvem.'
-    else if (cloud.problem) status = 'Não deu para buscar a família na nuvem agora.'
+    if (cloud.problem === 'offline') status = 'Sem conexão com a nuvem.'
+    else if (cloud.problem) status = 'Não deu para buscar a família na nuvem.'
     else if (cloud.syncedAt === null) status = 'Procurando sua família na nuvem…'
-    else
-      status =
-        'Não há família salva na nuvem com este e-mail. A que você começar agora fica guardada nela.'
+    else status = 'Nenhuma família na nuvem com este e-mail.'
   }
 
   return (

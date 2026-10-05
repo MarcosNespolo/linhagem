@@ -232,8 +232,7 @@ function FamilyEnded({ game }: { game: GameState }) {
           {generations === 1
             ? `Só os ${generationLabel(0).toLowerCase()} viveram esta história`
             : `Foram ${generations} gerações`}{' '}
-          e {members.length} pessoas. Para a linhagem continuar, os filhos precisam casar e ter
-          filhos.
+          e {members.length} pessoas.
         </p>
         <button type="button" className={`${button.primary} mt-5`} onClick={openSetup}>
           Começar outra família
@@ -253,9 +252,8 @@ function Bankrupt({ game }: { game: GameState }) {
       <div className="max-w-sm text-center">
         <p className="text-2xl font-extrabold">A família {game.familyName} faliu</p>
         <p className="tabular text-ink-soft mt-2 text-[16px]">
-          Um ano no vermelho, com {formatMoney(game.money)} no fim.{' '}
-          {generations === 1 ? 'Uma geração' : `${generations} gerações`} e {members.length}{' '}
-          pessoas.
+          {formatMoney(game.money)} no fim ·{' '}
+          {generations === 1 ? 'uma geração' : `${generations} gerações`} · {members.length} pessoas
         </p>
         <button type="button" className={`${button.primary} mt-5`} onClick={openSetup}>
           Começar outra família
@@ -265,27 +263,13 @@ function Bankrupt({ game }: { game: GameState }) {
   )
 }
 
-/**
- * Dica para quem está começando: aparece até o primeiro filho e, depois, até
- * o primeiro casamento.
- */
+/** Dica para quem está começando, até o primeiro filho: onde tocar para ter um filho. */
 function FamilyHint({ game, actions }: { game: GameState; actions: LoveActions }) {
-  const members = Object.values(game.members)
-  let hint: string | null = null
-  if (!members.some((member) => member.origin === 'born')) {
-    if (actions.couples.some((couple) => couple.check.ok)) {
-      hint = 'Toque no círculo verde entre o casal para ter o primeiro filho.'
-    }
-  } else if (!members.some((member) => member.origin === 'married')) {
-    hint =
-      actions.dating.length > 0
-        ? 'Quem tem um coração está namorando. Depois de um ano, vem o pedido de casamento.'
-        : 'Aos 18 anos, os filhos podem conhecer alguém e namorar.'
-  }
-  if (!hint) return null
+  const firstChild = !Object.values(game.members).some((member) => member.origin === 'born')
+  if (!firstChild || !actions.couples.some((couple) => couple.check.ok)) return null
   return (
     <p className="bg-surface/95 ring-line pointer-events-none absolute top-3 left-3 max-w-[calc(100%-5.5rem)] rounded-2xl px-3.5 py-2 text-[14px] font-semibold shadow-sm ring-1">
-      {hint}
+      Toque no círculo verde para ter um filho
     </p>
   )
 }

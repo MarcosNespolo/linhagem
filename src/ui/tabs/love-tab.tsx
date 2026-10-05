@@ -22,9 +22,6 @@ export function LoveTab({ game, actions }: { game: GameState; actions: LoveActio
       {empty ? (
         <div className={`${card} p-5 text-center`}>
           <p className="text-[16px] font-bold">Ninguém para namorar ou ter filhos agora</p>
-          <p className="text-ink-soft mt-1 text-[15px]">
-            Os filhos podem namorar a partir dos 18 anos.
-          </p>
         </div>
       ) : null}
 
@@ -76,9 +73,6 @@ export function LoveTab({ game, actions }: { game: GameState; actions: LoveActio
       {actions.singles.length > 0 ? (
         <section>
           <h2 className="px-1 text-lg font-extrabold">Solteiros</h2>
-          <p className="text-ink-soft px-1 text-[14px]">
-            Podem conhecer alguém no carnaval e no dia dos namorados.
-          </p>
           <ul className="mt-3 flex flex-wrap gap-2">
             {actions.singles.map((member) => (
               <li key={member.id}>
