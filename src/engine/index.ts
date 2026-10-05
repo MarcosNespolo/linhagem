@@ -137,6 +137,7 @@ export {
   calendarDate,
   daysToMs,
   daysToSeconds,
+  elapsedToGameMs,
   lastDayOfYear,
   msToTicks,
   OFFLINE_CAP_MS,

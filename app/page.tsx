@@ -1,10 +1,14 @@
 import Link from 'next/link'
 import { BALANCE } from '@/content/balance'
-import { formatDuration } from '@/lib/format'
+import { formatDuration, formatGameSpan } from '@/lib/format'
 import { FamilyMark } from '@/ui/family-mark'
 
+const { away, daysPerYear } = BALANCE
+const span = (days: number) => formatGameSpan(days, daysPerYear)
 /** Quanto dura um ano do jogo em tempo real. */
 const yearTime = formatDuration(12 * BALANCE.secondsPerGameMonth)
+/** Quanto tempo do jogo passa por minuto fora dele, e o máximo. */
+const awayTime = `${span((away.monthsPerMinute * daysPerYear) / 12)} por minuto, até ${span(away.capYears * daysPerYear)}`
 
 export default function Home() {
   return (
@@ -13,11 +17,10 @@ export default function Home() {
       <div className="space-y-4">
         <h1 className="text-5xl font-black tracking-tight">Linhagem</h1>
         <p className="text-ink-soft text-xl leading-snug">
-          Comece com um casal, tenha filhos, case os filhos e veja a família atravessar gerações.
+          Comece com uma pessoa de 18 anos, case, tenha filhos e veja a família atravessar gerações.
         </p>
         <p className="text-ink-soft text-[15px]">
-          Sem anúncios e sem compras. 1 ano a cada {yearTime}; com o jogo fechado, até{' '}
-          {BALANCE.offlineCapYears} anos.
+          Sem anúncios e sem compras. 1 ano a cada {yearTime}; fora do jogo, {awayTime}.
         </p>
       </div>
       <Link

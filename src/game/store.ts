@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import {
   advanceTo,
   applyAction,
+  daysToMs,
   migrate,
   OFFLINE_CAP_MS,
   SaveError,
@@ -22,13 +23,13 @@ import { freshMeta, nextStep } from './sync'
 
 /** O que aconteceu enquanto o jogo esteve fechado ou em segundo plano. */
 export type AwaySummary = {
-  /** Dias do jogo que passaram. */
+  /** Dias do jogo que passaram, com a fração: 5 meses aparecem como 5 meses, e não 152 dias. */
   days: number
   earned: number
   /** A parte do que entrou que veio do aluguel dos imóveis. */
   rent: number
   events: GameEvent[]
-  /** O tempo fora passou do limite do progresso offline. */
+  /** O tempo fora chegou ao máximo, BALANCE.away.capYears anos do jogo. */
   capped: boolean
   /** O relógio parou numa escolha que espera o jogador. */
   waiting: boolean
@@ -36,7 +37,10 @@ export type AwaySummary = {
 
 export type Toast = { id: number; event: GameEvent }
 
-/** A partir disso (em tempo real simulado de uma vez), a volta ao jogo mostra um resumo. */
+/**
+ * A partir disso (em tempo de jogo simulado de uma vez, no ritmo normal: 2 meses), a volta
+ * ao jogo mostra um resumo.
+ */
 const AWAY_SUMMARY_MIN_MS = 10_000
 /** Quantos avisos ficam na tela ao mesmo tempo. */
 const TOAST_LIMIT = 3
@@ -158,7 +162,7 @@ export const useGameStore = create<GameStore>()((set, get) => ({
     const start = loaded.state
     const { state, events } = advanceTo(start, now)
     const game = withTodaysMissions(state, now)
-    set({ game, notice: loaded.notice, ...catchUp(get(), start, state, events, now) })
+    set({ game, notice: loaded.notice, ...catchUp(get(), start, state, events) })
     writeSave(game)
   },
 
@@ -167,7 +171,7 @@ export const useGameStore = create<GameStore>()((set, get) => ({
     if (!game) return
     const now = Date.now()
     const { state, events } = advanceTo(game, now)
-    set({ game: withTodaysMissions(state, now), ...catchUp(get(), game, state, events, now) })
+    set({ game: withTodaysMissions(state, now), ...catchUp(get(), game, state, events) })
   },
 
   dispatch: (action) => {
@@ -178,7 +182,7 @@ export const useGameStore = create<GameStore>()((set, get) => ({
     const result = applyAction(current.state, action)
     const next = result.ok ? result.state : current.state
     const events = result.ok ? [...current.events, ...result.events] : current.events
-    set({ game: next, ...catchUp(get(), game, current.state, events, now) })
+    set({ game: next, ...catchUp(get(), game, current.state, events) })
     if (result.ok) {
       writeSave(next)
       markChanged(false)
@@ -274,18 +278,17 @@ function catchUp(
   before: GameState,
   after: GameState,
   events: GameEvent[],
-  now: number,
 ): Partial<GameStore> {
   const simulatedMs = after.stats.simulatedMs - before.stats.simulatedMs
   if (simulatedMs >= AWAY_SUMMARY_MIN_MS) {
     const waiting = after.choices.length > 0
     return {
       away: {
-        days: after.clock.day - before.clock.day,
+        days: simulatedMs / daysToMs(1),
         earned: after.stats.totalEarned - before.stats.totalEarned,
         rent: after.stats.rentEarned - before.stats.rentEarned,
         events,
-        capped: !waiting && now - before.lastSimulatedAt > OFFLINE_CAP_MS,
+        capped: !waiting && simulatedMs >= OFFLINE_CAP_MS,
         waiting,
       },
     }

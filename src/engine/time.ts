@@ -40,8 +40,23 @@ export function daysToSeconds(days: number): number {
   return daysToMs(days) / 1000
 }
 
-/** Teto do progresso offline, em milissegundos reais. */
-export const OFFLINE_CAP_MS = daysToMs(BALANCE.offlineCapYears * BALANCE.daysPerYear)
+/** Teto do tempo fora do jogo, em milissegundos no ritmo normal do jogo. */
+export const OFFLINE_CAP_MS = daysToMs(BALANCE.away.capYears * BALANCE.daysPerYear)
+
+/**
+ * Milissegundos de jogo, no ritmo normal, que valem `elapsed` milissegundos
+ * reais sem o relógio andar. Até BALANCE.away.graceSeconds, é o ritmo normal,
+ * o do loop do jogo. Num intervalo maior, a pessoa estava fora do jogo, e cada
+ * minuto vale BALANCE.away.monthsPerMinute meses, até OFFLINE_CAP_MS: com 1
+ * mês por minuto e 5 segundos por mês, o tempo fora anda 12 vezes mais
+ * devagar. Ficar mais tempo fora nunca dá menos tempo de jogo.
+ */
+export function elapsedToGameMs(elapsed: number): number {
+  const real = Math.max(elapsed, 0)
+  const grace = Math.min(real, BALANCE.away.graceSeconds * 1000)
+  const away = (real * BALANCE.away.monthsPerMinute * BALANCE.secondsPerGameMonth) / 60
+  return Math.min(Math.max(grace, away), OFFLINE_CAP_MS)
+}
 
 /** Idade em anos completos de quem nasceu em `birthDay`, no dia `day`. */
 export function ageInYears(birthDay: number, day: number): number {

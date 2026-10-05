@@ -4,7 +4,7 @@ import { draftOf } from './draft'
 import { settleMonth } from './economy'
 import { recordEvents } from './log'
 import { createRng } from './rng'
-import { isFirstOfMonth, msToTicks, OFFLINE_CAP_MS, TICKS_PER_DAY, TICKS_PER_MS } from './time'
+import { elapsedToGameMs, isFirstOfMonth, msToTicks, TICKS_PER_DAY, TICKS_PER_MS } from './time'
 import type { GameEvent, GameState } from './types'
 
 export type AdvanceResult = {
@@ -73,13 +73,14 @@ export function advance(state: GameState, ms: number): AdvanceResult {
 
 /**
  * Avança até o instante real `now` (epoch em ms), a partir de
- * `lastSimulatedAt`. Serve ao loop do jogo e ao progresso offline: o tempo
- * simulado é limitado a OFFLINE_CAP_MS e, com o jogo pausado ou esperando uma
- * escolha, o relógio fica parado mesmo com o jogo fechado.
+ * `lastSimulatedAt`. Serve ao loop do jogo, que anda a cada segundo no ritmo
+ * normal, e à volta ao jogo: o tempo fora passa mais devagar e tem teto
+ * (`elapsedToGameMs`). Com o jogo pausado ou esperando uma escolha, o relógio
+ * fica parado mesmo com o jogo fechado.
  */
 export function advanceTo(state: GameState, now: number): AdvanceResult {
   const elapsed = now - state.lastSimulatedAt
-  const ms = isWaiting(state) ? 0 : Math.min(Math.max(elapsed, 0), OFFLINE_CAP_MS)
+  const ms = isWaiting(state) ? 0 : elapsedToGameMs(elapsed)
   const result = ms > 0 ? advance(state, ms) : { state, events: [] }
   return { state: { ...result.state, lastSimulatedAt: now }, events: result.events }
 }

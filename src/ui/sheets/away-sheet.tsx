@@ -9,6 +9,8 @@ import { button } from '../styles'
 import { Sheet } from './sheet'
 
 const EVENTS_SHOWN = 6
+/** O máximo de tempo do jogo que passa fora dele. */
+const AWAY_CAP = formatGameSpan(BALANCE.away.capYears * BALANCE.daysPerYear, BALANCE.daysPerYear)
 
 /** Resumo do que aconteceu enquanto o jogo esteve fechado ou em segundo plano. */
 export function AwaySheet({ game, away }: { game: GameState; away: AwaySummary }) {
@@ -28,9 +30,7 @@ export function AwaySheet({ game, away }: { game: GameState; away: AwaySummary }
       {away.waiting ? (
         <p className="text-ink-soft mt-2 text-[14px]">Tempo parado numa escolha</p>
       ) : away.capped ? (
-        <p className="text-ink-soft mt-2 text-[14px]">
-          Máximo de {BALANCE.offlineCapYears} anos com o jogo fechado
-        </p>
+        <p className="text-ink-soft mt-2 text-[14px]">Máximo de {AWAY_CAP} fora do jogo</p>
       ) : null}
       {shown.length > 0 ? (
         <ul className="bg-canvas mt-4 space-y-2 rounded-2xl p-4 text-[15px]">
