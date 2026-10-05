@@ -136,7 +136,8 @@ describe('aptidão', () => {
     const child = lastMember(born)
     const strong: GameState = withAptitude(born, child.id, 690)
     const member = strong.members[child.id]
-    expect(schoolScore(member)).toBe(690 + member.education.points)
+    // Recém-nascido: a idade ainda não somou nada.
+    expect(schoolScore(member, strong.clock.day)).toBe(690 + member.education.points)
   })
 
   it('o save antigo mantém a aptidão de cada pessoa', () => {

@@ -14,7 +14,8 @@ Jogue em [linhagem.vercel.app](https://linhagem.vercel.app).
 - Ter filhos a partir dos 20 anos, com 2 anos entre um e outro; eles herdam o tom de pele, a cor
   do cabelo e dos olhos dos pais
 - Matricular os filhos todo janeiro: creche, escola e ensino médio, na rede pública, num colégio
-  particular ou no instituto federal, para quem passa na prova
+  particular ou no instituto federal, para quem passa na prova; a nota cresce desde o nascimento,
+  um pouco em casa e na rede pública, mais no colégio particular e no instituto federal
 - Fazer o ENEM no fim do médio e escolher o que vem depois: universidade federal (quando a nota
   alcança o corte do curso), faculdade particular, curso técnico, cursinho ou trabalhar
 - Ver na aba Estudos quem estuda, onde, a mensalidade e a nota ou o ENEM de cada um, e contratar
@@ -121,15 +122,19 @@ jogador decidir. As escolhas abertas ficam no save (`choices`), e a sugestão de
 marcada no painel.
 
 Como no Brasil, as matrículas são em janeiro. Quem começa a creche (no ano em que faz 1), a escola
-(4) ou o ensino médio (15) ganha uma escolha, e todas aparecem juntas numa pausa só. A escola
-particular cobra mensalidade e soma pontos na nota, que é a aptidão de cada um mais esses pontos; o
-instituto federal é gratuito, pede nota 550 na prova e forma técnico. Quem está na escola ou no
-médio pode ter professor particular, por R$ 800 por mês, que soma 5 pontos na nota por ano, em
-proporção ao tempo (`src/engine/tutor.ts`). Quem funda a família ou entra nela casando tem aptidão
-de 400 a 700, mais perto de 550, e a de quem aparece para namorar já vem com a pessoa. Os
-filhos herdam: a aptidão fica perto da média dos pais, puxada um pouco para 550, com até 60 pontos
-para mais ou para menos (`inheritAptitude`, com os valores em `BALANCE.aptitude`). As regras ficam
-em `src/engine/enrollment.ts` e `src/engine/school.ts`, e os valores em `BALANCE.school`.
+(4) ou o ensino médio (15) ganha uma escolha, e todas aparecem juntas numa pausa só. A nota da
+escola é a aptidão de cada um, de nascença, mais o que a idade e os estudos somam. A idade soma 2
+pontos por ano de vida, do nascimento aos 17, em casa ou na escola (`agePoints`). Os estudos somam
+por rede, ao longo de cada etapa: na creche, 20 na pública ou na particular e 5 com os avós ou em
+casa; na escola, 10 na pública e 40 no colégio particular, que cobra mensalidade; no médio, 5 no
+público, 40 no particular e 60 no instituto federal, que é gratuito, pede nota 550 na prova e forma
+técnico. Quem está na escola ou no médio pode ter professor particular, por R$ 800 por mês, que soma
+5 pontos na nota por ano, em proporção ao tempo (`src/engine/tutor.ts`). Quem funda a família ou
+entra nela casando tem aptidão de 400 a 700, mais perto de 550, e a de quem aparece para namorar já
+vem com a pessoa. Os filhos herdam: a aptidão fica perto da média dos pais, puxada um pouco para
+550, com até 60 pontos para mais ou para menos (`inheritAptitude`, com os valores em
+`BALANCE.aptitude`). As regras ficam em `src/engine/enrollment.ts` e `src/engine/school.ts`, e os
+valores em `BALANCE.school`.
 
 No janeiro em que termina o médio, a pessoa faz o ENEM (a nota da escola, para mais ou para menos
 até 50 pontos) e o jogador escolhe o caminho. A universidade federal é gratuita e cada curso tem

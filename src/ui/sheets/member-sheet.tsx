@@ -15,6 +15,7 @@ import { BALANCE } from '@/content/balance'
 import { isHigherStage, techCourseName, type Network } from '@/content/schools'
 import {
   ageOf,
+  agePoints,
   ageThisYear,
   aptitudeOf,
   canHaveTutor,
@@ -129,9 +130,10 @@ export function MemberSheet({ game, member }: { game: GameState; member: Member 
             </Fact>
             {school.stage !== 'creche' && !isHigherStage(school.stage) ? (
               <Fact label="Nota">
-                <span className="tabular">{Math.floor(schoolScore(member))}</span>
+                <span className="tabular">{Math.floor(schoolScore(member, day))}</span>
                 <span className="text-ink-soft block text-[13px] font-normal">
-                  Aptidão {aptitudeOf(member)} + {Math.floor(member.education.points)} de estudo
+                  Aptidão {aptitudeOf(member)} + {agePoints(member, day)} da idade +{' '}
+                  {Math.floor(member.education.points)} de estudo
                 </span>
               </Fact>
             ) : null}

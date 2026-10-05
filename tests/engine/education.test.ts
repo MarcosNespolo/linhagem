@@ -3,6 +3,7 @@ import { BALANCE } from '@/content/balance'
 import type { Network, SchoolStage } from '@/content/schools'
 import {
   advance,
+  agePoints,
   ageOf,
   applyAction,
   calendarDate,
@@ -16,6 +17,7 @@ import {
   schoolScore,
   serialize,
   stageFee,
+  stagePoints,
   yearlyPoints,
   type Choice,
   type GameState,
@@ -32,6 +34,7 @@ import {
   play,
   setMember,
   untilParentAge,
+  type Policy,
   withAdultChild,
   withAptitude,
   withChild,
@@ -214,7 +217,8 @@ describe('matrículas', () => {
 
     const weak = withAptitude(born, child.id, 420)
     const failed = untilEnrollment(weak, child.id, 'medio')
-    expect(schoolScore(failed.state.members[child.id])).toBeLessThan(BALANCE.school.federalCutoff)
+    const failedScore = schoolScore(failed.state.members[child.id], failed.state.clock.day)
+    expect(failedScore).toBeLessThan(BALANCE.school.federalCutoff)
     expect(failed.choice.options.filter((option) => option.network === 'federal')).toEqual([
       { network: 'federal', available: false },
     ])
@@ -331,5 +335,54 @@ describe('matrículas', () => {
       tutorSince: null,
     })
     expect(migrated.members[first.id].education.formation).toEqual({ level: 'medio' })
+  })
+})
+
+describe('nota desde o bebê', () => {
+  it('a idade soma pontos por ano de vida, até os 17', () => {
+    const { perYear, years: growthYears } = BALANCE.school.growth
+    const baby = { birthDay: 0 }
+    const year = BALANCE.daysPerYear
+    expect(agePoints(baby, 0)).toBe(0)
+    expect(agePoints(baby, year - 1)).toBe(0)
+    expect(agePoints(baby, year)).toBe(perYear)
+    expect(agePoints(baby, growthYears * year)).toBe(perYear * growthYears)
+    expect(agePoints(baby, 40 * year)).toBe(perYear * growthYears)
+  })
+
+  it('a escola e o médio públicos, os avós e ficar em casa também somam, menos que a particular', () => {
+    for (const network of ['casa', 'avos', 'publica'] as const) {
+      expect(stagePoints('creche', network)).toBeGreaterThan(0)
+    }
+    expect(stagePoints('escola', 'publica')).toBeGreaterThan(0)
+    expect(stagePoints('escola', 'publica')).toBeLessThan(stagePoints('escola', 'particular'))
+    expect(stagePoints('medio', 'publica')).toBeGreaterThan(0)
+    expect(stagePoints('medio', 'publica')).toBeLessThan(stagePoints('medio', 'particular'))
+  })
+
+  it('um filho que só estudou na rede pública chega ao ENEM com nota acima da aptidão', () => {
+    const born = withChild(makeGame(6))
+    const child = lastMember(born)
+    // Na rede pública sempre que dá; sem vaga na creche, em casa.
+    const publicOnly: Policy = (state) =>
+      state.choices.map((choice) => {
+        if (choice.type !== 'school') return { memberId: choice.memberId, option: choice.suggested }
+        const find = (network: Network) =>
+          choice.options.findIndex((option) => option.available && option.network === network)
+        const option = find('publica') >= 0 ? find('publica') : find('casa')
+        return { memberId: choice.memberId, option }
+      })
+    const atEnem = play(born, years(BALANCE.adultAge + 1), 'afterSchool', publicOnly)
+    const member = atEnem.members[child.id]
+    const day = atEnem.clock.day
+    expect(member.education.past.escola).toBe('publica')
+    expect(member.education.past.medio).toBe('publica')
+
+    const studied = member.education.points
+    const fromSchool = stagePoints('escola', 'publica') + stagePoints('medio', 'publica')
+    expect(studied).toBeGreaterThanOrEqual(fromSchool + stagePoints('creche', 'casa') - 1e-9)
+    expect(agePoints(member, day)).toBe(BALANCE.school.growth.perYear * BALANCE.school.growth.years)
+    expectClose(schoolScore(member, day), member.aptitude + agePoints(member, day) + studied)
+    expect(schoolScore(member, day)).toBeGreaterThan(member.aptitude + 50)
   })
 })

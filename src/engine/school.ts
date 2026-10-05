@@ -1,6 +1,7 @@
 import { BALANCE } from '../content/balance'
 import { degree, type Network, type SchoolStage } from '../content/schools'
 import { hashString } from './rng'
+import { ageInYears } from './time'
 import type { Education, Enrollment, GameState, Member, MemberId } from './types'
 
 type StageRule = {
@@ -115,9 +116,18 @@ export function aptitudeOf(member: Pick<Member, 'aptitude'>): number {
   return member.aptitude
 }
 
-/** Nota de quem estuda: a aptidão mais os pontos que as escolas somaram. */
-export function schoolScore(member: Pick<Member, 'aptitude' | 'education'>): number {
-  return member.aptitude + member.education.points
+/** Pontos que a idade soma na nota no dia: `growth.perYear` por ano de vida, até `growth.years`. */
+export function agePoints(member: Pick<Member, 'birthDay'>, day: number): number {
+  const { perYear, years } = BALANCE.school.growth
+  return perYear * Math.min(Math.max(ageInYears(member.birthDay, day), 0), years)
+}
+
+/** Nota de quem estuda no dia: a aptidão, o que a idade somou e os pontos dos estudos. */
+export function schoolScore(
+  member: Pick<Member, 'aptitude' | 'education' | 'birthDay'>,
+  day: number,
+): number {
+  return member.aptitude + agePoints(member, day) + member.education.points
 }
 
 /** Quem trabalha meio período porque cuida em casa de um filho na idade da creche. */

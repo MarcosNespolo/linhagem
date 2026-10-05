@@ -132,7 +132,7 @@ function StudentRow({ game, member }: { game: GameState; member: Member }) {
             </span>
           ) : school.stage !== 'creche' && !higher ? (
             <span className="tabular text-ink-soft block text-[13px]">
-              Nota {Math.floor(schoolScore(member))}
+              Nota {Math.floor(schoolScore(member, game.clock.day))}
             </span>
           ) : null}
           {school.next ? (

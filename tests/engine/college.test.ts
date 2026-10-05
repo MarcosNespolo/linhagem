@@ -72,9 +72,8 @@ describe('depois do ensino médio', () => {
 
     expect(isEnrollmentDay(state)).toBe(true)
     expect(member.education.enem).toBe(choice.enem)
-    expect(Math.abs(choice.enem - Math.round(schoolScore(member)))).toBeLessThanOrEqual(
-      BALANCE.college.enemSpread,
-    )
+    const score = Math.round(schoolScore(member, state.clock.day))
+    expect(Math.abs(choice.enem - score)).toBeLessThanOrEqual(BALANCE.college.enemSpread)
     expect(state.log).toContainEqual({
       type: 'enem',
       day: state.clock.day,

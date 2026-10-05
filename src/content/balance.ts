@@ -215,28 +215,34 @@ export const BALANCE = {
      */
     tutor: { fee: 800, pointsPerYear: 5 },
     /**
+     * A nota cresce com a idade, em casa ou na escola: toda criança soma
+     * `perYear` pontos por ano de vida, até `years` anos.
+     */
+    growth: { perYear: 2, years: 17 },
+    /**
      * Etapas, pela idade que a criança faz no ano. A mensalidade é por mês, e os
      * pontos de cada rede se dividem pelos anos da etapa: o colégio particular
-     * soma 40 ao longo dos 11 anos da escola.
+     * soma 40 ao longo dos 11 anos da escola, e a escola pública, 10. Na idade da
+     * creche, ficar com os avós ou em casa também soma um pouco.
      */
     stages: {
       creche: {
         firstAge: 1,
         lastAge: 3,
         fees: { particular: 1200 },
-        points: { publica: 20, particular: 20 },
+        points: { publica: 20, particular: 20, avos: 5, casa: 5 },
       },
       escola: {
         firstAge: 4,
         lastAge: 14,
         fees: { particular: 1500 },
-        points: { particular: 40 },
+        points: { publica: 10, particular: 40 },
       },
       medio: {
         firstAge: 15,
         lastAge: 17,
         fees: { particular: 2000 },
-        points: { particular: 40, federal: 60 },
+        points: { publica: 5, particular: 40, federal: 60 },
       },
     },
   },
