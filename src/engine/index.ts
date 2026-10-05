@@ -34,6 +34,8 @@ export {
   hasCar,
   incomeOf,
   isUnemployed,
+  unemploymentPay,
+  healthPlanCost,
   livingCost,
   memberExpense,
   memberIncome,
@@ -58,7 +60,7 @@ export {
 export { isLogEvent, isMemberEvent, LOG_LIMIT } from './log'
 export { claimableMissions, incomeReward, isMissionDone } from './missions'
 export { MEET_OPTIONS, PROPOSE_OPTIONS } from './dating'
-export { canMeet, rollSuitor, weddingCost } from './marriage'
+export { canMeet, joinFamily, rollSuitor, weddingCost } from './marriage'
 export {
   ageOf,
   childrenOf,

@@ -80,6 +80,8 @@ export function processMishaps(
       const months = min + Math.floor(roll(draft, member, ROLL.layoffMonths) * (max - min + 1))
       const until = day + Math.round((months * BALANCE.daysPerYear) / 12)
       member.unemployedUntil = until
+      // O curso fica trancado enquanto a pessoa procura emprego e termina depois.
+      if (member.course) member.course.until += until - day
       events.push({ type: 'laidOff', day, memberId: member.id, until })
       changed = true
       continue

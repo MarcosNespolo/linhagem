@@ -10,7 +10,9 @@ import {
   House,
   Landmark,
   School,
+  ShoppingCart,
   Siren,
+  Sprout,
   Target,
   Wallet,
 } from 'lucide-react'
@@ -42,7 +44,17 @@ function topics(): Topic[] {
     mission.reward.kind === 'boost' ? [mission.reward.years] : [],
   )[0]
   const stage = school.stages
+  const { living } = BALANCE
+  const thirteenth = Number(BALANCE.thirteenthSalaryDate.slice(3))
   return [
+    {
+      title: 'Começo',
+      icon: <Sprout size={18} />,
+      lines: [
+        `Uma pessoa de ${BALANCE.adultAge} anos, com ensino médio, no primeiro emprego, e ${formatMoney(BALANCE.startingMoney)}.`,
+        'Casamento e filhos vêm depois do namoro.',
+      ],
+    },
     {
       title: 'Tempo',
       icon: <Clock size={18} />,
@@ -56,10 +68,19 @@ function topics(): Topic[] {
       title: 'Dinheiro',
       icon: <Wallet size={18} />,
       lines: [
-        `Começa em ${formatMoney(BALANCE.startingMoney)}.`,
-        'Entram salários, aposentadorias, aluguéis e o 13º em dezembro.',
-        'Saem custo de vida, escolas, cursos e moradia.',
+        'Todo dia 1º, entram salários, aposentadorias e aluguéis, e saem as despesas do mês.',
+        `O 13º cai em ${thirteenth} de dezembro.`,
         `No vermelho, o jogo para. ${span(BALANCE.debt.graceDays)} no vermelho é falência.`,
+      ],
+    },
+    {
+      title: 'Custo de vida',
+      icon: <ShoppingCart size={18} />,
+      lines: [
+        `Adulto: mercado e contas ${formatMoney(living.adult)}, ônibus ${formatMoney(living.transport.bus)}.`,
+        `Carro ${formatMoney(living.transport.car)} para quem ganha a partir de ${formatMoney(living.transport.carFromSalary)}.`,
+        `Plano de saúde ${formatMoney(living.health.adult)} (${formatMoney(living.health.senior)} depois dos ${living.seniorAge}) a partir de ${formatMoney(living.health.planFromSalary)} de salário; abaixo, SUS.`,
+        `Criança: ${formatMoney(children.expenseBase)} mais ${formatMoney(children.expensePerYear)} por ano de idade.`,
       ],
     },
     {
@@ -149,6 +170,7 @@ function topics(): Topic[] {
       icon: <Siren size={18} />,
       lines: [
         `Demissão: ${percent(layoff.perYear)} ao ano, ${layoff.months.min} a ${layoff.months.max} meses.`,
+        `Seguro-desemprego: ${percent(layoff.unemploymentPay.share)} do salário, até ${formatMoney(layoff.unemploymentPay.max)}; o curso fica trancado.`,
         'Cirurgia e conserto do carro.',
       ],
     },

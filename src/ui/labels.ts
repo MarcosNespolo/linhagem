@@ -19,6 +19,7 @@ import {
   daysToSeconds,
   extraHousingCost,
   hasCar,
+  healthPlanCost,
   isAlive,
   isUnemployed,
   nextListingDay,
@@ -132,17 +133,18 @@ export function ageLabel(member: Member, day: number): string {
 
 /**
  * Custo de vida da pessoa em partes, sem a moradia: o de uma criança, ou o
- * mercado, o plano de saúde e o transporte de um adulto.
+ * mercado, o plano de saúde (ou o SUS) e o transporte de um adulto.
  */
 export function livingCostLine(member: Member, day: number): string {
   const age = ageOf(member, day)
   if (age < BALANCE.adultAge) return 'Alimentação, roupas, saúde e lazer'
-  const { adult, health, seniorAge, transport } = BALANCE.living
-  const plan = age >= seniorAge ? health.senior : health.adult
+  const { adult, transport } = BALANCE.living
+  const plan = healthPlanCost(member, day)
+  const health = plan > 0 ? `plano de saúde ${formatMoney(plan)}` : 'SUS'
   const ride = hasCar(member, day)
     ? `carro ${formatMoney(transport.car)}`
     : `ônibus ${formatMoney(transport.bus)}`
-  return `Mercado e contas ${formatMoney(adult)} · plano de saúde ${formatMoney(plan)} · ${ride}`
+  return `Mercado e contas ${formatMoney(adult)} · ${health} · ${ride}`
 }
 
 /** Como a pessoa se liga à família: filha de quem, com quem casou, se fundou. */

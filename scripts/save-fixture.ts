@@ -6,14 +6,14 @@
  * que já existe nunca é sobrescrito, porque representa os saves reais daquela
  * versão.
  *
- * O exemplo passa pelas ações principais do jogo: dois filhos, com a aptidão
- * herdada dos pais, que fizeram a escola com as matrículas sugeridas. O mais
- * velho faz Direito numa faculdade particular e casou com quem conheceu e
- * namorou, depois de a família comprar um kitnet para ter lugar em casa. O mais
- * novo teve professor particular no médio, acabou, estudou para concurso e
- * passou; agora namora, com o pedido de casamento aberto. A fundadora faz o
- * curso do próximo nível no ritmo normal, e o fundador acabou de começar o dele
- * com dedicação. A família tem mais um kitnet e um apartamento alugados, e as
+ * O exemplo passa pelas ações principais do jogo. Quem funda a família começa
+ * sozinho, com 18 anos, namora quem aparece e casa. Depois vêm dois filhos, com
+ * a aptidão herdada dos pais, que fizeram a escola com as matrículas sugeridas. O
+ * mais velho faz Direito numa faculdade particular e namora quem conheceu, com o
+ * pedido de casamento aberto no fim do exemplo. O mais novo teve professor
+ * particular no médio, acabou, estudou para concurso e passou. Quem fundou a
+ * família faz o curso do próximo nível no ritmo normal, e o par acabou de
+ * começar o dele com dedicação. A família tem kitnets e um apartamento, e as
  * missões do dia sorteadas: cumpriu a Investidor, com três kitnets a mais, e
  * está com a renda em dobro. Nos anos do exemplo, a família passa pelos
  * imprevistos que a seed sorteia.
@@ -74,7 +74,10 @@ let state = newGame({
   familyName: 'Exemplo',
 })
 state = { ...state, money: 18_000_000 }
-state = play(state, 2 * year)
+// Quem funda a família namora quem aparece e casa no pedido, com as sugestões; os filhos
+// esperam os dois terem 20 anos.
+state = play(state, 3 * year)
+if (!state.members.m1?.partnerId) throw new Error('O exemplo devia casar quem fundou a família')
 state = act(state, { type: 'haveChild', parentId: 'm1' })
 state = play(state, 2 * year)
 state = act(state, { type: 'haveChild', parentId: 'm1' })
@@ -90,8 +93,7 @@ const law = afterSchool.options.findIndex(
 state = act(state, { type: 'choose', picks: [{ memberId: afterSchool.memberId, option: law }] })
 // O mais novo, no médio, ganha um professor particular até o fim da escola.
 state = act(state, { type: 'setTutor', memberId: 'm4', active: true })
-// Já com 18, o mais velho namora quem aparece e casa no pedido, com as sugestões. A família
-// compra um kitnet.
+// Já com 18, o mais velho pode conhecer alguém. A família compra um kitnet.
 state = play(state, year)
 state = act(state, { type: 'buyProperty', propertyId: 'kitnet' })
 // No janeiro em que o mais novo faz 18, ele vai trabalhar e escolhe estudar para concurso.
@@ -112,7 +114,7 @@ state = act(state, {
   type: 'choose',
   picks: [{ memberId: job.memberId, option: job.offers.length }],
 })
-// A fundadora começa o curso do próximo nível, no ritmo normal.
+// Quem fundou a família começa o curso do próximo nível, no ritmo normal.
 state = act(state, { type: 'startCourse', memberId: 'm1', dedicated: false })
 // A família compra mais um kitnet e um apartamento para alugar.
 state = act(state, { type: 'buyProperty', propertyId: 'kitnet' })
@@ -135,12 +137,12 @@ if (state.choices.length !== 1 || state.choices[0].type !== 'concurso') {
   throw new Error('O exemplo devia parar no resultado do concurso')
 }
 state = act(state, { type: 'choose', picks: suggestedPicks(state) })
-// O mais novo namora quem aparece e o exemplo termina no pedido de casamento.
+// O exemplo termina no pedido de casamento de quem namora.
 state = play(state, 5 * year, 'propose')
 if (state.choices.length !== 1 || state.choices[0].type !== 'propose') {
   throw new Error('O exemplo devia terminar com o pedido de casamento aberto')
 }
-// Com o pedido aberto, o fundador começa o curso dele com dedicação.
+// Com o pedido aberto, o par de quem fundou a família começa o curso dele com dedicação.
 state = act(state, { type: 'startCourse', memberId: 'm2', dedicated: true })
 
 mkdirSync('tests/fixtures', { recursive: true })

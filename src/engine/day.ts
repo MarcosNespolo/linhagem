@@ -19,8 +19,7 @@ import type { GameEvent, GameState, Member } from './types'
  * promoções, os imprevistos, os imóveis comerciais que ficam à venda, as
  * provas de concurso, os namoros e o 13º salário. As escolhas abertas aqui
  * (matrículas, depois do médio, primeiro emprego, resultado do concurso,
- * alguém que aparece, pedido de casamento) param o relógio. Altera o rascunho
- * e devolve true quando algo pode ter mudado as taxas de renda e despesa.
+ * alguém que aparece, pedido de casamento) param o relógio. Altera o rascunho.
  * `living` são as pessoas vivas do rascunho; quem morre no meio pode continuar
  * na lista.
  */
@@ -29,16 +28,14 @@ export function processNewDay(
   rng: Rng,
   events: GameEvent[],
   living: readonly Member[] = Object.values(draft.members),
-): boolean {
+): void {
   const day = draft.clock.day
-  let changed = false
 
   for (const member of living) {
     if (member.deathDay !== null) continue
     const daysLived = day - member.birthDay
     if (daysLived <= 0 || daysLived % BALANCE.daysPerYear !== 0) continue
 
-    changed = true
     const age = daysLived / BALANCE.daysPerYear
 
     if (age >= member.lifespan) {
@@ -68,15 +65,13 @@ export function processNewDay(
   if (isEnrollmentDay(draft)) {
     processEnrollment(draft, rng, events)
     archiveMembers(draft)
-    changed = true
   }
-  if (processPromotions(draft, events, living)) changed = true
-  if (processMishaps(draft, events, living)) changed = true
+  processPromotions(draft, events, living)
+  processMishaps(draft, events, living)
   processMarket(draft)
-  if (takeExams(draft, rng, events)) changed = true
+  takeExams(draft, rng, events)
   processDating(draft, rng, living)
   payThirteenth(draft, events, living)
-  return changed
 }
 
 /** No dia do 13º, quem trabalha recebe um salário a mais, e quem é aposentado, uma pensão a mais. */

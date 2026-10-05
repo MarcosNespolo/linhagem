@@ -4,6 +4,7 @@ import {
   ageOf,
   familyRates,
   hasCar,
+  healthPlanCost,
   livingCost,
   memberExpense,
   memberIncome,
@@ -24,8 +25,17 @@ describe('economia', () => {
     const state = makeGame(3)
     const [first] = founders(state)
     const { adult, health, seniorAge, transport } = BALANCE.living
-    const bus = setMember(state, first.id, { career: { id: 'comercio', level: 0, levelSince: 0 } })
+    // Quem ganha pouco anda de ônibus e usa o SUS.
+    const sus = setMember(state, first.id, { career: { id: 'comercio', level: 0, levelSince: 0 } })
+    const poor = sus.members[first.id]
+    expect(salaryPerMonth(poor)).toBeLessThan(health.planFromSalary)
+    expect(healthPlanCost(poor, 0)).toBe(0)
+    expect(livingCost(poor, 0)).toBe(adult + transport.bus)
+
+    // A partir de planFromSalary, paga o plano de saúde.
+    const bus = setMember(state, first.id, { career: { id: 'comercio', level: 1, levelSince: 0 } })
     const rider = bus.members[first.id]
+    expect(salaryPerMonth(rider)).toBeGreaterThanOrEqual(health.planFromSalary)
     expect(hasCar(rider, 0)).toBe(false)
     expect(livingCost(rider, 0)).toBe(adult + health.adult + transport.bus)
 

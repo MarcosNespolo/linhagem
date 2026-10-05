@@ -11,7 +11,6 @@ import { useGameStore } from '@/game/store'
 import { formatMoney } from '@/lib/format'
 import { BottomNav } from './bottom-nav'
 import { showMember } from './flows'
-import { generationLabel } from './labels'
 import { choicesKey, loveActions, nodeActions, type LoveActions } from './selectors'
 import { AwaySheet } from './sheets/away-sheet'
 import { ChoiceSheet } from './sheets/choice-sheet'
@@ -228,11 +227,8 @@ function FamilyEnded({ game }: { game: GameState }) {
     <div className="grid h-full place-items-center px-6">
       <div className="max-w-sm text-center">
         <p className="text-2xl font-extrabold">A família {game.familyName} chegou ao fim</p>
-        <p className="text-ink-soft mt-2 text-[16px]">
-          {generations === 1
-            ? `Só os ${generationLabel(0).toLowerCase()} viveram esta história`
-            : `Foram ${generations} gerações`}{' '}
-          e {members.length} pessoas.
+        <p className="tabular text-ink-soft mt-2 text-[16px]">
+          {generationsLine(generations)} · {peopleLine(members.length)}
         </p>
         <button type="button" className={`${button.primary} mt-5`} onClick={openSetup}>
           Começar outra família
@@ -252,8 +248,8 @@ function Bankrupt({ game }: { game: GameState }) {
       <div className="max-w-sm text-center">
         <p className="text-2xl font-extrabold">A família {game.familyName} faliu</p>
         <p className="tabular text-ink-soft mt-2 text-[16px]">
-          {formatMoney(game.money)} no fim ·{' '}
-          {generations === 1 ? 'uma geração' : `${generations} gerações`} · {members.length} pessoas
+          {formatMoney(game.money)} no fim · {generationsLine(generations)} ·{' '}
+          {peopleLine(members.length)}
         </p>
         <button type="button" className={`${button.primary} mt-5`} onClick={openSetup}>
           Começar outra família
@@ -262,6 +258,9 @@ function Bankrupt({ game }: { game: GameState }) {
     </div>
   )
 }
+
+const generationsLine = (count: number) => (count === 1 ? '1 geração' : `${count} gerações`)
+const peopleLine = (count: number) => (count === 1 ? '1 pessoa' : `${count} pessoas`)
 
 /** Dica para quem está começando, até o primeiro filho: onde tocar para ter um filho. */
 function FamilyHint({ game, actions }: { game: GameState; actions: LoveActions }) {

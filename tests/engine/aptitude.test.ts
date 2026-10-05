@@ -19,6 +19,7 @@ import {
   founders,
   lastMember,
   makeGame,
+  makeStart,
   marryMember,
   meetSomeone,
   untilParentAge,
@@ -54,11 +55,10 @@ const mean = (values: number[]) => values.reduce((sum, value) => sum + value, 0)
 describe('aptidão', () => {
   it('quem funda a família tem a aptidão de nascença, entre 400 e 700', () => {
     for (const seed of SEEDS) {
-      for (const member of founders(makeGame(seed))) {
-        expect(member.aptitude).toBe(baseAptitude(member.avatarSeed, member.id))
-        expect(member.aptitude).toBeGreaterThanOrEqual(min)
-        expect(member.aptitude).toBeLessThanOrEqual(max)
-      }
+      const [founder] = Object.values(makeStart(seed).members)
+      expect(founder.aptitude).toBe(baseAptitude(founder.avatarSeed, founder.id))
+      expect(founder.aptitude).toBeGreaterThanOrEqual(min)
+      expect(founder.aptitude).toBeLessThanOrEqual(max)
     }
   })
 
