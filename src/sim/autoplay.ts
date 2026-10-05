@@ -8,25 +8,29 @@
  *
  * A família vem primeiro: filhos e casamentos saem antes dos investimentos,
  * mas a estratégia guarda alguns meses de despesa e só tem mais um filho com
- * folga na renda, porque a família não pode ir à falência. O que sobra vai
- * para o imóvel que se paga mais rápido: os de moradia contam o aluguel que a
- * família deixa de pagar morando neles. Se mesmo assim o saldo ficar
- * negativo, ela despausa o jogo, como o jogador faria.
+ * folga na renda, porque a família não pode ir à falência. Como o aluguel sobe
+ * a cada lugar, ela também olha a moradia: casa quase sempre, para ninguém
+ * passar da idade de ter filhos esperando lugar, dá o primeiro filho a cada
+ * casal antes do segundo e guarda o lugar de quem ainda vai casar. O que
+ * sobra vai para o imóvel que se paga mais rápido: os de moradia contam o
+ * aluguel que a família deixa de pagar morando neles. Se mesmo assim o saldo
+ * ficar negativo, ela despausa o jogo, como o jogador faria.
  *
  * Fica fora da engine e do jogo: só o script `npm run sim` e o teste de
  * balanceamento usam.
  */
-import { BALANCE } from '../content/balance'
 import { careerLevel } from '../content/careers'
 import { type PropertyId, type PropertyType } from '../content/properties'
 import { degree } from '../content/schools'
 import {
+  ageOf,
   advance,
   applyAction,
   checkHaveChild,
   claimableMissions,
   courseCandidates,
   courseOffer,
+  extraHousingCost,
   familyRates,
   isPropertyUnlocked,
   livingMembers,
@@ -36,6 +40,7 @@ import {
   propertiesLeft,
   propertyPrice,
   rentedPlaces,
+  rentFor,
   stageFee,
   TICKS_PER_DAY,
   TICKS_PER_MS,
@@ -145,9 +150,12 @@ const SAVINGS_SHARE = 0.25
  */
 export function strategyPicks(state: GameState): ChoicePick[] {
   const { net, income, expense } = familyRates(state)
-  const budget = {
+  const budget: Budget = {
     left: net - SAVINGS_SHARE * income,
     money: state.money - RESERVE_MONTHS * expense,
+    housing: MARRIAGE_SHARE * income,
+    joining: 0,
+    state,
   }
   return state.choices.map((choice) => ({
     memberId: choice.memberId,
@@ -155,7 +163,20 @@ export function strategyPicks(state: GameState): ChoicePick[] {
   }))
 }
 
-function pick(choice: Choice, budget: { left: number; money: number }): number {
+/**
+ * O que sobra para as escolhas abertas: renda por mês para mensalidades,
+ * dinheiro para casamentos e quanto a moradia pode subir por pessoa que entra,
+ * com quantas já entram nesta rodada.
+ */
+type Budget = {
+  left: number
+  money: number
+  housing: number
+  joining: number
+  state: GameState
+}
+
+function pick(choice: Choice, budget: Budget): number {
   const afford = (fee: number) => {
     if (budget.left < fee) return false
     budget.left -= fee
@@ -198,11 +219,24 @@ function pick(choice: Choice, budget: { left: number; money: number }): number {
     case 'concurso':
     case 'meet':
       return choice.suggested
-    case 'propose':
-      // Casa quando o casamento cabe no dinheiro; senão, espera mais um ano.
-      if (budget.money < weddingCost()) return PROPOSE_OPTIONS.wait
+    case 'propose': {
+      // Casa quando o casamento cabe no dinheiro e o lugar de quem chega não
+      // custa mais que o salário dessa pessoa ou a parte da renda que a
+      // estratégia aceita pagar; senão, espera mais um ano.
+      const { state } = budget
+      const partner = state.members[choice.memberId]?.dating?.partner
+      const salary = partner
+        ? careerLevel(partner.career.id, partner.career.level).salaryPerMonth
+        : 0
+      const extra =
+        extraHousingCost(state, budget.joining + 1) - extraHousingCost(state, budget.joining)
+      if (budget.money < weddingCost() || extra > Math.max(salary, budget.housing)) {
+        return PROPOSE_OPTIONS.wait
+      }
       budget.money -= weddingCost()
+      budget.joining += 1
       return PROPOSE_OPTIONS.marry
+    }
   }
 }
 
@@ -212,11 +246,26 @@ const RESERVE_MONTHS = 3
 /** Folga na renda líquida por mês que a estratégia pede antes de mais um filho. */
 const CHILD_MARGIN = 2_000
 
+/** Folga na renda líquida por mês que a estratégia pede depois da mensalidade de um curso. */
+const COURSE_MARGIN = 500
+
+/**
+ * Parte da renda por mês que a estratégia aceita a mais de moradia por quem
+ * entra na família. Com o aluguel subindo a cada lugar, é o que segura o
+ * tamanho dela. Casar vem antes de ter filhos, para ninguém passar da idade de
+ * ter filhos esperando lugar, e o primeiro filho de cada casal vem antes do
+ * segundo: cada filho a mais do casal aceita a metade.
+ */
+const MARRIAGE_SHARE = 0.25
+const CHILD_SHARE = 0.02
+
 /**
  * Gasta o dinheiro na ordem da estratégia: recompensas das missões, cursos,
  * filhos e, por último, os imóveis que se pagam mais rápido, sempre guardando
  * `RESERVE_MONTHS` meses de despesa. Os cursos começam quando a mensalidade
- * deixa a folga de `CHILD_MARGIN` na renda.
+ * deixa a folga de `COURSE_MARGIN` na renda. Os filhos vêm quando a moradia a
+ * mais cabe na parte da renda de `CHILD_SHARE`, com lugar guardado para quem
+ * ainda vai casar.
  */
 export function spend(play: Autoplay): void {
   const date = missionDate(play)
@@ -225,20 +274,38 @@ export function spend(play: Autoplay): void {
     if (act(play, { type: 'claimMission', missionId: mission.id })) play.counters.rewards += 1
   }
 
-  // Cursos no ritmo normal, enquanto a mensalidade deixa folga na renda.
+  const reserve = () => RESERVE_MONTHS * familyRates(play.state).expense
+
+  // Cursos no ritmo normal, com a reserva guardada e folga na renda depois da mensalidade.
   for (const member of courseCandidates(play.state)) {
     const offer = courseOffer(member, play.state.clock.day, false)
-    if (!offer || familyRates(play.state).net - offer.fee < CHILD_MARGIN) continue
+    if (!offer || familyRates(play.state).net - offer.fee < COURSE_MARGIN) continue
+    if (play.state.money < reserve()) break
     if (act(play, { type: 'startCourse', memberId: member.id, dedicated: false })) {
       play.counters.courses += 1
     }
   }
 
-  const reserve = () => RESERVE_MONTHS * familyRates(play.state).expense
   const kids = childrenCount(play.state)
-  for (const member of couples(play.state)) {
-    if ((kids.get(member.id) ?? 0) >= play.maxChildren) continue
-    if (familyRates(play.state).net < CHILD_MARGIN) break
+  const day = play.state.clock.day
+  // Os casais com menos filhos primeiro e, entre eles, os mais velhos, que têm menos tempo.
+  const parents = couples(play.state)
+    .filter((member) => (kids.get(member.id) ?? 0) < play.maxChildren)
+    .map((member) => {
+      const partner = play.state.members[member.partnerId!]
+      const age = Math.max(ageOf(member, day), partner ? ageOf(partner, day) : 0)
+      return { member, kids: kids.get(member.id) ?? 0, age }
+    })
+    .sort((a, b) => a.kids - b.kids || b.age - a.age)
+  for (const { member, kids: count } of parents) {
+    const { net, income } = familyRates(play.state)
+    // O filho precisa de um lugar agora e, quando casar, de outro para quem chegar.
+    // Os lugares de quem ainda vai casar ficam guardados antes deles.
+    const reserved = futurePartners(play.state)
+    const later =
+      extraHousingCost(play.state, reserved + 2) - extraHousingCost(play.state, reserved)
+    if (net - extraHousingCost(play.state) < CHILD_MARGIN) break
+    if (later > (CHILD_SHARE / 2 ** count) * income) break
     const check = checkHaveChild(play.state, member.id)
     if (!check.ok || play.state.money < check.cost + reserve()) continue
     if (act(play, { type: 'haveChild', parentId: member.id })) play.counters.births += 1
@@ -249,6 +316,16 @@ export function spend(play: Autoplay): void {
     if (!choice || !act(play, { type: 'buyProperty', propertyId: choice.id })) break
     play.counters.properties += 1
   }
+}
+
+/**
+ * Quantas pessoas ainda podem casar e trazer alguém para morar com a família:
+ * as nascidas nela, vivas e sem cônjuge, crianças também.
+ */
+function futurePartners(state: GameState): number {
+  return livingMembers(state).filter(
+    (member) => member.partnerId === null && member.origin !== 'married',
+  ).length
 }
 
 /** Pessoas casadas e vivas, uma de cada casal. */
@@ -266,7 +343,7 @@ function couples(state: GameState): Member[] {
 function monthlyReturn(state: GameState, type: PropertyType): number {
   const rented = rentedPlaces(state)
   if (!type.home || rented <= 0) return type.rentPerMonth
-  const saved = Math.min(rented, type.home.places) * BALANCE.housing.rentPerPlace
+  const saved = rentFor(rented) - rentFor(Math.max(0, rented - type.home.places))
   return Math.max(type.rentPerMonth, saved - type.home.billsPerMonth)
 }
 

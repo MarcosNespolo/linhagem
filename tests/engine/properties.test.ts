@@ -7,6 +7,7 @@ import {
   affordableProperties,
   applyAction,
   deserialize,
+  extraHousingCost,
   familyRates,
   homesInUse,
   housingCost,
@@ -19,9 +20,11 @@ import {
   ownedCount,
   ownedLots,
   paybackYears,
+  placeRent,
   propertiesLeft,
   propertyPrice,
   rentedPlaces,
+  rentFor,
   rentPerMonth,
   visiblePropertyTypes,
   type GameState,
@@ -249,6 +252,31 @@ describe('imóveis', () => {
     const house = withHomes(parents, { apartamento: 1, casa: 1 })
     expect(homesInUse(house)).toEqual({ kitnet: 1, apartamento: 1 })
     expect(isRenting(house)).toBe(false)
+  })
+
+  it('o aluguel de cada lugar sobe depois dos primeiros, sem limite de lugares', () => {
+    const { rentPerPlace, basePlaces, rentGrowth } = BALANCE.housing
+    expect(placeRent(1)).toBe(rentPerPlace)
+    expect(placeRent(basePlaces)).toBe(rentPerPlace)
+    expectClose(placeRent(basePlaces + 1), rentPerPlace * (1 + rentGrowth))
+    expectClose(placeRent(basePlaces + 2), placeRent(basePlaces + 1) * (1 + rentGrowth))
+    // O aluguel de vários lugares é a soma do preço de cada um.
+    for (const places of [0, 1, basePlaces, basePlaces + 1, basePlaces + 10]) {
+      let sum = 0
+      for (let place = 1; place <= places; place++) sum += placeRent(place)
+      expectClose(rentFor(places), sum)
+    }
+
+    // Sem imóveis, todo mundo mora de aluguel, e quem chega paga o próximo lugar.
+    const couple = makeGame(2)
+    const living = basePlaces + 4
+    expectClose(housingCost(couple, living), rentFor(living))
+    expectClose(extraHousingCost(couple, 1, living), placeRent(living + 1))
+    expectClose(extraHousingCost(couple, 2, living), placeRent(living + 1) + placeRent(living + 2))
+
+    // Com lugar sobrando em casa, quem chega não paga aluguel; com a casa cheia, paga o primeiro lugar.
+    expect(extraHousingCost(withHomes(couple, { casa: 1 }))).toBe(0)
+    expect(extraHousingCost(withHomes(couple, { kitnet: 1 }))).toBe(rentPerPlace)
   })
 
   it('os imóveis ficam com a família quando as pessoas morrem', () => {

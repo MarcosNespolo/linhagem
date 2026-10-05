@@ -26,6 +26,9 @@ import { Sheet } from './sheet'
 type Topic = { title: string; icon: ReactNode; lines: string[] }
 
 const percent = (value: number) => `${Math.round(value * 100)}%`
+/** Quanto um lugar alugado custa a mais que o anterior: "o dobro" ou uma porcentagem. */
+const growth = (value: number) =>
+  value === 1 ? 'o dobro do anterior' : `${percent(value)} a mais que o anterior`
 const span = (days: number) => formatGameSpan(days, BALANCE.daysPerYear)
 
 /** As regras do jogo, poucas linhas por assunto, com os números do balanceamento. */
@@ -64,7 +67,8 @@ function topics(): Topic[] {
       icon: <House size={18} />,
       lines: [
         `Lugares: ${homes}.`,
-        `Sem lugar, ${formatMoney(housing.rentPerPlace)}/mês de aluguel por pessoa.`,
+        `Sem lugar em casa: aluguel de ${formatMoney(housing.rentPerPlace)}/mês por pessoa.`,
+        `Depois de ${housing.basePlaces} pessoas de aluguel, cada lugar a mais custa ${growth(housing.rentGrowth)}.`,
       ],
     },
     {

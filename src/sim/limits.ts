@@ -213,7 +213,7 @@ export type FinalMeasures = {
 /**
  * Confere cada limite. Crescimento e família só valem quando a partida dura o
  * bastante: com menos de duas horas completas, ou sem passar das primeiras
- * horas, ficam de fora.
+ * horas, ficam de fora. Uma família que acabou antes conta como zero pessoas.
  */
 export function evaluate(measures: Measures, final: FinalMeasures): LimitResult[] {
   const results: LimitResult[] = []
@@ -242,7 +242,7 @@ export function evaluate(measures: Measures, final: FinalMeasures): LimitResult[
       limit: `sobe toda hora, até ${LIMITS.maxHourlyGrowth}×`,
     })
   }
-  if (measures.familyMax > 0) {
+  if (measures.familyMin !== Infinity) {
     const { min, max } = LIMITS.family
     results.push({
       name: 'Família',

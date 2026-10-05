@@ -42,7 +42,15 @@ import { useGameStore } from '@/game/store'
 import { formatAge, formatGameSpan, formatMoney, formatMonthYear, formatRate } from '@/lib/format'
 import { PersonAvatar } from '../avatar/person-avatar'
 import { MemberStats } from '../member-stats'
-import { ageLabel, careerLine, formationLabel, levelTitle, lowerFirst, schoolName } from '../labels'
+import {
+  ageLabel,
+  careerLine,
+  extraHousingLabel,
+  formationLabel,
+  levelTitle,
+  lowerFirst,
+  schoolName,
+} from '../labels'
 import { button, card } from '../styles'
 import { Sheet } from './sheet'
 
@@ -666,7 +674,7 @@ function ProposeChoiceCard({
         disabled={missing > 0}
         icon={<Heart size={17} />}
         title="Casar"
-        detail={missing > 0 ? `Faltam ${formatMoney(missing)}` : undefined}
+        detail={missing > 0 ? `Faltam ${formatMoney(missing)}` : extraHousingLabel(game)}
         value={formatMoney(cost)}
         expense
         onSelect={() => onSelect(PROPOSE_OPTIONS.marry)}
