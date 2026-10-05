@@ -42,7 +42,7 @@ export type Action =
   /** Paga os cursos disponíveis, do mais barato ao mais caro, enquanto houver dinheiro. */
   | { type: 'payAllCourses' }
   /** Compra um imóvel do tipo, de um em um. */
-  | { type: 'buyProperty'; propertyId: PropertyId }
+  | { type: 'buyProperty'; propertyId: PropertyId; lot?: number }
   /**
    * Sorteia as missões do dia do aparelho, no formato AAAA-MM-DD. A data vem da
    * store, porque a engine não conhece o relógio do aparelho. As missões do dia
@@ -83,7 +83,7 @@ export function applyAction(state: GameState, action: Action): ActionResult {
     case 'payAllCourses':
       return payAllCourses(state)
     case 'buyProperty':
-      return buyProperty(state, action.propertyId)
+      return buyProperty(state, action.propertyId, action.lot)
     case 'drawMissions':
       return newMissions(state, action.date)
     case 'claimMission':
@@ -240,12 +240,12 @@ function payAllCourses(state: GameState): ActionResult {
   return done(draft, events)
 }
 
-function buyProperty(state: GameState, id: PropertyId): ActionResult {
-  const check = checkBuyProperty(state, id)
+function buyProperty(state: GameState, id: PropertyId, lot?: number): ActionResult {
+  const check = checkBuyProperty(state, id, lot)
   if (!check.ok) return check
 
   const draft = draftOf(state)
-  const events = [applyPurchase(draft, id, check.price)]
+  const events = [applyPurchase(draft, id, check.price, check.lot)]
   recordEvents(draft, events)
   return done(draft, events)
 }

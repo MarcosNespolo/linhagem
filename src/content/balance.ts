@@ -130,13 +130,13 @@ export const BALANCE = {
   },
 
   /**
-   * Imóveis, todos com preço fixo. O bairro tem `homeSupply` de cada imóvel de
-   * moradia (kitnet, apartamento e casa). Os comerciais ficam à venda poucos de
+   * Imóveis, todos com preço fixo. O bairro tem um lote para cada imóvel de
+   * moradia (`lots` em `PROPERTY_TYPES`). Os comerciais ficam à venda poucos de
    * cada vez: até `maxForSale` de cada tipo, e um novo aparece de tempos em
    * tempos (`market` em `PROPERTY_TYPES`). Com um ano do jogo por minuto, é o
    * ritmo das vendas que segura o aluguel, em vez de preços que sobem.
    */
-  properties: { homeSupply: 10, maxForSale: 2 },
+  properties: { maxForSale: 2 },
 
   /**
    * Arquivo da árvore: quando ela passa deste número de pessoas, os ramos

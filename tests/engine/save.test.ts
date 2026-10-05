@@ -1,5 +1,6 @@
 import { readdirSync, readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
+import { PROPERTY_TYPES } from '@/content/properties'
 import {
   advance,
   baseAptitude,
@@ -121,6 +122,19 @@ describe('save', () => {
         before && { id: before.id, level: before.level, levelSince: v2.clock.day },
       )
     }
+  })
+
+  it('a versão 12 ganha os lotes do bairro, nos primeiros de cada tipo', () => {
+    const json = readFileSync(new URL('save-v12.json', FIXTURES), 'utf8')
+    const v12 = JSON.parse(json) as GameState
+    const state = deserialize(json)
+    for (const type of PROPERTY_TYPES) {
+      const shown = Math.min(v12.properties[type.id] ?? 0, type.lots)
+      expect(state.lots[type.id] ?? []).toEqual(Array.from({ length: shown }, (_, lot) => lot))
+    }
+    expect(state.properties).toEqual(v12.properties)
+    expect(state.market).toEqual(v12.market)
+    expect(state.money).toBe(v12.money)
   })
 
   it('a versão 11 ganha os comerciais à venda no bairro, com o máximo de cada tipo', () => {

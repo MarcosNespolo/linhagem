@@ -15,7 +15,7 @@ export function showMember(memberId: MemberId): void {
   useUiStore.getState().openSheet({ kind: 'member', memberId })
 }
 
-/** Abre o painel de um tipo de imóvel, ao tocar num lote do bairro. */
-export function showProperty(propertyId: PropertyId): void {
-  useUiStore.getState().openSheet({ kind: 'property', propertyId })
+/** Abre o painel do imóvel tocado no bairro: aquele lote, com o que dá para fazer com ele. */
+export function showLot(lot: { typeId: PropertyId; lot: number }): void {
+  useUiStore.getState().openSheet({ kind: 'lot', propertyId: lot.typeId, lot: lot.lot })
 }

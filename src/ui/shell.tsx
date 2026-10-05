@@ -20,7 +20,7 @@ import { ConflictSheet } from './sheets/conflict-sheet'
 import { MemberSheet } from './sheets/member-sheet'
 import { MissionsSheet } from './sheets/missions-sheet'
 import { PartnerSheet } from './sheets/partner-sheet'
-import { PropertySheet } from './sheets/property-sheet'
+import { LotSheet } from './sheets/lot-sheet'
 import { RenameSheet } from './sheets/rename-sheet'
 import { button } from './styles'
 import { HistoryTab } from './tabs/history-tab'
@@ -142,8 +142,8 @@ function SheetHost({ game, sheet }: { game: GameState; sheet: Sheet }) {
       return <CloudLoginSheet />
     case 'missions':
       return <MissionsSheet game={game} />
-    case 'property':
-      return <PropertySheet game={game} propertyId={sheet.propertyId} />
+    case 'lot':
+      return <LotSheet game={game} propertyId={sheet.propertyId} lot={sheet.lot} />
   }
 }
 

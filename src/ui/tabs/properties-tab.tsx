@@ -33,7 +33,7 @@ import {
 } from '@/engine'
 import { useGameStore } from '@/game/store'
 import { formatMoney, formatRate } from '@/lib/format'
-import { showProperty } from '../flows'
+import { showLot } from '../flows'
 import { marketLine, paybackLabel } from '../labels'
 import { Pin } from '../neighborhood/buildings'
 import { cachedNeighborhoodLayout } from '../neighborhood/layout'
@@ -99,7 +99,7 @@ function NeighborhoodView({ game }: { game: GameState }) {
       </div>
       <MapLegend />
       <div className="ring-line overflow-hidden rounded-2xl ring-1">
-        <NeighborhoodMap layout={cachedNeighborhoodLayout(game)} onSelect={showProperty} />
+        <NeighborhoodMap layout={cachedNeighborhoodLayout(game)} onSelect={showLot} />
       </div>
     </div>
   )
@@ -124,7 +124,7 @@ function MapLegend() {
           À venda
         </li>
       </ul>
-      <p className="mt-1">Toque num prédio para ver o tipo e comprar.</p>
+      <p className="mt-1">Toque num prédio para abrir.</p>
     </div>
   )
 }
@@ -186,8 +186,8 @@ function PropertiesList({ game }: { game: GameState }) {
         </p>
         <p className="text-ink-soft mt-2 text-[13px]">
           Os imóveis em que a família não mora rendem aluguel todo mês e ficam com ela, mesmo quando
-          as pessoas morrem. Todos têm preço fixo. O bairro tem {BALANCE.properties.homeSupply}{' '}
-          kitnets, apartamentos e casas, e os comerciais ficam à venda poucos de cada vez: até{' '}
+          as pessoas morrem. Todos têm preço fixo. O bairro tem {PROPERTY_TYPES[0].lots} kitnets,
+          apartamentos e casas, e os comerciais ficam à venda poucos de cada vez: até{' '}
           {BALANCE.properties.maxForSale} de cada tipo, e um novo aparece de tempos em tempos. Cada
           tipo libera com a primeira compra do anterior.
         </p>

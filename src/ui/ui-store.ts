@@ -18,7 +18,7 @@ export type Sheet =
   | { kind: 'confirmNewFamily' }
   | { kind: 'cloudLogin' }
   | { kind: 'missions' }
-  | { kind: 'property'; propertyId: PropertyId }
+  | { kind: 'lot'; propertyId: PropertyId; lot: number }
 
 type UiStore = {
   tab: Tab

@@ -1,0 +1,524 @@
+{
+  "schemaVersion": 13,
+  "seed": 20261003,
+  "rngState": 3164286753,
+  "familyName": "Exemplo",
+  "startDate": "2026-10-03",
+  "clock": {
+    "day": 7834,
+    "tickOfDay": 0,
+    "paused": false
+  },
+  "lastSimulatedAt": 1760000000000,
+  "money": 18418770.027409714,
+  "nextMemberId": 6,
+  "suitors": {},
+  "choices": [
+    {
+      "type": "concurso",
+      "memberId": "m4",
+      "day": 7834,
+      "score": 773,
+      "options": [
+        {
+          "kind": "posse",
+          "level": 0
+        },
+        {
+          "kind": "privada"
+        }
+      ],
+      "suggested": 0
+    }
+  ],
+  "properties": {
+    "kitnet": 5,
+    "apartamento": 1
+  },
+  "market": {
+    "sala": 2,
+    "loja": 2,
+    "galpao": 2,
+    "predio": 2,
+    "fazenda": 2,
+    "shopping": 2
+  },
+  "lots": {
+    "kitnet": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "apartamento": [
+      0
+    ]
+  },
+  "missions": {
+    "date": "2026-10-06",
+    "list": [
+      {
+        "id": "investidor",
+        "goal": 3,
+        "progress": 3,
+        "base": 0,
+        "claimed": true
+      },
+      {
+        "id": "formatura",
+        "goal": 1,
+        "progress": 0,
+        "base": 0,
+        "claimed": false
+      },
+      {
+        "id": "casaCheia",
+        "goal": 3,
+        "progress": 0,
+        "base": 5,
+        "claimed": false
+      }
+    ]
+  },
+  "boosts": {
+    "incomeUntil": 11502000000
+  },
+  "stats": {
+    "simulatedMs": 1287780.095890411,
+    "totalEarned": 2922395.1780819413,
+    "totalSpent": 2503625.1506848997,
+    "rentEarned": 22090.52054794519,
+    "archived": 0
+  },
+  "log": [
+    {
+      "type": "promoted",
+      "day": 532,
+      "memberId": "m2",
+      "careerId": "agro",
+      "level": 2
+    },
+    {
+      "type": "born",
+      "day": 730,
+      "memberId": "m3"
+    },
+    {
+      "type": "schoolStarted",
+      "day": 821,
+      "memberId": "m3",
+      "stage": "creche",
+      "network": "particular"
+    },
+    {
+      "type": "born",
+      "day": 1460,
+      "memberId": "m4"
+    },
+    {
+      "type": "schoolStarted",
+      "day": 1551,
+      "memberId": "m4",
+      "stage": "creche",
+      "network": "particular"
+    },
+    {
+      "type": "schoolStarted",
+      "day": 1916,
+      "memberId": "m3",
+      "stage": "escola",
+      "network": "publica"
+    },
+    {
+      "type": "schoolStarted",
+      "day": 2647,
+      "memberId": "m4",
+      "stage": "escola",
+      "network": "publica"
+    },
+    {
+      "type": "mishap",
+      "day": 5133,
+      "memberId": "m1",
+      "kind": "surgery",
+      "cost": 41700
+    },
+    {
+      "type": "schoolStarted",
+      "day": 5934,
+      "memberId": "m3",
+      "stage": "medio",
+      "network": "federal",
+      "course": "enfermagem"
+    },
+    {
+      "type": "schoolStarted",
+      "day": 6665,
+      "memberId": "m4",
+      "stage": "medio",
+      "network": "federal",
+      "course": "informatica"
+    },
+    {
+      "type": "schoolFinished",
+      "day": 7030,
+      "memberId": "m3",
+      "formation": {
+        "level": "tecnico",
+        "course": "enfermagem"
+      }
+    },
+    {
+      "type": "enem",
+      "day": 7030,
+      "memberId": "m3",
+      "score": 634
+    },
+    {
+      "type": "schoolStarted",
+      "day": 7030,
+      "memberId": "m3",
+      "stage": "faculdade",
+      "network": "particular",
+      "degree": "direito"
+    },
+    {
+      "type": "becameAdult",
+      "day": 7300,
+      "memberId": "m3"
+    },
+    {
+      "type": "propertyBought",
+      "day": 7395,
+      "propertyId": "kitnet",
+      "count": 1
+    },
+    {
+      "type": "married",
+      "day": 7395,
+      "memberId": "m3",
+      "partnerId": "m5"
+    },
+    {
+      "type": "promoted",
+      "day": 7539,
+      "memberId": "m5",
+      "careerId": "comercio",
+      "level": 1
+    },
+    {
+      "type": "schoolFinished",
+      "day": 7760,
+      "memberId": "m4",
+      "formation": {
+        "level": "tecnico",
+        "course": "informatica"
+      }
+    },
+    {
+      "type": "enem",
+      "day": 7760,
+      "memberId": "m4",
+      "score": 749
+    },
+    {
+      "type": "concursoStarted",
+      "day": 7760,
+      "memberId": "m4"
+    },
+    {
+      "type": "promoted",
+      "day": 7760,
+      "memberId": "m1",
+      "careerId": "agro",
+      "level": 3
+    },
+    {
+      "type": "propertyBought",
+      "day": 7760,
+      "propertyId": "kitnet",
+      "count": 2
+    },
+    {
+      "type": "propertyBought",
+      "day": 7760,
+      "propertyId": "apartamento",
+      "count": 1
+    },
+    {
+      "type": "propertyBought",
+      "day": 7760,
+      "propertyId": "kitnet",
+      "count": 3
+    },
+    {
+      "type": "propertyBought",
+      "day": 7760,
+      "propertyId": "kitnet",
+      "count": 4
+    },
+    {
+      "type": "propertyBought",
+      "day": 7760,
+      "propertyId": "kitnet",
+      "count": 5
+    },
+    {
+      "type": "concurso",
+      "day": 7834,
+      "memberId": "m4",
+      "score": 773,
+      "level": 0
+    }
+  ],
+  "members": {
+    "m1": {
+      "id": "m1",
+      "firstName": "Vitória",
+      "gender": "f",
+      "birthDay": -10458,
+      "deathDay": null,
+      "leftHome": false,
+      "lifespan": 85,
+      "generation": 0,
+      "origin": "founder",
+      "parentIds": [],
+      "partnerId": "m2",
+      "marriedDay": 0,
+      "career": {
+        "id": "agro",
+        "level": 3,
+        "levelSince": 7760
+      },
+      "unemployedUntil": null,
+      "concurso": null,
+      "lastChildDay": 1460,
+      "traits": [],
+      "appearance": {
+        "skin": 5,
+        "hair": 1,
+        "eyes": 1,
+        "curl": 1,
+        "style": 640,
+        "freckles": false,
+        "glassesFrom": 25,
+        "beard": false,
+        "balding": false
+      },
+      "avatarSeed": "ahs7q2",
+      "education": {
+        "school": null,
+        "points": 0,
+        "past": {},
+        "formation": {
+          "level": "medio"
+        },
+        "enem": null,
+        "tutorSince": null
+      },
+      "aptitude": 660
+    },
+    "m2": {
+      "id": "m2",
+      "firstName": "Samuel",
+      "gender": "m",
+      "birthDay": -8958,
+      "deathDay": null,
+      "leftHome": false,
+      "lifespan": 76,
+      "generation": 0,
+      "origin": "founder",
+      "parentIds": [],
+      "partnerId": "m1",
+      "marriedDay": 0,
+      "career": {
+        "id": "agro",
+        "level": 2,
+        "levelSince": 532
+      },
+      "unemployedUntil": null,
+      "concurso": null,
+      "lastChildDay": 1460,
+      "traits": [],
+      "appearance": {
+        "skin": 3,
+        "hair": 1,
+        "eyes": 0,
+        "curl": 1,
+        "style": 162,
+        "freckles": true,
+        "glassesFrom": null,
+        "beard": true,
+        "balding": false
+      },
+      "avatarSeed": "ogju5p",
+      "education": {
+        "school": null,
+        "points": 0,
+        "past": {},
+        "formation": {
+          "level": "medio"
+        },
+        "enem": null,
+        "tutorSince": null
+      },
+      "aptitude": 599
+    },
+    "m3": {
+      "id": "m3",
+      "firstName": "Melissa",
+      "gender": "f",
+      "birthDay": 730,
+      "deathDay": null,
+      "leftHome": false,
+      "lifespan": 77,
+      "generation": 1,
+      "origin": "born",
+      "parentIds": [
+        "m1",
+        "m2"
+      ],
+      "partnerId": "m5",
+      "marriedDay": 7395,
+      "career": null,
+      "unemployedUntil": null,
+      "concurso": null,
+      "lastChildDay": null,
+      "traits": [],
+      "appearance": {
+        "skin": 3,
+        "hair": 1,
+        "eyes": 0,
+        "curl": 1,
+        "style": 560,
+        "freckles": true,
+        "glassesFrom": null,
+        "beard": false,
+        "balding": false
+      },
+      "avatarSeed": "dm3id9",
+      "education": {
+        "school": {
+          "stage": "faculdade",
+          "network": "particular",
+          "degree": "direito",
+          "yearsLeft": 3
+        },
+        "points": 80,
+        "past": {
+          "creche": "particular",
+          "escola": "publica",
+          "medio": "federal"
+        },
+        "formation": {
+          "level": "tecnico",
+          "course": "enfermagem"
+        },
+        "enem": 634,
+        "tutorSince": null
+      },
+      "aptitude": 598
+    },
+    "m4": {
+      "id": "m4",
+      "firstName": "Júlia",
+      "gender": "f",
+      "birthDay": 1460,
+      "deathDay": null,
+      "leftHome": false,
+      "lifespan": 87,
+      "generation": 1,
+      "origin": "born",
+      "parentIds": [
+        "m1",
+        "m2"
+      ],
+      "partnerId": null,
+      "marriedDay": null,
+      "career": null,
+      "unemployedUntil": null,
+      "concurso": {
+        "since": 7760,
+        "exams": 1,
+        "lastScore": 773
+      },
+      "lastChildDay": null,
+      "traits": [],
+      "appearance": {
+        "skin": 3,
+        "hair": 1,
+        "eyes": 1,
+        "curl": 1,
+        "style": 159,
+        "freckles": true,
+        "glassesFrom": 19,
+        "beard": false,
+        "balding": false
+      },
+      "avatarSeed": "s6j1dz",
+      "education": {
+        "school": null,
+        "points": 90,
+        "past": {
+          "creche": "particular",
+          "escola": "publica",
+          "medio": "federal"
+        },
+        "formation": {
+          "level": "tecnico",
+          "course": "informatica"
+        },
+        "enem": 749,
+        "tutorSince": null
+      },
+      "aptitude": 632
+    },
+    "m5": {
+      "id": "m5",
+      "firstName": "Ravi",
+      "gender": "m",
+      "birthDay": -127,
+      "deathDay": null,
+      "leftHome": false,
+      "lifespan": 91,
+      "generation": 1,
+      "origin": "married",
+      "parentIds": [],
+      "partnerId": "m3",
+      "marriedDay": 7395,
+      "career": {
+        "id": "comercio",
+        "level": 1,
+        "levelSince": 7539
+      },
+      "unemployedUntil": null,
+      "concurso": null,
+      "lastChildDay": null,
+      "traits": [],
+      "appearance": {
+        "skin": 5,
+        "hair": 1,
+        "eyes": 0,
+        "curl": 0,
+        "style": 823,
+        "freckles": false,
+        "glassesFrom": 17,
+        "beard": false,
+        "balding": false
+      },
+      "avatarSeed": "uft011",
+      "education": {
+        "school": null,
+        "points": 0,
+        "past": {},
+        "formation": {
+          "level": "medio"
+        },
+        "enem": null,
+        "tutorSince": null
+      },
+      "aptitude": 481
+    }
+  }
+}

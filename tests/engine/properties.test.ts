@@ -16,8 +16,10 @@ import {
   isPropertyUnlocked,
   isRenting,
   livingCost,
+  lotsForSale,
   nextListingDay,
   ownedCount,
+  ownedLots,
   paybackYears,
   propertiesLeft,
   propertyPrice,
@@ -63,7 +65,7 @@ describe('imóveis', () => {
   })
 
   it('os de moradia custam sempre o mesmo, e o bairro tem poucos de cada', () => {
-    const supply = BALANCE.properties.homeSupply
+    const supply = PROPERTY_TYPES[0].lots
     let state = withMoney(makeGame(), 1e9)
     for (let i = 0; i < supply; i++) {
       expect(propertyPrice('kitnet')).toBe(PROPERTY_TYPES[0].price)
@@ -84,7 +86,7 @@ describe('imóveis', () => {
     const start = withHomes(withMoney(makeGame(), 1e12), { kitnet: 1, apartamento: 1, casa: 1 })
     for (const type of PROPERTY_TYPES) {
       expect(propertiesLeft(start, type.id)).toBe(
-        type.market ? max : BALANCE.properties.homeSupply - (start.properties[type.id] ?? 0),
+        type.market ? max : type.lots - (start.properties[type.id] ?? 0),
       )
     }
     expect(start.market).toEqual(initialMarket())
@@ -102,6 +104,51 @@ describe('imóveis', () => {
       ok: false,
       error: 'soldOut',
     })
+  })
+
+  it('cada imóvel é um lote: a família compra o que escolher, ou o primeiro à venda', () => {
+    let state = withMoney(makeGame(), 1e9)
+    expect(lotsForSale(state, 'kitnet')).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+    state = expectOk(
+      applyAction(state, { type: 'buyProperty', propertyId: 'kitnet', lot: 6 }),
+    ).state
+    expect(ownedLots(state, 'kitnet')).toEqual([6])
+    expect(ownedCount(state, 'kitnet')).toBe(1)
+    expect(lotsForSale(state, 'kitnet')).not.toContain(6)
+    for (const lot of [6, 10, -1]) {
+      expect(applyAction(state, { type: 'buyProperty', propertyId: 'kitnet', lot })).toEqual({
+        ok: false,
+        error: 'lotNotForSale',
+      })
+    }
+    state = buy(state, 'kitnet')
+    expect(ownedLots(state, 'kitnet')).toEqual([0, 6])
+  })
+
+  it('nos comerciais, os anúncios ficam nos primeiros lotes livres, e com a rua cheia a compra fica fora dela', () => {
+    const start = withHomes(withMoney(makeGame(), 1e12), { kitnet: 1, apartamento: 1, casa: 1 })
+    expect(lotsForSale(start, 'sala')).toEqual([0, 1])
+    const state = expectOk(
+      applyAction(start, { type: 'buyProperty', propertyId: 'sala', lot: 1 }),
+    ).state
+    expect(ownedLots(state, 'sala')).toEqual([1])
+    expect(lotsForSale(state, 'sala')).toEqual([0])
+    expect(applyAction(state, { type: 'buyProperty', propertyId: 'sala', lot: 3 })).toEqual({
+      ok: false,
+      error: 'lotNotForSale',
+    })
+
+    const full: GameState = {
+      ...state,
+      properties: { ...state.properties, sala: 5 },
+      lots: { ...state.lots, sala: [0, 1, 2, 3, 4] },
+      market: { ...state.market, sala: 1 },
+    }
+    expect(lotsForSale(full, 'sala')).toEqual([])
+    const more = buy(full, 'sala')
+    expect(ownedCount(more, 'sala')).toBe(6)
+    expect(ownedLots(more, 'sala')).toEqual([0, 1, 2, 3, 4])
+    expect(propertiesLeft(more, 'sala')).toBe(0)
   })
 
   it('um comercial novo fica à venda a cada poucos anos, até o máximo', () => {

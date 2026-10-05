@@ -40,6 +40,7 @@ export function newGame({ seed, now, startDate, familyName }: NewGameOptions): G
     choices: [],
     properties: {},
     market: initialMarket(),
+    lots: {},
     missions: null,
     boosts: { incomeUntil: 0 },
     log: [],

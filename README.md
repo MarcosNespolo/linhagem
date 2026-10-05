@@ -209,13 +209,16 @@ saltar 24 vezes na segunda hora de jogo. Cada tipo libera com a primeira compra 
 compra é de um em um, sem venda nem financiamento por enquanto.
 
 A aba Imóveis abre no bairro desenhado, no traço dos avatares: uma rua para cada tipo, com os 10
-kitnets, apartamentos e casas do bairro e alguns lotes de cada comercial. Um coração marca onde a
-família mora, uma moeda os imóveis que rendem aluguel, e a placa de "vende" fica no próximo à
-venda. Só aparecem as ruas dos tipos liberados e a do próximo, com os terrenos em obras, então o
-bairro cresce com a família. Quando a família tem mais comerciais do que os lotes da rua, o
-primeiro mostra o total. Tocar num prédio abre o painel do tipo, com o desenho, os números e o
-botão de compra, e a vista em lista continua ao lado. O desenho só é refeito quando o bairro muda,
-não a cada segundo do jogo. O layout fica em `src/ui/neighborhood/layout.ts` e os desenhos em
+kitnets, apartamentos e casas do bairro e alguns lotes de cada comercial. Cada imóvel é um lote com
+endereço, e a engine guarda quais lotes são da família (`lots` no save). Um coração marca onde a
+família mora, uma moeda os imóveis que rendem aluguel, e cada um à venda tem a placa de "vende".
+Só aparecem as ruas dos tipos liberados e a do próximo, com os terrenos em obras, então o bairro
+cresce com a família. Tocar num prédio abre aquele imóvel: onde a família mora, quanto um alugado
+rende, de quem é, ou o preço e o botão que compra exatamente aquele lote. Os comerciais à venda
+ficam nos primeiros lotes livres da rua; quando a família tem mais do que os lotes, o primeiro
+mostra o total, e a compra de outro fica fora da rua. A lista continua ao lado, e comprar por ela
+leva o primeiro lote à venda. O desenho só é refeito quando o bairro muda, não a cada segundo do
+jogo. O layout fica em `src/ui/neighborhood/layout.ts` e os desenhos em
 `src/ui/neighborhood/buildings.tsx`.
 
 O aluguel entra na renda da família todo mês, sem depender de quem está vivo: os imóveis são da
