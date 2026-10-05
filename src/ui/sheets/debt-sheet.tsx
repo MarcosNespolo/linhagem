@@ -27,9 +27,8 @@ export function DebtSheet({ game }: { game: GameState }) {
       <p className="tabular text-ink-soft text-[15px]">
         Renda {formatRate(income)} · despesas {formatRate(-expense)}
       </p>
-      <p className="mt-3 text-[15px]">
-        Sem voltar ao azul em {formatGameSpan(BALANCE.debt.graceDays, BALANCE.daysPerYear)}, a
-        família vai à falência.
+      <p className="mt-3 text-[15px] font-bold">
+        Falência em {formatGameSpan(BALANCE.debt.graceDays, BALANCE.daysPerYear)} no vermelho
       </p>
       <button
         type="button"

@@ -18,9 +18,9 @@ export function ConflictSheet({ game, conflict }: { game: GameState; conflict: C
     <Sheet title="Qual família continuar?" onClose={() => setConflictHidden(true)}>
       <p className="text-ink-soft mt-2 text-[15px]">
         {sameFamily
-          ? 'A família mudou neste aparelho e em outro ao mesmo tempo.'
+          ? 'A família mudou aqui e em outro aparelho.'
           : 'Este aparelho e a nuvem têm famílias diferentes.'}{' '}
-        Escolha qual continuar. A outra fica guardada como cópia de segurança.
+        A outra fica como cópia de segurança.
       </p>
       <div className="mt-4 space-y-3">
         <Version title="Na nuvem" state={conflict.cloud} note={`Salva há ${savedAgo}`} />

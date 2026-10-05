@@ -44,6 +44,8 @@ Jogue em [linhagem.vercel.app](https://linhagem.vercel.app).
 - Ver o histórico na aba Família: nascimentos, namoros, casamentos, estudos, empregos, promoções,
   imprevistos e mortes
 - Voltar ao jogo e ver o resumo do que aconteceu enquanto esteve fora
+- Ler as regras na página Como jogar, em Ajustes; as telas do jogo mostram só números e rótulos
+  curtos
 - Entrar com e-mail, sem senha, para guardar a família na nuvem e continuar em outro aparelho
 
 A família começa com R$ 0. Os preços são fixos: um filho custa R$ 15 mil, um casamento, R$ 30 mil,
@@ -108,6 +110,10 @@ tests/                testes da engine, do save, da interface e da formatação
 A regra principal: a engine não conhece React, navegador nem rede. A interface só lê o estado e
 despacha ações; a store é o único ponto que chama a engine, grava o save e, mais tarde,
 sincroniza com a nuvem.
+
+As telas do jogo mostram números e rótulos curtos, sem frases que expliquem as regras. As regras
+ficam na página Como jogar, em Ajustes (`src/ui/sheets/how-to-play-sheet.tsx`), que monta cada
+linha com os números de `BALANCE`; quando um número muda, a página muda junto.
 
 ## Como o tempo funciona
 

@@ -120,7 +120,6 @@ function MapLegend() {
           À venda
         </li>
       </ul>
-      <p className="mt-1">Toque num prédio para abrir.</p>
     </div>
   )
 }
@@ -153,10 +152,9 @@ function PropertiesList({ game }: { game: GameState }) {
         <p className="tabular text-expense text-[24px] leading-8 font-black">
           {housing > 0 ? formatRate(-housing) : 'Nenhuma'}
         </p>
-        <p className="tabular text-ink-soft text-[14px]">{rentersLine(rented)}</p>
-        <p className="text-ink-soft mt-2 text-[13px]">
-          Quem não cabe nos imóveis da família paga aluguel:{' '}
-          {formatMoney(BALANCE.housing.rentPerPlace)} por pessoa por mês.
+        <p className="tabular text-ink-soft text-[14px]">
+          {rentersLine(rented)}
+          {rented > 0 ? ` · ${formatMoney(BALANCE.housing.rentPerPlace)} por pessoa` : ''}
         </p>
       </section>
 
@@ -171,13 +169,6 @@ function PropertiesList({ game }: { game: GameState }) {
             : total === 1
               ? '1 imóvel na família'
               : `${total} imóveis na família`}
-        </p>
-        <p className="text-ink-soft mt-2 text-[13px]">
-          Os imóveis em que a família não mora rendem aluguel todo mês e ficam com ela, mesmo quando
-          as pessoas morrem. Todos têm preço fixo. O bairro tem {PROPERTY_TYPES[0].lots} kitnets,
-          apartamentos e casas, e os comerciais ficam à venda poucos de cada vez: até{' '}
-          {BALANCE.properties.maxForSale} de cada tipo, e um novo aparece de tempos em tempos. Cada
-          tipo libera com a primeira compra do anterior.
         </p>
       </section>
 
@@ -253,8 +244,8 @@ function PropertyCard({
             ) : null}
             {type.home
               ? left > 0
-                ? `${left} à venda no bairro · se paga em ${payback} alugado`
-                : 'Não há mais à venda no bairro'
+                ? `${left} à venda · se paga em ${payback} alugado`
+                : 'Esgotado no bairro'
               : marketLine(game, type.id, left, payback)}
           </p>
           <button
@@ -269,8 +260,7 @@ function PropertyCard({
         </div>
       ) : (
         <p className="tabular text-ink-soft mt-3 text-[13px]">
-          Libera com a primeira compra de {previous?.name.toLowerCase()}. Custa {formatMoney(price)}{' '}
-          e se paga em {payback}.
+          Libera com {previous?.name.toLowerCase()} · {formatMoney(price)} · se paga em {payback}
         </p>
       )}
     </li>

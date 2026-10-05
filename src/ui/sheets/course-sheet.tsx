@@ -65,7 +65,7 @@ export function CourseSheet({ game, member }: { game: GameState; member: Member 
           active={dedicated}
           icon={<Zap size={17} />}
           title="Com dedicação"
-          note="Sem namoro nem filho até terminar"
+          note="Sem namoro nem filho"
           onSelect={() => setDedicated(true)}
         />
       </div>

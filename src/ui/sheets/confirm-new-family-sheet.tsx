@@ -13,9 +13,8 @@ export function ConfirmNewFamilySheet({ game }: { game: GameState }) {
   return (
     <Sheet title="Começar outra família?" onClose={closeSheet}>
       <p className="text-ink-soft mt-2 text-[15px]">
-        A família {game.familyName} será substituída{' '}
-        {signedIn ? 'neste aparelho e na nuvem' : 'neste aparelho'} quando a nova começar. Não dá
-        para voltar atrás.
+        A família {game.familyName} sai{' '}
+        {signedIn ? 'deste aparelho e da nuvem.' : 'deste aparelho.'} Não dá para desfazer.
       </p>
       <div className="mt-5 flex flex-col gap-2">
         <button

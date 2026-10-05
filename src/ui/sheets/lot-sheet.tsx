@@ -158,7 +158,7 @@ function BuyElsewhere({ game, type }: { game: GameState; type: PropertyType }) {
 function neighborLine(game: GameState, type: PropertyType): string {
   const next = nextListingDay(game, type.id)
   if (next === null) return 'Não está à venda'
-  return `Não está à venda · o próximo anúncio sai em ${formatGameSpan(next - game.clock.day, BALANCE.daysPerYear)}`
+  return `Não está à venda · próximo em ${formatGameSpan(next - game.clock.day, BALANCE.daysPerYear)}`
 }
 
 /** O que falta para o tipo sair das obras: a primeira compra do tipo anterior. */
@@ -166,6 +166,6 @@ function lockedLine(type: PropertyType): string {
   const previous = PROPERTY_TYPES[PROPERTY_TYPES.findIndex((other) => other.id === type.id) - 1]
   const first = previous?.gender === 'f' ? 'a primeira' : 'o primeiro'
   const price = formatMoney(propertyPrice(type.id))
-  if (!previous) return `Vai custar ${price}`
-  return `Libera quando a família comprar ${first} ${previous.name.toLowerCase()} · vai custar ${price}`
+  if (!previous) return price
+  return `Libera ao comprar ${first} ${previous.name.toLowerCase()} · ${price}`
 }

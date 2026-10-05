@@ -375,17 +375,17 @@ export function childStatus(
   if (check.ok) return `Custa ${formatMoney(cost)}`
   switch (check.error) {
     case 'tooYoung':
-      return `Os dois precisam ter ${BALANCE.children.minParentAge} anos`
+      return `A partir dos ${BALANCE.children.minParentAge} anos`
     case 'tooOld':
-      return 'Passaram da idade de ter filhos'
+      return 'Passaram da idade'
     case 'cooldown': {
       const days = childCooldownDaysLeft(state, parent.id)
       return `Próximo filho em ${formatDuration(daysToSeconds(days))}`
     }
     case 'notEnoughMoney':
-      return `Custa ${formatMoney(cost)}, faltam ${formatMoney(cost - state.money)}`
+      return `Custa ${formatMoney(cost)} · faltam ${formatMoney(cost - state.money)}`
     case 'dedicated':
-      return 'Curso com dedicação até terminar'
+      return 'Em curso com dedicação'
     default:
       return ''
   }
@@ -395,8 +395,8 @@ export function childStatus(
 export function marketLine(game: GameState, id: PropertyId, left: number, payback: string): string {
   const next = nextListingDay(game, id)
   const wait = next === null ? '' : formatGameSpan(next - game.clock.day, BALANCE.daysPerYear)
-  if (left <= 0) return `Nenhum à venda · o próximo aparece em ${wait}`
-  const more = left < BALANCE.properties.maxForSale ? ` · outro aparece em ${wait}` : ''
+  if (left <= 0) return `Nenhum à venda · próximo em ${wait}`
+  const more = left < BALANCE.properties.maxForSale ? ` · outro em ${wait}` : ''
   return `${left} à venda · se paga em ${payback}${more}`
 }
 
