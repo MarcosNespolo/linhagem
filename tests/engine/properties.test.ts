@@ -50,7 +50,6 @@ function buy(state: GameState, ...ids: PropertyId[]): GameState {
 
 describe('imóveis', () => {
   it('são nove tipos, cada um de 3 a 6 vezes o anterior, que se pagam de 10 a 70 anos', () => {
-    const state = makeGame()
     expect(PROPERTY_TYPES).toHaveLength(9)
     const paybacks = PROPERTY_TYPES.map((type) => paybackYears(type.id))
     expect(Math.round(paybacks[0])).toBe(10)

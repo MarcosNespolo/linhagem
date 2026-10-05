@@ -27,8 +27,9 @@ Jogue em [linhagem.vercel.app](https://linhagem.vercel.app).
 - Casar quem fez 18 anos, escolhendo entre pessoas sugeridas, cada uma com formação e emprego; o
   cônjuge entra na família e trabalha. Sem lugar em casa, o casal sai para formar a própria
   família e continua na árvore como um ramo
-- Comprar imóveis na aba Imóveis: kitnets, apartamentos e casas dão lugar para a família morar, e
-  os que ela não usa, como os comerciais, rendem aluguel todo mês
+- Comprar imóveis na aba Imóveis, que mostra o bairro desenhado: kitnets, apartamentos e casas
+  dão lugar para a família morar, e os que ela não usa, como os comerciais, rendem aluguel todo
+  mês
 - Cumprir as três missões do dia, que valem até a meia-noite, e pegar a recompensa: meses de renda
   ou a renda em dobro por 5 anos do jogo
 - Acompanhar o dinheiro em reais, com salários, aluguel, custo de vida (mercado, plano de saúde,
@@ -84,18 +85,19 @@ Abra http://localhost:3000.
 ## Estrutura
 
 ```text
-app/              rotas do Next.js, manifest da PWA e ícones
-src/engine/       simulação pura em TypeScript: estado, relógio, economia, casamento, save
-src/content/      carreiras, escolas, nomes, aparência e números de balanceamento
-src/sim/          jogador automático e limites da simulação de balanceamento
-src/game/         store, loop do jogo, save local e sincronização com a nuvem
-src/ui/           interface: HUD, abas, painéis e avisos
-src/ui/avatar/    avatares procedurais que mudam com a idade
-src/ui/tree/      layout e desenho da árvore da família
-src/lib/          utilitários de formatação
-supabase/         configuração local e migrations do banco
-scripts/          ferramentas de desenvolvimento
-tests/            testes da engine, do save, da interface e da formatação
+app/                  rotas do Next.js, manifest da PWA e ícones
+src/engine/           simulação pura em TypeScript: estado, relógio, economia, casamento, save
+src/content/          carreiras, escolas, nomes, aparência e números de balanceamento
+src/sim/              jogador automático e limites da simulação de balanceamento
+src/game/             store, loop do jogo, save local e sincronização com a nuvem
+src/ui/               interface: HUD, abas, painéis e avisos
+src/ui/avatar/        avatares procedurais que mudam com a idade
+src/ui/tree/          layout e desenho da árvore da família
+src/ui/neighborhood/  layout e desenho do bairro da aba Imóveis
+src/lib/              utilitários de formatação
+supabase/             configuração local e migrations do banco
+scripts/              ferramentas de desenvolvimento
+tests/                testes da engine, do save, da interface e da formatação
 ```
 
 A regra principal: a engine não conhece React, navegador nem rede. A interface só lê o estado e
@@ -205,6 +207,16 @@ dinheiro. Alugados, os de moradia se pagam em 10 a 13 anos do jogo, e os comerci
 um ano por minuto, aluguéis que se pagassem em 15 a 30 anos, como na vida real, fariam a renda
 saltar 24 vezes na segunda hora de jogo. Cada tipo libera com a primeira compra do anterior, e a
 compra é de um em um, sem venda nem financiamento por enquanto.
+
+A aba Imóveis abre no bairro desenhado, no traço dos avatares: uma rua para cada tipo, com os 10
+kitnets, apartamentos e casas do bairro e alguns lotes de cada comercial. Um coração marca onde a
+família mora, uma moeda os imóveis que rendem aluguel, e a placa de "vende" fica no próximo à
+venda. Só aparecem as ruas dos tipos liberados e a do próximo, com os terrenos em obras, então o
+bairro cresce com a família. Quando a família tem mais comerciais do que os lotes da rua, o
+primeiro mostra o total. Tocar num prédio abre o painel do tipo, com o desenho, os números e o
+botão de compra, e a vista em lista continua ao lado. O desenho só é refeito quando o bairro muda,
+não a cada segundo do jogo. O layout fica em `src/ui/neighborhood/layout.ts` e os desenhos em
+`src/ui/neighborhood/buildings.tsx`.
 
 O aluguel entra na renda da família todo mês, sem depender de quem está vivo: os imóveis são da
 família e ficam quando as pessoas morrem. O resumo da volta ao jogo mostra quanto veio de aluguel.

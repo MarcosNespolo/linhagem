@@ -20,6 +20,7 @@ import { ConflictSheet } from './sheets/conflict-sheet'
 import { MemberSheet } from './sheets/member-sheet'
 import { MissionsSheet } from './sheets/missions-sheet'
 import { PartnerSheet } from './sheets/partner-sheet'
+import { PropertySheet } from './sheets/property-sheet'
 import { RenameSheet } from './sheets/rename-sheet'
 import { button } from './styles'
 import { HistoryTab } from './tabs/history-tab'
@@ -31,12 +32,15 @@ import { WorkTab } from './tabs/work-tab'
 import { Toasts } from './toasts'
 import { FamilyTree } from './tree/family-tree'
 import { Hud } from './hud'
-import { useUiStore, type FamilyView, type Sheet } from './ui-store'
+import { useUiStore, type FamilyView, type PropertiesView, type Sheet } from './ui-store'
 
 /** Tela do jogo: HUD em cima, a aba escolhida no meio e a navegação embaixo. */
 export function Shell({ game }: { game: GameState }) {
   const tab = useUiStore((store) => store.tab)
   const familyView = useUiStore((store) => store.familyView)
+  const setFamilyView = useUiStore((store) => store.setFamilyView)
+  const propertiesView = useUiStore((store) => store.propertiesView)
+  const setPropertiesView = useUiStore((store) => store.setPropertiesView)
   const sheet = useUiStore((store) => store.sheet)
   const showDeceased = useUiStore((store) => store.showDeceased)
   const hiddenChoices = useUiStore((store) => store.hiddenChoices)
@@ -57,7 +61,7 @@ export function Shell({ game }: { game: GameState }) {
       <main className="relative min-h-0 flex-1 overflow-hidden">
         {tab === 'family' ? (
           <div className="flex h-full flex-col">
-            <FamilyViewSwitch />
+            <ViewSwitch views={FAMILY_VIEWS} value={familyView} onChange={setFamilyView} />
             <div className="relative min-h-0 flex-1">
               {familyView === 'history' ? (
                 <div className="h-full overflow-y-auto overscroll-contain">
@@ -79,12 +83,22 @@ export function Shell({ game }: { game: GameState }) {
               )}
             </div>
           </div>
+        ) : tab === 'properties' ? (
+          <div className="flex h-full flex-col">
+            <ViewSwitch
+              views={PROPERTIES_VIEWS}
+              value={propertiesView}
+              onChange={setPropertiesView}
+            />
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+              <PropertiesTab game={game} view={propertiesView} />
+            </div>
+          </div>
         ) : (
           <div className="h-full overflow-y-auto overscroll-contain">
             {tab === 'love' ? <LoveTab game={game} actions={actions} /> : null}
             {tab === 'studies' ? <StudiesTab game={game} /> : null}
             {tab === 'work' ? <WorkTab game={game} /> : null}
-            {tab === 'properties' ? <PropertiesTab game={game} /> : null}
             {tab === 'settings' ? <SettingsTab game={game} /> : null}
           </div>
         )}
@@ -128,6 +142,8 @@ function SheetHost({ game, sheet }: { game: GameState; sheet: Sheet }) {
       return <CloudLoginSheet />
     case 'missions':
       return <MissionsSheet game={game} />
+    case 'property':
+      return <PropertySheet game={game} propertyId={sheet.propertyId} />
   }
 }
 
@@ -136,22 +152,33 @@ const FAMILY_VIEWS: { id: FamilyView; label: string }[] = [
   { id: 'history', label: 'Histórico' },
 ]
 
-/** Seletor no alto da aba Família: a árvore ou o histórico. */
-function FamilyViewSwitch() {
-  const view = useUiStore((store) => store.familyView)
-  const setView = useUiStore((store) => store.setFamilyView)
+const PROPERTIES_VIEWS: { id: PropertiesView; label: string }[] = [
+  { id: 'map', label: 'Bairro' },
+  { id: 'list', label: 'Lista' },
+]
+
+/** Seletor no alto da aba: a árvore ou o histórico na Família, o bairro ou a lista nos Imóveis. */
+function ViewSwitch<View extends string>({
+  views,
+  value,
+  onChange,
+}: {
+  views: { id: View; label: string }[]
+  value: View
+  onChange: (view: View) => void
+}) {
   return (
     <div className="border-line bg-surface shrink-0 border-b px-4 py-2">
       <div role="tablist" className="bg-canvas mx-auto flex max-w-xs rounded-full p-1">
-        {FAMILY_VIEWS.map(({ id, label }) => (
+        {views.map(({ id, label }) => (
           <button
             key={id}
             type="button"
             role="tab"
-            aria-selected={view === id}
-            onClick={() => setView(id)}
+            aria-selected={value === id}
+            onClick={() => onChange(id)}
             className={`flex-1 rounded-full py-1.5 text-[14px] font-bold transition ${
-              view === id ? 'bg-surface text-leaf-strong shadow-sm' : 'text-ink-soft'
+              value === id ? 'bg-surface text-leaf-strong shadow-sm' : 'text-ink-soft'
             }`}
           >
             {label}

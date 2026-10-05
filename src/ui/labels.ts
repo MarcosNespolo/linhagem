@@ -1,6 +1,6 @@
 import { BALANCE } from '@/content/balance'
 import { careerLevel, getCareer, PUBLIC_CAREER, type CareerId } from '@/content/careers'
-import { propertyType } from '@/content/properties'
+import { propertyType, type PropertyId } from '@/content/properties'
 import {
   degree,
   isHigherStage,
@@ -22,6 +22,7 @@ import {
   isUnemployed,
   livesAway,
   needsCourse,
+  nextListingDay,
   promotionDay,
   type ChildCheck,
   type Enrollment,
@@ -378,4 +379,18 @@ export function childStatus(
     default:
       return ''
   }
+}
+
+/** Quantos comerciais do tipo estão à venda, quanto tempo levam para se pagar e quando sai o próximo. */
+export function marketLine(game: GameState, id: PropertyId, left: number, payback: string): string {
+  const next = nextListingDay(game, id)
+  const wait = next === null ? '' : formatGameSpan(next - game.clock.day, BALANCE.daysPerYear)
+  if (left <= 0) return `Nenhum à venda · o próximo aparece em ${wait}`
+  const more = left < BALANCE.properties.maxForSale ? ` · outro aparece em ${wait}` : ''
+  return `${left} à venda · se paga em ${payback}${more}`
+}
+
+/** Prazo para o imóvel se pagar. Acima de mil anos, o número exato não ajuda a decidir. */
+export function paybackLabel(years: number): string {
+  return years >= 1000 ? 'mais de mil anos' : `${years} anos`
 }

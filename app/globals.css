@@ -89,3 +89,18 @@ body {
     animation: toast-in 200ms ease-out;
   }
 }
+
+/* Lotes do bairro, na aba Imóveis: tocar abre o painel do tipo. */
+.lot {
+  cursor: pointer;
+  outline: none;
+}
+
+.lot:active {
+  opacity: 0.8;
+}
+
+.lot:focus-visible .lot-hit {
+  stroke: var(--color-leaf);
+  stroke-width: 2;
+}

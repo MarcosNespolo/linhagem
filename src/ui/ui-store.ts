@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import type { PropertyId } from '@/content/properties'
 import type { MemberId } from '@/engine'
 
 /** Abas da barra de baixo, mais Ajustes, que abre pela engrenagem do topo. */
@@ -7,6 +8,9 @@ export type Tab = 'family' | 'love' | 'studies' | 'work' | 'properties' | 'setti
 /** O que a aba Família mostra: a árvore ou o histórico. */
 export type FamilyView = 'tree' | 'history'
 
+/** O que a aba Imóveis mostra: o bairro desenhado ou a lista dos tipos. */
+export type PropertiesView = 'map' | 'list'
+
 export type Sheet =
   | { kind: 'member'; memberId: MemberId }
   | { kind: 'partner'; memberId: MemberId }
@@ -14,10 +18,12 @@ export type Sheet =
   | { kind: 'confirmNewFamily' }
   | { kind: 'cloudLogin' }
   | { kind: 'missions' }
+  | { kind: 'property'; propertyId: PropertyId }
 
 type UiStore = {
   tab: Tab
   familyView: FamilyView
+  propertiesView: PropertiesView
   sheet: Sheet | null
   /** Mostrar na árvore quem já faleceu e não deixou descendentes vivos. */
   showDeceased: boolean
@@ -28,6 +34,7 @@ type UiStore = {
   hiddenChoices: string | null
   setTab: (tab: Tab) => void
   setFamilyView: (view: FamilyView) => void
+  setPropertiesView: (view: PropertiesView) => void
   openSheet: (sheet: Sheet) => void
   closeSheet: () => void
   setShowDeceased: (value: boolean) => void
@@ -62,11 +69,13 @@ function writePrefs(prefs: Prefs): void {
 export const useUiStore = create<UiStore>()((set) => ({
   tab: 'family',
   familyView: 'tree',
+  propertiesView: 'map',
   sheet: null,
   showDeceased: false,
   hiddenChoices: null,
   setTab: (tab) => set({ tab, sheet: null }),
   setFamilyView: (familyView) => set({ familyView }),
+  setPropertiesView: (propertiesView) => set({ propertiesView }),
   openSheet: (sheet) => set({ sheet }),
   closeSheet: () => set({ sheet: null }),
   setShowDeceased: (showDeceased) => {

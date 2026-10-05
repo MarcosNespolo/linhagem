@@ -1,3 +1,4 @@
+import type { PropertyId } from '@/content/properties'
 import type { MemberId } from '@/engine'
 import { useGameStore } from '@/game/store'
 import { useUiStore } from './ui-store'
@@ -12,4 +13,9 @@ export function seekPartner(memberId: MemberId): void {
 /** Abre o painel de um membro. */
 export function showMember(memberId: MemberId): void {
   useUiStore.getState().openSheet({ kind: 'member', memberId })
+}
+
+/** Abre o painel de um tipo de imóvel, ao tocar num lote do bairro. */
+export function showProperty(propertyId: PropertyId): void {
+  useUiStore.getState().openSheet({ kind: 'property', propertyId })
 }
