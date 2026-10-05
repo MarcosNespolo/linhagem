@@ -12,8 +12,14 @@ export const BALANCE = {
   secondsPerGameMonth: 5,
   /** Dias por ano do jogo. Não há anos bissextos. */
   daysPerYear: 365,
-  /** Tempo de jogo que passa, no máximo, enquanto o jogo está fechado, em anos do jogo. */
-  offlineCapYears: 5,
+  /**
+   * Tempo fora do jogo, fechado ou em segundo plano: passa mais devagar,
+   * `monthsPerMinute` meses do jogo por minuto real, até `capYears` anos do
+   * jogo. Até `graceSeconds` segundos sem o relógio andar ainda contam no
+   * ritmo normal, porque o relógio da página anda a cada segundo e pode
+   * atrasar um pouco.
+   */
+  away: { monthsPerMinute: 1, capYears: 1, graceSeconds: 2 },
 
   /** Dinheiro no início da partida: a família começa do zero. */
   startingMoney: 0,

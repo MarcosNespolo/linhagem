@@ -11,7 +11,7 @@ const SYNC_MS = 30_000
  * Liga o relógio do jogo enquanto o componente estiver montado: carrega o
  * save, avança a cada segundo, grava a cada 5 s e sempre que a aba sai de
  * vista. Com a aba escondida o relógio não anda; ao voltar, o tempo fora é
- * simulado de uma vez, com o mesmo limite do progresso offline.
+ * simulado de uma vez, como com o jogo fechado: mais devagar e com teto.
  *
  * Com uma conta conectada, sincroniza com a nuvem ao abrir, a cada 30 s, ao
  * esconder a aba e ao voltar para ela.

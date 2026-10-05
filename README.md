@@ -46,7 +46,8 @@ Jogue em [linhagem.vercel.app](https://linhagem.vercel.app).
 - Ver a família numa árvore com zoom e arrasto, com quem já morreu esmaecido
 - Ver o histórico na aba Família: nascimentos, namoros, casamentos, estudos, empregos, promoções,
   imprevistos e mortes
-- Voltar ao jogo e ver o resumo do que aconteceu enquanto esteve fora
+- Voltar ao jogo e ver o resumo do que aconteceu enquanto esteve fora; fora do jogo, o tempo passa
+  mais devagar, 1 mês por minuto, até 1 ano
 - Ler as regras na página Como jogar, em Ajustes; as telas do jogo mostram só números e rótulos
   curtos
 - Entrar com e-mail, sem senha, para guardar a família na nuvem e continuar em outro aparelho
@@ -225,8 +226,11 @@ e da pessoa, sem gastar o gerador do jogo, então o resultado é o mesmo avança
 poucos. Demissões e cirurgias aparecem como aviso; o resto fica no histórico.
 
 Com o jogo fechado ou a aba escondida, o relógio não anda. Ao voltar, o tempo fora é simulado de
-uma vez, com limite de 5 anos do jogo (`BALANCE.offlineCapYears`), e para na primeira escolha que
-aparecer. A pausa congela o relógio, inclusive com o jogo fechado.
+uma vez e mais devagar que o jogo: cada minuto fora vale 1 mês do jogo, até 1 ano
+(`BALANCE.away`, em `elapsedToGameMs`), e a simulação para na primeira escolha que aparecer.
+Assim, 5 minutos fora são 5 meses do jogo, e não 5 anos. Até 2 segundos sem o relógio andar ainda
+contam no ritmo normal, porque o relógio da página anda a cada segundo e pode atrasar. A pausa
+congela o relógio, inclusive com o jogo fechado.
 
 O relógio conta o tempo em unidades inteiras, então avançar de uma vez ou aos poucos deixa o
 calendário exatamente igual.
@@ -334,7 +338,7 @@ A simulação confere sete limites (`src/sim/limits.ts`) e sai com erro se algum
 | Família       | entre 60 e 150 pessoas vivas depois das 3 primeiras horas                     |
 | Save          | abaixo de 1 MB, o limite de cada save na nuvem                                |
 | Relógio       | cada segundo de jogo custa menos de 2 ms com a família do fim                 |
-| Volta ao jogo | 5 anos de progresso offline em menos de 200 ms                                |
+| Volta ao jogo | 1 ano fora do jogo, o máximo, em menos de 200 ms                              |
 
 O começo é com uma pessoa só, que guarda o pouco que sobra para o primeiro curso: com as seeds de
 1 a 4, ela casa entre 4 e 8 minutos de jogo e tem o primeiro filho entre 8 e 12. A família tem de
@@ -344,8 +348,8 @@ a R$ 850 mil por mês na primeira hora a cerca de R$ 410 milhões na décima, cr
 vezes na segunda hora e 1,2 vez na última. Com a primeira hora mais fraca, o salto da segunda
 passou do antigo limite de 10 vezes em 2 de 12 seeds, e o limite subiu para 12. Só a seed 1 entra
 no vermelho, uma vez, no começo, e se recupera. O save fica perto de 560 KB, cada segundo de jogo
-custa cerca de 1,1 ms, e 5 anos de progresso offline, cerca de 85 ms. Cada seed leva uns 2 minutos
-para simular as 10 horas. O CI roda uma versão de 1 hora com duas seeds
+custa cerca de 1,1 ms, e o máximo de 1 ano fora do jogo, cerca de 18 ms. Cada seed leva uns 2
+minutos para simular as 10 horas. O CI roda uma versão de 1 hora com duas seeds
 (`tests/sim/balance.test.ts`), com os limites que já valem nesse tempo.
 
 ## Avatares

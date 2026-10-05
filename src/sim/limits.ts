@@ -18,7 +18,7 @@ import {
   type Member,
 } from '../engine'
 import { BALANCE } from '../content/balance'
-import { formatMoney } from '../lib/format'
+import { formatGameSpan, formatMoney } from '../lib/format'
 import { clockMs, courseShortfall, strategyPicks } from './autoplay'
 
 const MINUTE = 60_000
@@ -42,8 +42,8 @@ export const LIMITS = {
   saveBytes: 1_048_576,
   /** Relógio: milissegundos de processamento por segundo de jogo. */
   msPerGameSecond: 2,
-  /** Volta ao jogo: anos de progresso offline e o tempo máximo para simular. */
-  offline: { years: BALANCE.offlineCapYears, maxMs: 200 },
+  /** Volta ao jogo: o teto do tempo fora, em anos do jogo, e o tempo máximo para simular. */
+  offline: { years: BALANCE.away.capYears, maxMs: 200 },
 } as const
 
 /**
@@ -162,9 +162,9 @@ export function clockCost(start: GameState, seconds = 120): number {
 }
 
 /**
- * Milissegundos para simular o progresso offline máximo de uma vez. O jogo
+ * Milissegundos para simular de uma vez o teto do tempo fora do jogo. O jogo
  * para na primeira escolha; aqui as escolhas são respondidas fora da conta,
- * para medir os anos inteiros. Vale a menor de três medidas, depois de uma
+ * para medir o teto inteiro. Vale a menor de três medidas, depois de uma
  * para esquentar o código.
  */
 export function offlineCost(start: GameState): number {
@@ -270,7 +270,7 @@ export function evaluate(measures: Measures, final: FinalMeasures): LimitResult[
   results.push({
     name: 'Volta ao jogo',
     ok: final.offlineMs < LIMITS.offline.maxMs,
-    value: `${LIMITS.offline.years} anos em ${Math.round(final.offlineMs)} ms`,
+    value: `${formatGameSpan(LIMITS.offline.years * BALANCE.daysPerYear, BALANCE.daysPerYear)} em ${Math.round(final.offlineMs)} ms`,
     limit: `${LIMITS.offline.maxMs} ms`,
   })
   return results

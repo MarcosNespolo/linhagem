@@ -312,7 +312,7 @@ export type GameState = {
   /** Data do calendário que corresponde ao dia 0, no formato AAAA-MM-DD. */
   startDate: string
   clock: Clock
-  /** Instante real (epoch em ms) até onde o estado foi simulado. Base do progresso offline. */
+  /** Instante real (epoch em ms) até onde o estado foi simulado. Base do tempo fora do jogo. */
   lastSimulatedAt: number
   /** Dinheiro da família. Pode ficar negativo: é a dívida. */
   money: number

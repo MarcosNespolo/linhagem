@@ -44,7 +44,7 @@ function topics(): Topic[] {
     mission.reward.kind === 'boost' ? [mission.reward.years] : [],
   )[0]
   const stage = school.stages
-  const { living } = BALANCE
+  const { living, away } = BALANCE
   const thirteenth = Number(BALANCE.thirteenthSalaryDate.slice(3))
   return [
     {
@@ -60,8 +60,8 @@ function topics(): Topic[] {
       icon: <Clock size={18} />,
       lines: [
         `1 ano a cada ${formatDuration(12 * BALANCE.secondsPerGameMonth)}.`,
+        `Fora do jogo, ${span((away.monthsPerMinute * BALANCE.daysPerYear) / 12)} por minuto, até ${span(away.capYears * BALANCE.daysPerYear)}.`,
         'Para nas escolhas e na pausa.',
-        `Com o jogo fechado, passam até ${BALANCE.offlineCapYears} anos.`,
       ],
     },
     {

@@ -8,6 +8,7 @@ import {
   bestOffer,
   calendarDate,
   daysToBankruptcy,
+  elapsedToGameMs,
   familyRates,
   isEnrollmentDay,
   isWaiting,
@@ -342,20 +343,64 @@ function broke() {
   return withMoney(state, 90)
 }
 
-describe('advanceTo', () => {
-  it('simula o tempo real desde a última simulação', () => {
-    const start = makeGame()
-    const { state } = advanceTo(start, start.lastSimulatedAt + 10_000)
-    expect(state.stats.simulatedMs).toBe(10_000)
-    expect(state.lastSimulatedAt).toBe(start.lastSimulatedAt + 10_000)
+describe('elapsedToGameMs', () => {
+  const minute = 60_000
+  const month = days(BALANCE.daysPerYear / 12)
+
+  it('até a folga de BALANCE.away.graceSeconds, anda no ritmo normal, o do loop do jogo', () => {
+    const grace = BALANCE.away.graceSeconds * 1000
+    expect(elapsedToGameMs(1_000)).toBe(1_000)
+    expect(elapsedToGameMs(grace)).toBe(grace)
   })
 
-  it('limita o progresso offline a BALANCE.offlineCapYears anos do jogo', () => {
+  it('fora do jogo, cada minuto vale BALANCE.away.monthsPerMinute meses do jogo', () => {
+    expectClose(elapsedToGameMs(5 * minute), 5 * BALANCE.away.monthsPerMinute * month)
+    expectClose(elapsedToGameMs(10 * minute), 10 * BALANCE.away.monthsPerMinute * month)
+  })
+
+  it('para no teto de BALANCE.away.capYears anos do jogo', () => {
+    expect(OFFLINE_CAP_MS).toBe(years(BALANCE.away.capYears))
+    expect(elapsedToGameMs(10 * 60 * minute)).toBe(OFFLINE_CAP_MS)
+  })
+
+  it('mais tempo fora nunca dá menos tempo de jogo', () => {
+    let previous = 0
+    for (let elapsed = 0; elapsed <= 20 * minute; elapsed += 250) {
+      const ms = elapsedToGameMs(elapsed)
+      expect(ms).toBeGreaterThanOrEqual(previous)
+      previous = ms
+    }
+  })
+
+  it('não anda se o relógio do aparelho voltar no tempo', () => {
+    expect(elapsedToGameMs(-60_000)).toBe(0)
+  })
+})
+
+describe('advanceTo', () => {
+  it('no loop do jogo, anda o tempo real desde a última simulação', () => {
     const start = makeGame()
-    const farFuture = start.lastSimulatedAt + OFFLINE_CAP_MS + 3_600_000
+    const { state } = advanceTo(start, start.lastSimulatedAt + 1_000)
+    expect(state.stats.simulatedMs).toBe(1_000)
+    expect(state.lastSimulatedAt).toBe(start.lastSimulatedAt + 1_000)
+  })
+
+  it('fora do jogo, o tempo passa mais devagar', () => {
+    const start = makeGame()
+    const back = start.lastSimulatedAt + 5 * 60_000
+    const { state } = advanceTo(start, back)
+    const months = 5 * BALANCE.away.monthsPerMinute
+    expectClose(state.stats.simulatedMs, days((months * BALANCE.daysPerYear) / 12))
+    expect(state.clock.day).toBe(Math.floor((months * BALANCE.daysPerYear) / 12))
+    expect(state.lastSimulatedAt).toBe(back)
+  })
+
+  it('limita o tempo fora a BALANCE.away.capYears anos do jogo', () => {
+    const start = makeGame()
+    const farFuture = start.lastSimulatedAt + 10 * 3_600_000
     const { state } = advanceTo(start, farFuture)
     expect(state.stats.simulatedMs).toBe(OFFLINE_CAP_MS)
-    expect(state.clock.day).toBe(BALANCE.offlineCapYears * BALANCE.daysPerYear)
+    expect(state.clock.day).toBe(BALANCE.away.capYears * BALANCE.daysPerYear)
     expect(state.lastSimulatedAt).toBe(farFuture)
   })
 
@@ -369,8 +414,11 @@ describe('advanceTo', () => {
 
   it('com o jogo fechado, para na primeira escolha e espera por ela', () => {
     const born = withChild(makeGame(12))
-    const teen = play(born, years(BALANCE.adultAge - 1))
-    const { state } = advanceTo(teen, teen.lastSimulatedAt + years(3))
+    // O filho escolhe o caminho depois do médio num janeiro; meio ano antes, a família sai do jogo.
+    const choiceDay = play(born, years(BALANCE.adultAge + 2), 'afterSchool').clock.day
+    const teen = play(born, days(choiceDay - born.clock.day) - years(0.5))
+    const { state } = advanceTo(teen, teen.lastSimulatedAt + 10 * 3_600_000)
+    expect(state.clock.day).toBe(choiceDay)
     expect(isEnrollmentDay(state)).toBe(true)
     expect(state.choices.map((choice) => choice.type)).toEqual(['afterSchool'])
 
