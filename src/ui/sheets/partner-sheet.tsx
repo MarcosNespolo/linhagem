@@ -3,7 +3,7 @@
 import { Heart, Shuffle } from 'lucide-react'
 import { careerLevel } from '@/content/careers'
 import { BALANCE } from '@/content/balance'
-import { weddingCost, type GameState, type Member } from '@/engine'
+import { freePlaces, weddingCost, type GameState, type Member } from '@/engine'
 import { useGameStore } from '@/game/store'
 import { formatAge, formatMoney, formatRate } from '@/lib/format'
 import { PersonAvatar } from '../avatar/person-avatar'
@@ -18,9 +18,10 @@ export function PartnerSheet({ game, member }: { game: GameState; member: Member
   const openSheet = useUiStore((store) => store.openSheet)
   const closeSheet = useUiStore((store) => store.closeSheet)
   const suitors = game.suitors[member.id] ?? []
-  const cost = weddingCost(game)
+  const cost = weddingCost()
   const missing = cost - game.money
   const day = game.clock.day
+  const leaves = freePlaces(game) < 1
 
   const marry = (suitorIndex: number) => {
     const result = dispatch({ type: 'marry', memberId: member.id, suitorIndex })
@@ -34,6 +35,13 @@ export function PartnerSheet({ game, member }: { game: GameState; member: Member
           ? `O casamento custa ${formatMoney(cost)}. Faltam ${formatMoney(missing)}.`
           : `O casamento custa ${formatMoney(cost)}.`}
       </p>
+      {leaves ? (
+        <p className="bg-rose-soft text-ink mt-3 rounded-2xl p-3 text-[14px]">
+          Não há lugar em casa para mais ninguém. Ao casar, {member.firstName} vai formar a própria
+          família com o par: os dois continuam na árvore, mas saem das contas. Para{' '}
+          {byGender(member, 'ela', 'ele')} ficar, compre um imóvel para a família morar.
+        </p>
+      ) : null}
 
       <ul className="mt-4 space-y-3">
         {suitors.map((suitor, index) => {
@@ -63,10 +71,14 @@ export function PartnerSheet({ game, member }: { game: GameState; member: Member
                 className={button.smallLove}
                 disabled={missing > 0}
                 onClick={() => marry(index)}
-                aria-label={`Casar ${member.firstName} com ${suitor.firstName}`}
+                aria-label={
+                  leaves
+                    ? `Casar ${member.firstName} com ${suitor.firstName} e formar a própria família`
+                    : `Casar ${member.firstName} com ${suitor.firstName}`
+                }
               >
                 <Heart size={14} fill="currentColor" />
-                Casar
+                {leaves ? 'Casar e sair' : 'Casar'}
               </button>
             </li>
           )
@@ -82,8 +94,9 @@ export function PartnerSheet({ game, member }: { game: GameState; member: Member
         Conhecer outras pessoas
       </button>
       <p className="text-ink-soft mt-3 text-center text-[13px]">
-        Quem casa entra na família, trabalha e soma na renda. {byGender(member, 'Ela', 'Ele')} e o
-        par vão poder ter filhos, que herdam parte da aptidão dos dois.
+        Quem casa e mora com a família trabalha e soma na renda, e precisa de um lugar em casa.{' '}
+        {byGender(member, 'Ela', 'Ele')} e o par vão poder ter filhos, que herdam parte da aptidão
+        dos dois.
       </p>
     </Sheet>
   )

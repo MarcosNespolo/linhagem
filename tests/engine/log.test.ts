@@ -29,10 +29,11 @@ describe('histórico', () => {
       'firstJob',
       'becameAdult',
     ])
-    // Enquanto o filho cresce, os fundadores sobem de nível com o tempo.
+    // Enquanto o filho cresce, os fundadores sobem de nível com o tempo e passam por imprevistos.
     const others = people.filter((event) => event.memberId !== childId)
-    expect(others.length).toBeGreaterThan(0)
-    expect(others.every((event) => event.type === 'promoted')).toBe(true)
+    const meanwhile = new Set(['promoted', 'laidOff', 'rehired', 'mishap'])
+    expect(others.some((event) => event.type === 'promoted')).toBe(true)
+    expect(others.every((event) => meanwhile.has(event.type))).toBe(true)
 
     const searched = expectOk(applyAction(state, { type: 'findSuitors', memberId: childId })).state
     const married = expectOk(

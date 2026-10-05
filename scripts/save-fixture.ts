@@ -7,13 +7,15 @@
  * versão.
  *
  * O exemplo passa pelas ações principais do jogo: dois filhos, com a aptidão
- * herdada dos pais, que fizeram a escola com as matrículas sugeridas. O mais velho faz Direito numa faculdade
- * particular e casou. O mais novo teve professor particular no médio, acabou e
- * estuda para concurso, com o resultado da primeira prova aberto. A fundadora
- * pagou o curso e chegou ao 4º nível da carreira, e o fundador tem o curso
- * dele para pagar. A família tem dois kitnets e um apartamento alugados, e as
- * missões do dia sorteadas: cumpriu a Investidor, com três kitnets a mais, e
- * está com a renda em dobro.
+ * herdada dos pais, que fizeram a escola com as matrículas sugeridas. O mais
+ * velho faz Direito numa faculdade particular e casou, depois de a família
+ * comprar um kitnet para ter lugar em casa. O mais novo teve professor
+ * particular no médio, acabou e estuda para concurso, com o resultado da
+ * primeira prova aberto. A fundadora pagou o curso e chegou ao 4º nível da
+ * carreira, e o fundador tem o curso dele para pagar. A família tem mais um
+ * kitnet e um apartamento alugados, e as missões do dia sorteadas: cumpriu a
+ * Investidor, com três kitnets a mais, e está com a renda em dobro. Nos anos
+ * do exemplo, a família passa pelos imprevistos que a seed sorteia.
  */
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { BALANCE } from '../src/content/balance'
@@ -87,8 +89,9 @@ const law = afterSchool.options.findIndex(
 state = act(state, { type: 'choose', picks: [{ memberId: afterSchool.memberId, option: law }] })
 // O mais novo, no médio, ganha um professor particular até o fim da escola.
 state = act(state, { type: 'setTutor', memberId: 'm4', active: true })
-// Já com 18, o mais velho casa.
+// Já com 18, o mais velho casa. Com a casa alugada cheia, a família compra um kitnet antes.
 state = play(state, year)
+state = act(state, { type: 'buyProperty', propertyId: 'kitnet' })
 state = act(state, { type: 'findSuitors', memberId: 'm3' })
 state = act(state, { type: 'marry', memberId: 'm3', suitorIndex: 0 })
 // No janeiro em que o mais novo faz 18, ele vai trabalhar e escolhe estudar para concurso.
@@ -111,8 +114,7 @@ state = act(state, {
 })
 // A fundadora paga o curso e sobe para o 4º nível; o do fundador fica para depois.
 state = act(state, { type: 'payCourse', memberId: 'm1' })
-// A família compra dois kitnets e um apartamento para alugar.
-state = act(state, { type: 'buyProperty', propertyId: 'kitnet' })
+// A família compra mais um kitnet e um apartamento para alugar.
 state = act(state, { type: 'buyProperty', propertyId: 'kitnet' })
 state = act(state, { type: 'buyProperty', propertyId: 'apartamento' })
 // O primeiro dia, a partir de 4 de outubro de 2026, em que a Investidor é sorteada.

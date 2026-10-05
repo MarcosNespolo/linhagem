@@ -41,7 +41,7 @@ export function newGame({ seed, now, startDate, familyName }: NewGameOptions): G
     missions: null,
     boosts: { incomeUntil: 0 },
     log: [],
-    stats: { simulatedMs: 0, totalEarned: 0, totalSpent: 0, rentEarned: 0 },
+    stats: { simulatedMs: 0, totalEarned: 0, totalSpent: 0, rentEarned: 0, archived: 0 },
   }
 
   const first = addFounder(draft, rng, 'f')
@@ -65,7 +65,7 @@ function addFounder(draft: GameState, rng: Rng, gender: Gender): Member {
     parentIds: [],
     origin: 'founder',
     appearance,
-    career: rollFounderCareer(rng, 0),
+    career: rollFounderCareer(rng, birthDay, 0),
     education: newEducation({ level: 'medio' }),
   })
 }

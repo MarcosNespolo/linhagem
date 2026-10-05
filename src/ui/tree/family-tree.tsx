@@ -12,8 +12,10 @@ import {
   ageOf,
   halfTimeCaregivers,
   incomeOf,
+  livesAway,
   memberExpense,
   type GameState,
+  type Member,
   type MemberId,
 } from '@/engine'
 import { formatSignedMoney } from '@/lib/format'
@@ -25,6 +27,7 @@ import {
   layoutFamilyTree,
   TREE_METRICS,
   type Branch,
+  type PlacedPerson,
   type TreeLayout,
 } from './layout'
 
@@ -36,38 +39,61 @@ type Viewport = Pick<ReactZoomPanPinchRef, 'instance' | 'setTransform'>
 
 /**
  * Enquadra quem está vivo: numa família pequena mostra a árvore inteira; numa
- * grande, as gerações de baixo, que são as que pedem ação.
+ * grande, que não cabe na tela nem com o zoom mínimo, o trecho com mais gente
+ * viva, para os ramos de quem saiu de casa não tomarem a tela.
  */
 function focusLiving(view: Viewport, layout: TreeLayout, game: GameState, animationTime: number) {
   const wrapper = view.instance.wrapperComponent
   if (!wrapper) return
   const living = layout.people.filter((person) => game.members[person.id]?.deathDay === null)
   const targets = living.length > 0 ? living : layout.people
-  const xs = targets.map((person) => person.x)
-  const ys = targets.map((person) => person.y)
-  const minX = Math.min(...xs) - SLOT / 2 - 16
-  const maxX = Math.max(...xs) + SLOT / 2 + 16
-  const minY = Math.min(...ys) - AVATAR / 2 - 24
-  const maxY = Math.max(...ys) + AVATAR / 2 + 56
   const width = wrapper.clientWidth
   const height = wrapper.clientHeight
-  const fit = Math.min(width / (maxX - minX), height / (maxY - minY))
+  const all = bounds(targets)
+  const fit = Math.min(width / (all.maxX - all.minX), height / (all.maxY - all.minY))
   const scale = Math.min(Math.max(fit, MIN_FOCUS_SCALE), MAX_FOCUS_SCALE)
-  const centerX = (minX + maxX) / 2
-  const centerY = (minY + maxY) / 2
+  const box = fit < MIN_FOCUS_SCALE ? bounds(densest(targets, width / scale - SLOT - 32)) : all
+  const centerX = (box.minX + box.maxX) / 2
+  const centerY = (box.minY + box.maxY) / 2
   view.setTransform(width / 2 - centerX * scale, height / 2 - centerY * scale, scale, animationTime)
+}
+
+/** Retângulo em volta dos avatares, com espaço para o nome e a renda embaixo. */
+function bounds(people: readonly PlacedPerson[]) {
+  const xs = people.map((person) => person.x)
+  const ys = people.map((person) => person.y)
+  return {
+    minX: Math.min(...xs) - SLOT / 2 - 16,
+    maxX: Math.max(...xs) + SLOT / 2 + 16,
+    minY: Math.min(...ys) - AVATAR / 2 - 24,
+    maxY: Math.max(...ys) + AVATAR / 2 + 56,
+  }
+}
+
+/** As pessoas da faixa horizontal de largura `span` com mais gente. */
+function densest(people: readonly PlacedPerson[], span: number): PlacedPerson[] {
+  const sorted = [...people].sort((a, b) => a.x - b.x)
+  let best = { start: 0, end: 1 }
+  let end = 0
+  for (let start = 0; start < sorted.length; start++) {
+    while (end < sorted.length && sorted[end].x - sorted[start].x <= span) end += 1
+    if (end - start > best.end - best.start) best = { start, end }
+  }
+  return sorted.slice(best.start, best.end)
 }
 
 let cached: { key: string; layout: TreeLayout | null } | null = null
 
 /**
- * O layout só muda quando alguém nasce, casa ou morre. Guardamos o último
- * para não recalcular a cada segundo.
+ * O layout só muda quando alguém nasce, casa, sai de casa ou morre. Guardamos
+ * o último para não recalcular a cada segundo.
  */
 function treeLayoutFor(game: GameState, showDeceased: boolean): TreeLayout | null {
   const parts = [showDeceased ? 'all' : 'living']
+  const day = game.clock.day
   for (const member of Object.values(game.members)) {
-    parts.push(`${member.id}:${member.partnerId ?? ''}:${member.deathDay === null ? '' : 'x'}`)
+    const state = member.deathDay === null ? '' : livesAway(member, day) ? 'a' : 'x'
+    parts.push(`${member.id}:${member.partnerId ?? ''}:${state}`)
   }
   const key = parts.join('|')
   if (cached?.key !== key) {
@@ -110,8 +136,7 @@ export function FamilyTree({ game, showDeceased, actions, selectedId, onSelect }
           {layout.couples.map((couple) => {
             const action = actions.get(couple.aId) ?? actions.get(couple.bId)
             const together =
-              game.members[couple.aId].deathDay === null &&
-              game.members[couple.bId].deathDay === null
+              isPresent(game.members[couple.aId], day) && isPresent(game.members[couple.bId], day)
             return (
               <Knot
                 key={`${couple.aId}-${couple.bId}`}
@@ -128,6 +153,7 @@ export function FamilyTree({ game, showDeceased, actions, selectedId, onSelect }
             const member = game.members[person.id]
             const age = ageOf(member, day)
             const rate = incomeOf(game, member, caregivers) - memberExpense(member, day)
+            const away = livesAway(member, day)
             return (
               <TreeNode
                 key={person.id}
@@ -138,6 +164,7 @@ export function FamilyTree({ game, showDeceased, actions, selectedId, onSelect }
                 age={age}
                 rate={rate}
                 alive={member.deathDay === null}
+                away={away}
                 look={avatarLook(member.appearance, member.gender, age, member.avatarSeed)}
                 canMarry={actions.get(person.id) === 'marry'}
                 selected={selectedId === person.id}
@@ -178,7 +205,15 @@ function branchPath(b: Branch): string {
 
 const LEAF = 'M0 0 Q5 -4.2 11 0 Q5 4.2 0 0 Z'
 
-/** Galhos entre casais e filhos. Quem está vivo tem folhas; galho de quem morreu fica seco. */
+/** Vive na família ou fora dela, com a própria família. */
+function isPresent(member: Member, day: number): boolean {
+  return member.deathDay === null || livesAway(member, day)
+}
+
+/**
+ * Galhos entre casais e filhos. Quem está vivo, na família ou fora dela, tem
+ * folhas; galho de quem morreu fica seco.
+ */
 function Branches({ layout, game }: { layout: TreeLayout; game: GameState }) {
   return (
     <svg
@@ -200,7 +235,8 @@ function Branches({ layout, game }: { layout: TreeLayout; game: GameState }) {
         />
       ))}
       {layout.branches.map((branch, index) => {
-        const alive = game.members[branch.childId]?.deathDay === null
+        const child = game.members[branch.childId]
+        const alive = child !== undefined && isPresent(child, game.clock.day)
         const width = Math.max(2.4, 5.6 - branch.depth * 0.9)
         const side = index % 2 === 0 ? 1 : -1
         const leaf = bezierAt(branch, 0.42)
@@ -276,6 +312,8 @@ type NodeProps = {
   age: number
   rate: number
   alive: boolean
+  /** Saiu de casa e vive com a própria família, fora das contas. */
+  away: boolean
   look: AvatarLook
   canMarry: boolean
   selected: boolean
@@ -291,16 +329,18 @@ const TreeNode = memo(
     age,
     rate,
     alive,
+    away,
     look,
     canMarry,
     selected,
     onSelect,
   }: NodeProps) {
+    const colored = alive || away
     return (
       <button
         type="button"
         onClick={() => onSelect(id)}
-        aria-label={`${name}, ${age === 0 ? 'menos de 1 ano' : age === 1 ? '1 ano' : `${age} anos`}${alive ? '' : ', faleceu'}`}
+        aria-label={`${name}, ${age === 0 ? 'menos de 1 ano' : age === 1 ? '1 ano' : `${age} anos`}${alive ? '' : away ? ', mora com a própria família' : ', faleceu'}`}
         className="group absolute flex flex-col items-center outline-none"
         style={{ left: x - SLOT / 2, top: y - AVATAR / 2, width: SLOT }}
       >
@@ -310,7 +350,7 @@ const TreeNode = memo(
             size={AVATAR}
             className={`group-focus-visible:ring-leaf rounded-full ring-[3px] transition ${
               selected ? 'ring-leaf' : 'ring-white'
-            } ${alive ? '' : 'opacity-60 grayscale'}`}
+            } ${colored ? '' : 'opacity-60 grayscale'}`}
           />
           <span
             className={`tabular absolute -top-1 -left-1.5 grid h-6 min-w-6 place-items-center rounded-full px-1 text-[11px] font-extrabold ring-2 ring-white ${
@@ -337,6 +377,11 @@ const TreeNode = memo(
             {formatSignedMoney(rate)}
           </span>
         ) : null}
+        {away ? (
+          <span className="bg-surface/90 text-ink-soft rounded-full px-1.5 text-[11.5px] leading-4 font-bold">
+            mora fora
+          </span>
+        ) : null}
       </button>
     )
   },
@@ -348,6 +393,7 @@ const TreeNode = memo(
     prev.age === next.age &&
     prev.rate === next.rate &&
     prev.alive === next.alive &&
+    prev.away === next.away &&
     prev.canMarry === next.canMarry &&
     prev.selected === next.selected &&
     prev.onSelect === next.onSelect &&

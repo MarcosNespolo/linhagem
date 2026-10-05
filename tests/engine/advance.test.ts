@@ -92,7 +92,10 @@ describe('advance', () => {
     const state = setMember(start, first.id, { lifespan: ageOf(first, 0) + 1 })
     const before = state.log.length
     const { state: next } = advance(state, years(1))
-    expect(next.log.length).toBe(before + 1)
+    expect(next.log.slice(0, before)).toEqual(state.log)
+    expect(next.log.slice(before)).toContainEqual(
+      expect.objectContaining({ type: 'died', memberId: first.id }),
+    )
     expect(state.log).toHaveLength(before)
   })
 
@@ -170,7 +173,9 @@ describe('advance', () => {
     expect(events).toContainEqual({ type: 'becameAdult', day: 1, memberId: child.id })
     expect(events.some((event) => event.type === 'firstJob')).toBe(false)
     expect(grown.career).toBeNull()
-    expect(memberExpense(grown, 1)).toBe(0)
+    // Sem escola, fica só o custo de vida de adulto, de ônibus enquanto não tem salário.
+    const { adult, health, transport } = BALANCE.living
+    expect(memberExpense(grown, 1)).toBe(adult + health.adult + transport.bus)
     expect(memberIncome(grown, 1)).toBe(0)
 
     const choice = jobChoice(state)

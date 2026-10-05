@@ -35,6 +35,7 @@ import {
   withAdultChild,
   withAptitude,
   withChild,
+  withHomes,
   withMoney,
   years,
 } from '../helpers'
@@ -147,7 +148,7 @@ describe('matrículas', () => {
 
   it('deixar com os avós só aparece com avô ou avó aposentado vivo', () => {
     const { state: adult, childId } = withAdultChild(5)
-    const married = untilParentAge(marryMember(adult, childId))
+    const married = untilParentAge(marryMember(withHomes(adult, { kitnet: 1 }), childId))
     const withGrandchild = (state: GameState) => {
       const born = expectOk(applyAction(state, { type: 'haveChild', parentId: childId })).state
       return advance(born, years(1)).state.choices.find(
@@ -287,7 +288,7 @@ describe('matrículas', () => {
   })
 
   it('três filhos passam por todas as matrículas até os 17 anos', () => {
-    let state = withMoney(makeGame(11), 10_000_000)
+    let state = withHomes(withMoney(makeGame(11), 10_000_000), { kitnet: 1 })
     const [mother] = founders(state)
     const children: string[] = []
     for (let i = 0; i < 3; i++) {

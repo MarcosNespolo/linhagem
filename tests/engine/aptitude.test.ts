@@ -21,6 +21,7 @@ import {
   withAdultChild,
   withAptitude,
   withChild,
+  withHomes,
   withMoney,
 } from '../helpers'
 
@@ -84,7 +85,7 @@ describe('aptidão', () => {
   })
 
   it('irmãos herdam dos mesmos pais e ainda assim têm aptidões diferentes', () => {
-    let state = withMoney(makeGame(3), 50_000_000)
+    let state = withHomes(withMoney(makeGame(3), 50_000_000), { kitnet: 1 })
     const [mother, father] = founders(state)
     const siblings: Member[] = []
     for (let i = 0; i < 3; i++) {
@@ -117,7 +118,7 @@ describe('aptidão', () => {
     expect(spouse.origin).toBe('married')
     expect(spouse.aptitude).toBe(suitors[1].aptitude)
 
-    const ready = withMoney(untilParentAge(married), 50_000_000)
+    const ready = withHomes(withMoney(untilParentAge(married), 50_000_000), { kitnet: 1 })
     const born = expectOk(applyAction(ready, { type: 'haveChild', parentId: childId })).state
     const grandchild = lastMember(born)
     expect(grandchild.parentIds).toEqual([childId, spouse.id])

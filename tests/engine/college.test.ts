@@ -7,6 +7,7 @@ import {
   applyAction,
   deserialize,
   isEnrollmentDay,
+  livingCost,
   memberExpense,
   memberIncome,
   schoolFee,
@@ -149,7 +150,8 @@ describe('depois do ensino médio', () => {
     const member = graduated.members[start.childId]
     expect(member.education.formation).toEqual({ level: 'superior', degree: 'computacao' })
     expect(member.education.school).toBeNull()
-    expect(memberExpense(member, graduated.clock.day)).toBe(0)
+    // Formada, sai a mensalidade e fica o custo de vida.
+    expect(memberExpense(member, graduated.clock.day)).toBe(livingCost(member, graduated.clock.day))
     const yearsStudied = Math.round(
       (graduated.clock.day - studying.clock.day) / BALANCE.daysPerYear,
     )

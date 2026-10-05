@@ -17,6 +17,7 @@ import {
   play,
   setMember,
   withChild,
+  withHomes,
   withMoney,
   years,
 } from '../helpers'
@@ -28,7 +29,7 @@ describe('ter filho', () => {
   it('cria o filho, cobra o custo e marca o intervalo nos dois', () => {
     const start = withMoney(makeGame(2), 1_000_000)
     const [first, second] = founders(start)
-    const cost = childCost(start, first.id, second.id)
+    const cost = childCost()
 
     const result = expectOk(haveChild(start))
     const child = lastMember(result.state)
@@ -43,33 +44,32 @@ describe('ter filho', () => {
     expect(result.events).toEqual([{ type: 'born', day: start.clock.day, memberId: child.id }])
   })
 
-  it('cobra mais a cada filho do casal', () => {
-    let state = withMoney(makeGame(2), 1_000_000)
-    const [first, second] = founders(state)
-    const costs: number[] = []
+  it('custa sempre o mesmo, com qualquer tamanho de família', () => {
+    let state = withHomes(withMoney(makeGame(2), 1_000_000), { kitnet: 1 })
+    const spent: number[] = []
     for (let i = 0; i < 3; i++) {
-      costs.push(childCost(state, first.id, second.id))
+      const before = state.money
+      state = expectOk(haveChild(state)).state
+      spent.push(before - state.money)
+      state = play(state, days(BALANCE.children.cooldownDays))
+    }
+    expect(spent).toEqual([1, 2, 3].map(() => BALANCE.children.birthCost))
+    expect(childCost()).toBe(BALANCE.children.birthCost)
+  })
+
+  it('precisa de lugar em casa: a casa alugada tem 4, e cada imóvel de moradia soma os dele', () => {
+    let state = withMoney(makeGame(2), 1_000_000)
+    for (let i = 0; i < 2; i++) {
       state = expectOk(haveChild(state)).state
       state = play(state, days(BALANCE.children.cooldownDays))
     }
-    const { baseCost, coupleGrowth } = BALANCE.children
-    const factor = (living: number) => BALANCE.familySizeGrowth ** living
-    expect(costs[0]).toBe(Math.round(baseCost * factor(2)))
-    expect(costs[1]).toBe(Math.round(baseCost * coupleGrowth * factor(3)))
-    expect(costs[2]).toBe(Math.round(baseCost * coupleGrowth ** 2 * factor(4)))
-  })
+    expect(Object.keys(state.members)).toHaveLength(BALANCE.housing.rentedPlaces)
+    expect(haveChild(state)).toEqual({ ok: false, error: 'noRoom' })
 
-  it('fica mais caro quando a família viva cresce e volta a baratear quando ela diminui', () => {
-    const start = withMoney(makeGame(2), 1_000_000)
-    const [first, second] = founders(start)
-    const bigger = expectOk(haveChild(start)).state
-    const child = lastMember(bigger)
-    const withoutParentLink = setMember(bigger, child.id, { parentIds: [] })
-    expect(childCost(withoutParentLink, first.id, second.id)).toBeGreaterThan(
-      childCost(start, first.id, second.id),
-    )
-    const smaller = setMember(withoutParentLink, child.id, { deathDay: bigger.clock.day })
-    expect(childCost(smaller, first.id, second.id)).toBe(childCost(start, first.id, second.id))
+    expect(haveChild(withHomes(state, { kitnet: 1 })).ok).toBe(true)
+    const child = lastMember(state)
+    const lessOne = setMember(state, child.id, { deathDay: state.clock.day })
+    expect(haveChild(lessOne).ok).toBe(true)
   })
 
   it('respeita o intervalo entre filhos', () => {
@@ -89,9 +89,7 @@ describe('ter filho', () => {
   })
 
   it('exige dinheiro suficiente', () => {
-    const start = makeGame(2)
-    const [first, second] = founders(start)
-    const short = withMoney(start, childCost(start, first.id, second.id) - 1)
+    const short = withMoney(makeGame(2), childCost() - 1)
     expect(haveChild(short)).toEqual({ ok: false, error: 'notEnoughMoney' })
   })
 
@@ -118,7 +116,7 @@ describe('ter filho', () => {
   })
 
   it('não repete nomes entre irmãos', () => {
-    let state = withMoney(makeGame(12), 10_000_000)
+    let state = withHomes(withMoney(makeGame(12), 10_000_000), { kitnet: 2 })
     for (let i = 0; i < 6; i++) {
       state = expectOk(haveChild(state)).state
       state = play(state, days(BALANCE.children.cooldownDays))

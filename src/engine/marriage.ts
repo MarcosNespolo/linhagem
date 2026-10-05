@@ -2,25 +2,15 @@ import { BALANCE } from '../content/balance'
 import { rollAppearance } from './appearance'
 import { refuse, type Refusal } from './errors'
 import { rollSuitorBackground } from './jobs'
-import {
-  addMember,
-  ageOf,
-  familySizeFactor,
-  isAlive,
-  rollAvatarSeed,
-  rollFirstName,
-  rollLifespan,
-} from './members'
+import { addMember, ageOf, isAlive, rollAvatarSeed, rollFirstName, rollLifespan } from './members'
+import { freePlaces } from './properties'
 import type { Rng } from './rng'
 import { newEducation, suitorAptitude } from './school'
 import type { GameState, Member, MemberId, Suitor } from './types'
 
-/**
- * Custo do próximo casamento: uma festa maior para uma família maior. Cresce
- * com o número de membros vivos, então cai de novo quando a família diminui.
- */
-export function weddingCost(state: GameState): number {
-  return Math.round(BALANCE.marriage.baseCost * familySizeFactor(state))
+/** Custo de um casamento: festa e cartório, sempre o mesmo. */
+export function weddingCost(): number {
+  return BALANCE.marriage.cost
 }
 
 /**
@@ -36,7 +26,12 @@ export function checkSeekPartner(state: GameState, memberId: MemberId): { ok: tr
   return { ok: true }
 }
 
-export type MarriageCheck = { ok: true; cost: number; suitor: Suitor } | Refusal
+/**
+ * Resultado da checagem de casamento. `leavesHome`: a família não tem lugar
+ * para o par, então o casal vai formar a própria família.
+ */
+export type MarriageCheck =
+  { ok: true; cost: number; suitor: Suitor; leavesHome: boolean } | Refusal
 
 /** Diz se o membro pode casar agora com a pessoa sugerida de índice `suitorIndex`. */
 export function checkMarry(
@@ -48,9 +43,9 @@ export function checkMarry(
   if (!seek.ok) return seek
   const suitor = state.suitors[memberId]?.[suitorIndex]
   if (!suitor) return refuse('suitorNotFound')
-  const cost = weddingCost(state)
+  const cost = weddingCost()
   if (state.money < cost) return refuse('notEnoughMoney')
-  return { ok: true, cost, suitor }
+  return { ok: true, cost, suitor, leavesHome: freePlaces(state) < 1 }
 }
 
 /** Sorteia as pessoas sugeridas como par para o membro, sem nomes repetidos. */
@@ -124,4 +119,23 @@ export function joinFamily(draft: GameState, rng: Rng, member: Member, suitor: S
   member.marriedDay = day
   spouse.marriedDay = day
   return spouse
+}
+
+/**
+ * O casal vai formar a própria família: os dois saem da simulação no dia de
+ * hoje e ficam na árvore como um ramo. Altera o rascunho.
+ */
+export function leaveHome(draft: GameState, member: Member, spouse: Member): void {
+  const day = draft.clock.day
+  for (const person of [member, spouse]) {
+    person.deathDay = day
+    person.leftHome = true
+    person.concurso = null
+    person.unemployedUntil = null
+    person.education.tutorSince = null
+  }
+  draft.choices = draft.choices.filter(
+    (choice) => choice.memberId !== member.id && choice.memberId !== spouse.id,
+  )
+  delete draft.suitors[member.id]
 }

@@ -1,7 +1,7 @@
 'use client'
 
 import { Baby, Heart } from 'lucide-react'
-import { ageOf, type GameState } from '@/engine'
+import { ageOf, freePlaces, type GameState } from '@/engine'
 import { useGameStore } from '@/game/store'
 import { formatAge, formatMoney } from '@/lib/format'
 import { PersonAvatar } from '../avatar/person-avatar'
@@ -35,6 +35,11 @@ export function LoveTab({ game, actions }: { game: GameState; actions: LoveActio
             Casamento: {formatMoney(actions.weddingCost)}
             {canAffordWedding ? '' : `, faltam ${formatMoney(actions.weddingCost - game.money)}`}
           </p>
+          {freePlaces(game) < 1 ? (
+            <p className="text-ink-soft px-1 text-[14px]">
+              Sem lugar em casa: quem casar agora vai formar a própria família e sai das contas.
+            </p>
+          ) : null}
           <ul className="mt-3 space-y-2">
             {actions.seekers.map((member) => (
               <li key={member.id} className={`${card} flex items-center gap-3 p-2.5`}>

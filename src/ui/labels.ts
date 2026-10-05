@@ -17,7 +17,10 @@ import {
   childCooldownDaysLeft,
   courseFor,
   daysToSeconds,
+  hasCar,
   isAlive,
+  isUnemployed,
+  livesAway,
   needsCourse,
   promotionDay,
   type ChildCheck,
@@ -101,6 +104,9 @@ export function roleLabel(member: Member, day: number): string {
   if (school?.stage === 'cursinho') return 'No cursinho'
   if (member.concurso) return 'Estudando para concurso'
   if (age >= BALANCE.retirementAge) return byGender(member, 'Aposentada', 'Aposentado')
+  if (member.career && isUnemployed(member, day)) {
+    return byGender(member, 'Desempregada, procurando emprego', 'Desempregado, procurando emprego')
+  }
   const title = careerTitle(member)
   if (title) return title
   if (age < 13) return 'Criança'
@@ -108,12 +114,30 @@ export function roleLabel(member: Member, day: number): string {
   return 'Procurando o primeiro emprego'
 }
 
-/** Idade em texto, com "Faleceu aos" para quem já morreu. */
+/**
+ * Idade em texto, com "Faleceu aos" para quem já morreu. Quem saiu de casa
+ * continua contando a idade até a expectativa de vida.
+ */
 export function ageLabel(member: Member, day: number): string {
   const age = ageOf(member, day)
-  if (!isAlive(member)) return `Faleceu aos ${formatAge(age)}`
+  if (!isAlive(member) && !livesAway(member, day)) return `Faleceu aos ${formatAge(age)}`
   if (age === 0) return 'Menos de 1 ano'
   return formatAge(age)
+}
+
+/**
+ * Custo de vida da pessoa em partes, sem a moradia: o de uma criança, ou o
+ * mercado, o plano de saúde e o transporte de um adulto.
+ */
+export function livingCostLine(member: Member, day: number): string {
+  const age = ageOf(member, day)
+  if (age < BALANCE.adultAge) return 'Alimentação, roupas, saúde e lazer'
+  const { adult, health, seniorAge, transport } = BALANCE.living
+  const plan = age >= seniorAge ? health.senior : health.adult
+  const ride = hasCar(member, day)
+    ? `carro ${formatMoney(transport.car)}`
+    : `ônibus ${formatMoney(transport.bus)}`
+  return `Mercado e contas ${formatMoney(adult)} · plano de saúde ${formatMoney(plan)} · ${ride}`
 }
 
 /** Como a pessoa se liga à família: filha de quem, com quem casou, se fundou. */
@@ -168,6 +192,21 @@ export function describeEvent(state: GameState, event: GameEvent): string {
       const partner = state.members[event.partnerId]
       return `${name} casou com ${partner?.firstName ?? 'alguém'}`
     }
+    case 'leftHome': {
+      const partner = state.members[event.partnerId]
+      return `${name} e ${partner?.firstName ?? 'o par'} foram formar a própria família`
+    }
+    case 'laidOff': {
+      const months = Math.round(((event.until - event.day) * 12) / BALANCE.daysPerYear)
+      const who = member ? byGender(member, 'foi demitida', 'foi demitido') : 'perdeu o emprego'
+      return `${name} ${who} e vai ficar ${months} meses sem salário`
+    }
+    case 'rehired':
+      return `${name} achou outro emprego`
+    case 'mishap':
+      return event.kind === 'surgery'
+        ? `${name} precisou de uma cirurgia: ${formatMoney(event.cost)}`
+        : `O carro de ${name} quebrou: ${formatMoney(event.cost)} de conserto`
     case 'retired':
       return `${name} se aposentou`
     case 'died':
@@ -334,6 +373,8 @@ export function childStatus(
     }
     case 'notEnoughMoney':
       return `Custa ${formatMoney(cost)}, faltam ${formatMoney(cost - state.money)}`
+    case 'noRoom':
+      return 'Sem lugar em casa: compre um imóvel para morar'
     default:
       return ''
   }

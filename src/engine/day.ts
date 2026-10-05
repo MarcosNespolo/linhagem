@@ -1,8 +1,10 @@
 import { BALANCE } from '../content/balance'
+import { archiveMembers } from './archive'
 import { takeExams } from './concurso'
 import { incomeOf } from './economy'
 import { isEnrollmentDay, processEnrollment } from './enrollment'
 import { openFirstJobChoice } from './jobs'
+import { processMishaps } from './mishaps'
 import { promoteByTime } from './promotions'
 import type { Rng } from './rng'
 import { halfTimeCaregivers } from './school'
@@ -11,12 +13,12 @@ import type { GameEvent, GameState, Member } from './types'
 
 /**
  * Processa a virada para o dia atual do relógio: aniversários, maioridade,
- * aposentadoria, morte, as matrículas de janeiro, as promoções, as provas de
- * concurso e o 13º salário. As escolhas abertas aqui (matrículas, depois do
- * médio, primeiro emprego, resultado do concurso) param o relógio. Altera o
- * rascunho e devolve true quando algo pode ter mudado as taxas de renda e
- * despesa. `living` são as pessoas vivas do rascunho; quem morre no meio pode
- * continuar na lista.
+ * aposentadoria, morte, as matrículas e o arquivo da árvore de janeiro, as
+ * promoções, os imprevistos, as provas de concurso e o 13º salário. As escolhas abertas aqui
+ * (matrículas, depois do médio, primeiro emprego, resultado do concurso) param
+ * o relógio. Altera o rascunho e devolve true quando algo pode ter mudado as
+ * taxas de renda e despesa. `living` são as pessoas vivas do rascunho; quem
+ * morre no meio pode continuar na lista.
  */
 export function processNewDay(
   draft: GameState,
@@ -58,9 +60,11 @@ export function processNewDay(
 
   if (isEnrollmentDay(draft)) {
     processEnrollment(draft, rng, events)
+    archiveMembers(draft)
     changed = true
   }
   if (promoteByTime(draft, events, living)) changed = true
+  if (processMishaps(draft, events, living)) changed = true
   if (takeExams(draft, rng, events)) changed = true
   payThirteenth(draft, events, living)
   return changed

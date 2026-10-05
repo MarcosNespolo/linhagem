@@ -6,13 +6,12 @@ import {
   advance,
   affordableCourses,
   applyAction,
+  checkBuyProperty,
   checkHaveChild,
   checkSeekPartner,
   daysToMs,
   familyRates,
-  isPropertyUnlocked,
   livingMembers,
-  propertyPrice,
   serialize,
   visiblePropertyTypes,
   weddingCost,
@@ -51,9 +50,8 @@ export const LIMITS = {
  */
 export function canBuySomething(state: GameState): boolean {
   if (affordableCourses(state).length > 0) return true
-  const types = visiblePropertyTypes(state).filter((type) => isPropertyUnlocked(state, type.id))
-  if (types.some((type) => propertyPrice(state, type.id) <= state.money)) return true
-  const wedding = state.money >= weddingCost(state)
+  if (visiblePropertyTypes(state).some((type) => checkBuyProperty(state, type.id).ok)) return true
+  const wedding = state.money >= weddingCost()
   for (const member of livingMembers(state)) {
     if (wedding && checkSeekPartner(state, member.id).ok) return true
     if (member.partnerId && checkHaveChild(state, member.id).ok) return true

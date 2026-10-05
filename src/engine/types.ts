@@ -178,8 +178,16 @@ export type Member = {
   gender: Gender
   /** Dia do jogo em que nasceu. Negativo para quem nasceu antes do início da partida. */
   birthDay: number
-  /** Dia do jogo em que morreu, ou null enquanto vive. */
+  /**
+   * Dia do jogo em que morreu, ou null enquanto vive. Para quem saiu de casa
+   * (`leftHome`), o dia em que saiu: daí em diante a pessoa fica só na árvore.
+   */
   deathDay: number | null
+  /**
+   * Saiu de casa: casou quando a família não tinha lugar para o par e foi
+   * formar a própria família. Continua na árvore, mas sai da simulação.
+   */
+  leftHome: boolean
   /** Idade, em anos, em que morre de causas naturais. Sorteada no nascimento. */
   lifespan: number
   /** 0 para o casal fundador, 1 para os filhos, 2 para os netos e assim por diante. */
@@ -190,6 +198,8 @@ export type Member = {
   /** Dia do jogo em que casou, ou null. */
   marriedDay: number | null
   career: CareerState | null
+  /** Desempregado depois de uma demissão: sem salário até este dia do jogo, ou null. */
+  unemployedUntil: number | null
   /** Estudo para concurso, ou null para quem não está estudando. */
   concurso: ConcursoStudy | null
   /** Dia do jogo em que teve o último filho, para o intervalo mínimo entre filhos. */
@@ -233,6 +243,8 @@ export type GameStats = {
   totalSpent: number
   /** A parte do que entrou que veio do aluguel dos imóveis. */
   rentEarned: number
+  /** Pessoas de ramos antigos que já terminaram e saíram da árvore guardada (`archiveMembers`). */
+  archived: number
 }
 
 /** Missão do dia, com o progresso desde que apareceu. */
@@ -311,6 +323,13 @@ export type MemberEvent =
       level: number | null
     }
   | { type: 'married'; day: number; memberId: MemberId; partnerId: MemberId }
+  /** Casou sem lugar em casa e foi formar a própria família, com o par. */
+  | { type: 'leftHome'; day: number; memberId: MemberId; partnerId: MemberId }
+  /** Demissão: fica sem salário até o dia `until`. */
+  | { type: 'laidOff'; day: number; memberId: MemberId; until: number }
+  | { type: 'rehired'; day: number; memberId: MemberId }
+  /** Imprevisto pago pela família. */
+  | { type: 'mishap'; day: number; memberId: MemberId; kind: MishapKind; cost: number }
   | { type: 'retired'; day: number; memberId: MemberId }
   | { type: 'died'; day: number; memberId: MemberId; age: number }
   | {
@@ -325,6 +344,9 @@ export type MemberEvent =
   | { type: 'enem'; day: number; memberId: MemberId; score: number }
   | { type: 'schoolChanged'; day: number; memberId: MemberId; network: Network }
   | { type: 'schoolFinished'; day: number; memberId: MemberId; formation: Formation }
+
+/** Imprevistos que custam dinheiro: cirurgia e conserto do carro. */
+export type MishapKind = 'surgery' | 'car'
 
 /** Compra de um imóvel pela família. `count` é quantos do tipo ela tem depois da compra. */
 export type PropertyEvent = {

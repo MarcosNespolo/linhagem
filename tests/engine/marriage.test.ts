@@ -7,6 +7,10 @@ import {
   checkMarry,
   checkSeekPartner,
   familyRates,
+  freePlaces,
+  lifeEndDay,
+  livesAway,
+  livingCount,
   memberIncome,
   weddingCost,
   type GameState,
@@ -21,7 +25,9 @@ import {
   setMember,
   untilParentAge,
   withAdultChild,
+  withAdultChildren,
   withChild,
+  withHomes,
   withMoney,
   years,
 } from '../helpers'
@@ -75,7 +81,7 @@ describe('casar', () => {
     const { state, childId } = withAdultChild(4)
     const searched = expectOk(find(state, childId)).state
     const chosen = searched.suitors[childId][1]
-    const cost = weddingCost(searched)
+    const cost = weddingCost()
 
     const result = expectOk(
       applyAction(searched, { type: 'marry', memberId: childId, suitorIndex: 1 }),
@@ -110,7 +116,7 @@ describe('casar', () => {
 
   it('o casal novo pode ter filhos, que entram na geração seguinte', () => {
     const { state, childId } = withAdultChild(4)
-    const married = untilParentAge(marryMember(state, childId))
+    const married = untilParentAge(marryMember(withHomes(state, { kitnet: 1 }), childId))
     const withGrandchild = expectOk(
       applyAction(married, { type: 'haveChild', parentId: childId }),
     ).state
@@ -119,19 +125,70 @@ describe('casar', () => {
     expect(grandchild.parentIds).toContain(childId)
   })
 
-  it('custa mais conforme a família viva cresce', () => {
-    const { state, childId } = withAdultChild(5)
-    const living = Object.keys(state.members).length
-    const first = weddingCost(state)
-    const married = marryMember(state, childId)
-    expect(first).toBe(Math.round(BALANCE.marriage.baseCost * BALANCE.familySizeGrowth ** living))
-    expect(weddingCost(married)).toBeGreaterThan(first)
+  it('custa sempre o mesmo, com qualquer tamanho de família', () => {
+    const one = withAdultChild(5)
+    const two = withAdultChildren(5)
+    expect(weddingCost()).toBe(BALANCE.marriage.cost)
+    const families: [GameState, string][] = [
+      [one.state, one.childId],
+      [withHomes(two.state, { kitnet: 1 }), two.childIds[0]],
+    ]
+    for (const [family, childId] of families) {
+      const married = marryMember(family, childId)
+      expect(family.money - married.money).toBe(BALANCE.marriage.cost)
+    }
+  })
+
+  it('sem lugar em casa, o casal sai para formar a própria família', () => {
+    const { state: full, childIds } = withAdultChildren(5)
+    const [childId] = childIds
+    expect(livingCount(full)).toBe(BALANCE.housing.rentedPlaces)
+    expect(freePlaces(full)).toBe(0)
+    const searched = expectOk(find(full, childId)).state
+    expect(checkMarry(searched, childId, 0)).toMatchObject({ ok: true, leavesHome: true })
+
+    const result = expectOk(
+      applyAction(searched, { type: 'marry', memberId: childId, suitorIndex: 0 }),
+    )
+    const married = result.state
+    const child = married.members[childId]
+    const spouse = married.members[child.partnerId ?? '']
+    const day = married.clock.day
+    expect(result.events).toEqual([
+      { type: 'married', day, memberId: childId, partnerId: spouse.id },
+      { type: 'leftHome', day, memberId: childId, partnerId: spouse.id },
+    ])
+    for (const person of [child, spouse]) {
+      expect(person.leftHome).toBe(true)
+      expect(person.deathDay).toBe(day)
+      expect(livesAway(person, day)).toBe(true)
+    }
+    expect(livingCount(married)).toBe(livingCount(full) - 1)
+    expect(married.money).toBe(searched.money - BALANCE.marriage.cost)
+    expect(familyRates(married).income).toBeLessThan(familyRates(full).income)
+
+    // Fora de casa, a idade continua contando até a expectativa de vida.
+    const tenYears = day + 10 * BALANCE.daysPerYear
+    expect(ageOf(child, tenYears)).toBe(ageOf(child, day) + 10)
+    expect(livesAway(child, lifeEndDay(child) - 1)).toBe(true)
+    expect(livesAway(child, lifeEndDay(child))).toBe(false)
+    expect(ageOf(child, lifeEndDay(child) + 1_000)).toBe(child.lifespan)
+  })
+
+  it('com lugar em casa, o casal fica na família', () => {
+    const { state, childIds } = withAdultChildren(5)
+    const [childId] = childIds
+    const searched = expectOk(find(withHomes(state, { kitnet: 1 }), childId)).state
+    expect(checkMarry(searched, childId, 0)).toMatchObject({ ok: true, leavesHome: false })
+    const married = marryMember(searched, childId)
+    expect(married.members[childId].leftHome).toBe(false)
+    expect(married.members[childId].deathDay).toBeNull()
   })
 
   it('exige dinheiro suficiente e uma sugestão válida', () => {
     const { state, childId } = withAdultChild(6)
     const searched = expectOk(find(state, childId)).state
-    const broke = withMoney(searched, weddingCost(searched) - 1)
+    const broke = withMoney(searched, weddingCost() - 1)
     expect(checkMarry(broke, childId, 0)).toEqual({ ok: false, error: 'notEnoughMoney' })
     expect(checkMarry(searched, childId, 9)).toEqual({ ok: false, error: 'suitorNotFound' })
     expect(checkMarry(state, childId, 0)).toEqual({ ok: false, error: 'suitorNotFound' })

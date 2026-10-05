@@ -1,14 +1,18 @@
 import { BALANCE } from '../content/balance'
 import { careerLevel, PUBLIC_CAREER, topLevel } from '../content/careers'
+import { isUnemployed } from './economy'
 import { ageOf } from './members'
 import type { CareerState, GameEvent, GameState, Member, MemberId } from './types'
 
-/** Quem trabalha e ainda pode subir: vivo, com carreira e antes da aposentadoria. */
+/** Quem trabalha e ainda pode subir: vivo, empregado e antes da aposentadoria. */
 type Worker = Member & { career: CareerState }
 
 function isWorker(member: Member, day: number): member is Worker {
   return (
-    member.deathDay === null && member.career !== null && ageOf(member, day) < BALANCE.retirementAge
+    member.deathDay === null &&
+    member.career !== null &&
+    !isUnemployed(member, day) &&
+    ageOf(member, day) < BALANCE.retirementAge
   )
 }
 

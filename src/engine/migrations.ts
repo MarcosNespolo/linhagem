@@ -6,7 +6,7 @@ import { ageInYears, lastDayOfYear } from './time'
 import type { GameState } from './types'
 
 /** Versão atual do formato do save. Sobe a cada migração nova. */
-export const CURRENT_SCHEMA_VERSION = 10
+export const CURRENT_SCHEMA_VERSION = 11
 
 export type SaveErrorCode = 'corrupt' | 'futureVersion' | 'missingMigration'
 
@@ -238,6 +238,20 @@ const toVersion10: Migration = (save) => {
 }
 
 /**
+ * Versão 10 para 11: entram a moradia e os imprevistos. Ninguém saiu de casa
+ * nem está desempregado ainda. A moradia sai dos imóveis que a família já tem.
+ */
+const toVersion11: Migration = (save) => {
+  const members = isRecord(save.members) ? save.members : {}
+  const upgraded: RawSave = {}
+  for (const [id, member] of Object.entries(members)) {
+    upgraded[id] = isRecord(member) ? { ...member, leftHome: false, unemployedUntil: null } : member
+  }
+  const stats = isRecord(save.stats) ? save.stats : {}
+  return { ...save, members: upgraded, stats: { ...stats, archived: 0 } }
+}
+
+/**
  * Migrações, indexadas pela versão de origem. São sempre aditivas: criam
  * campos novos com valores padrão e nunca apagam dados do jogador; uma troca
  * de unidade, como a do dinheiro na versão 3, converte o valor sem perder
@@ -255,6 +269,7 @@ export const MIGRATIONS: Readonly<Record<number, Migration>> = {
   7: toVersion8,
   8: toVersion9,
   9: toVersion10,
+  10: toVersion11,
 }
 
 /** Valida um save lido de JSON e o leva até a versão atual. */

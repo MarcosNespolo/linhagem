@@ -18,7 +18,7 @@ export const BALANCE = {
   /** Dinheiro no início da partida. */
   startingMoney: 90_000,
   /** Faixa de idade do casal fundador, em anos. */
-  startingAge: { min: 22, max: 27 },
+  startingAge: { min: 24, max: 29 },
 
   /** Idade em que um membro vira adulto e consegue o primeiro emprego. */
   adultAge: 18,
@@ -38,34 +38,63 @@ export const BALANCE = {
    */
   lifespan: { min: 72, spread: 12 },
 
-  /**
-   * Filhos e casamentos ficam mais caros conforme a família viva cresce: cada
-   * membro vivo multiplica esses custos por este fator. A renda cresce em linha
-   * reta com a família e os custos em curva, então a família se estabiliza num
-   * tamanho que a renda sustenta, em vez de crescer sem parar. Com 6%, a
-   * simulação de 10 horas fica entre 80 e 145 pessoas vivas depois das 3
-   * primeiras horas, mesmo com a renda dos imóveis crescendo.
-   */
-  familySizeGrowth: 1.06,
-
   children: {
     /** Os dois membros do casal precisam estar nesta faixa de idade. */
     minParentAge: 20,
     maxParentAge: 45,
-    /** Custo base de um filho, antes do ajuste pelo tamanho da família. */
-    baseCost: 72_000,
-    /** Cada filho que o casal já teve multiplica o custo do próximo por este fator. */
-    coupleGrowth: 1.3,
+    /** Parto e enxoval: o custo de ter um filho, sempre o mesmo. */
+    birthCost: 15_000,
     /** Intervalo mínimo entre dois filhos do mesmo membro, em dias do jogo: 2 anos. */
     cooldownDays: 730,
-    /** Despesa por mês de uma criança: base mais um valor por ano de idade. */
-    expenseBase: 180,
-    expensePerYear: 45,
+    /**
+     * Custo de vida de uma criança por mês, sem a escola: alimentação, roupas,
+     * saúde e lazer. Uma base mais um valor por ano de idade.
+     */
+    expenseBase: 400,
+    expensePerYear: 30,
+  },
+
+  /**
+   * Custo de vida de cada adulto por mês, sem a moradia: mercado e contas,
+   * plano de saúde (com médico e dentista), que fica mais caro a partir dos 65
+   * anos, e transporte, de ônibus para quem ganha pouco e de carro para quem
+   * ganha a partir de `carFromSalary`.
+   */
+  living: {
+    adult: 800,
+    health: { adult: 300, senior: 900 },
+    seniorAge: 65,
+    transport: { bus: 200, car: 800, carFromSalary: 6_000 },
+  },
+
+  /**
+   * Moradia. Cada pessoa da família precisa de um lugar em casa. Quem não cabe
+   * nos imóveis de moradia da família mora de aluguel, pago por lugar, até
+   * `rentedPlaces` lugares. Quem mora num imóvel da família paga só as contas
+   * dele (condomínio, IPTU e manutenção, em `PROPERTY_TYPES`).
+   */
+  housing: {
+    /** Aluguel por mês de cada lugar alugado. */
+    rentPerPlace: 350,
+    /** Lugares que a família consegue alugar, no máximo. */
+    rentedPlaces: 4,
+  },
+
+  /**
+   * Imprevistos, com a chance por ano de cada um. Demissão: quem trabalha fora
+   * do serviço público fica de `months` meses sem salário e volta no mesmo
+   * nível. Cirurgia: conta de hospital, mais provável a partir de
+   * `seniorRiskFromAge`. Carro: conserto para quem tem carro.
+   */
+  mishaps: {
+    layoff: { perYear: 0.03, months: { min: 3, max: 9 } },
+    surgery: { perYear: 0.01, seniorPerYear: 0.04, cost: { min: 15_000, max: 60_000 } },
+    car: { perYear: 0.06, cost: { min: 1_500, max: 8_000 } },
   },
 
   marriage: {
-    /** Custo base de um casamento, antes do ajuste pelo tamanho da família. */
-    baseCost: 54_000,
+    /** Festa e cartório: o custo de um casamento, sempre o mesmo. */
+    cost: 30_000,
     /** Diferença máxima de idade, em anos, entre o membro e as pessoas sugeridas como par. */
     maxAgeGapYears: 5,
     /** Quantas pessoas aparecem a cada busca por par. */
@@ -101,12 +130,20 @@ export const BALANCE = {
   },
 
   /**
-   * Imóveis rendem aluguel todo mês para a família. Cada imóvel do mesmo tipo
-   * custa este fator vezes o anterior, e o aluguel fica igual: o décimo kitnet
-   * custa cerca de 5 vezes o primeiro e demora 5 vezes mais para se pagar. Com
-   * 20%, o aluguel cresce a cada hora sem disparar a renda.
+   * Imóveis. Os de moradia (kitnet, apartamento e casa) têm preço fixo, e o
+   * bairro tem `homeSupply` de cada um. Os comerciais não acabam, mas ficam um
+   * pouco mais caros a cada compra: cada um custa `priceGrowth` vezes o
+   * anterior do mesmo tipo, com o mesmo aluguel. Com 3%, a renda continua
+   * crescendo a cada hora, sem disparar no começo nem parar no fim.
    */
-  properties: { priceGrowth: 1.2 },
+  properties: { priceGrowth: 1.03, homeSupply: 10 },
+
+  /**
+   * Arquivo da árvore: quando ela passa deste número de pessoas, os ramos
+   * antigos que já terminaram saem dela em janeiro, para o save não crescer
+   * sem limite (`archiveMembers`).
+   */
+  archive: { maxMembers: 800 },
 
   /** Missões do dia: quantas aparecem, todas de tipos diferentes. */
   missions: { perDay: 3 },

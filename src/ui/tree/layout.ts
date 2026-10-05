@@ -1,4 +1,4 @@
-import type { GameState, MemberId } from '@/engine'
+import { livesAway, type GameState, type MemberId } from '@/engine'
 
 /**
  * Unidade da árvore: um membro de sangue (ou o primeiro fundador) e, se
@@ -58,13 +58,15 @@ export type TreeLayout = {
 /**
  * Monta a árvore a partir do estado. Sem `showDeceased`, some quem já morreu
  * e não tem descendentes vivos; quem tem continua aparecendo como ancestral.
- * Devolve null quando não sobra ninguém para mostrar.
+ * Quem saiu de casa para formar a própria família aparece como um ramo
+ * enquanto vive. Devolve null quando não sobra ninguém para mostrar.
  */
 export function buildFamilyTree(
   state: GameState,
   { showDeceased }: { showDeceased: boolean },
 ): TreeUnit | null {
   const members = state.members
+  const day = state.clock.day
   const kidsOf = new Map<MemberId, MemberId[]>()
   for (const member of Object.values(members)) {
     if (member.origin !== 'born') continue
@@ -84,7 +86,9 @@ export function buildFamilyTree(
       .sort((a, b) => a.birthDay - b.birthDay || a.id.localeCompare(b.id, 'en', { numeric: true }))
       .map((child) => build(child.id))
       .filter((unit): unit is TreeUnit => unit !== null)
-    const anyAlive = memberIds.some((id) => members[id].deathDay === null)
+    const anyAlive = memberIds.some(
+      (id) => members[id].deathDay === null || livesAway(members[id], day),
+    )
     if (!showDeceased && !anyAlive && children.length === 0) return null
     return { coreId, memberIds, children }
   }

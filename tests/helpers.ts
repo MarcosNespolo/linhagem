@@ -1,5 +1,6 @@
 import { expect } from 'vitest'
 import { BALANCE } from '@/content/balance'
+import type { PropertyId } from '@/content/properties'
 import {
   advance,
   applyAction,
@@ -24,6 +25,14 @@ export function makeGame(seed = 1): GameState {
 
 export function withMoney(state: GameState, money: number): GameState {
   return { ...state, money }
+}
+
+/** A família com os imóveis informados, sem pagar por eles: lugar em casa para mais gente. */
+export function withHomes(
+  state: GameState,
+  properties: Partial<Record<PropertyId, number>>,
+): GameState {
+  return { ...state, properties: { ...state.properties, ...properties } }
 }
 
 /** Troca campos de um membro sem alterar o estado original. */
@@ -118,6 +127,19 @@ export function withAdultChild(seed = 1): { state: GameState; childId: string } 
   const childId = lastMember(born).id
   const grown = play(born, years(BALANCE.adultAge), undefined, workPolicy)
   return { state: withMoney(grown, 1_000_000), childId }
+}
+
+/**
+ * Família com dois filhos, nascidos com o intervalo mínimo entre filhos e já
+ * adultos: com os fundadores, enche os 4 lugares que a família consegue alugar.
+ */
+export function withAdultChildren(seed = 1): { state: GameState; childIds: [string, string] } {
+  const first = withChild(makeGame(seed))
+  const older = lastMember(first).id
+  const second = withChild(play(first, days(BALANCE.children.cooldownDays), undefined, workPolicy))
+  const younger = lastMember(second).id
+  const grown = play(second, years(BALANCE.adultAge), undefined, workPolicy)
+  return { state: withMoney(grown, 1_000_000), childIds: [older, younger] }
 }
 
 /**

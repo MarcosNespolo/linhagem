@@ -15,12 +15,12 @@ import { parseArgs } from 'node:util'
 import { BALANCE } from '../src/content/balance'
 import {
   familyRates,
+  homePlaces,
   isBoosted,
   livingMembers,
   rentPerMonth,
   serialize,
   totalProperties,
-  weddingCost,
 } from '../src/engine'
 import { formatMoney, formatRate } from '../src/lib/format'
 import type { Autoplay } from '../src/sim/autoplay'
@@ -47,7 +47,9 @@ const snapshot = ({ state, counters, elapsedMs }: Autoplay) => {
     ano: Math.floor(state.clock.day / BALANCE.daysPerYear),
     dinheiro: formatMoney(state.money),
     renda: formatRate(familyRates(state).income),
+    saldo: formatRate(familyRates(state).net),
     vivos: livingMembers(state).length,
+    lugares: homePlaces(state),
     total: Object.keys(state.members).length,
     casamentos: counters.weddings,
     nascimentos: counters.births,
@@ -57,7 +59,7 @@ const snapshot = ({ state, counters, elapsedMs }: Autoplay) => {
     aluguel: formatRate(rentPerMonth(state)),
     '×2': isBoosted(state) ? 'sim' : '',
     recompensas: counters.rewards,
-    'próx. casamento': formatMoney(weddingCost(state)),
+    saíram: counters.leftHome,
   })
 }
 

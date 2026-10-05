@@ -23,6 +23,7 @@ import {
   memberIncome,
   rollJobOffers,
   type Formation,
+  type GameState,
   type Member,
 } from '@/engine'
 import {
@@ -38,6 +39,17 @@ import {
 
 const salary = (id: CareerId, level: number) => careerLevel(id, level).salaryPerMonth
 const yearDays = (n: number) => n * BALANCE.daysPerYear
+
+/** Partida em que o casal fundador começa a trabalhar no dia 0, no 1º nível. */
+function beginners(seed: number): GameState {
+  let state = makeGame(seed)
+  for (const founder of founders(state)) {
+    state = setMember(state, founder.id, {
+      career: { id: founder.career!.id, level: 0, levelSince: 0 },
+    })
+  }
+  return state
+}
 
 describe('carreiras', () => {
   it('são 12, com 5 níveis, salários que sobem e títulos nas duas formas', () => {
@@ -103,8 +115,24 @@ describe('vagas por formação', () => {
 })
 
 describe('promoções', () => {
+  it('o casal fundador começa com as promoções dos anos que já trabalhou desde os 18', () => {
+    const [toSecond, toThird] = BALANCE.careers.yearsToPromote
+    for (const seed of [1, 2, 3, 4, 5, 6]) {
+      for (const founder of founders(makeGame(seed))) {
+        const worked = -founder.birthDay / BALANCE.daysPerYear - BALANCE.adultAge
+        const level = worked >= toSecond + toThird ? 2 : worked >= toSecond ? 1 : 0
+        const inLevel = worked - [0, toSecond, toSecond + toThird][level]
+        expect(MEDIO_CAREERS).toContain(founder.career!.id)
+        expect(founder.career).toMatchObject({
+          level,
+          levelSince: -Math.floor(inLevel * BALANCE.daysPerYear),
+        })
+      }
+    }
+  })
+
   it('sobe sozinho com 3 e com 5 anos no nível, e para no 3º nível', () => {
-    const start = makeGame(11)
+    const start = beginners(11)
     const [first] = founders(start)
     const careerId = first.career!.id
 
@@ -129,7 +157,7 @@ describe('promoções', () => {
   })
 
   it('o curso do 4º nível sai depois de 8 anos no 3º, custa 24 meses do aumento e promove na hora', () => {
-    const before = advance(makeGame(11), years(16) - 1).state
+    const before = advance(beginners(11), years(16) - 1).state
     const [first] = founders(before)
     const careerId = first.career!.id
     expect(courseFor(first, before.clock.day)).toBeNull()
@@ -158,7 +186,7 @@ describe('promoções', () => {
   })
 
   it('pagar todos os cursos paga do mais barato ao mais caro enquanto houver dinheiro', () => {
-    const state = advance(makeGame(11), years(16)).state
+    const state = advance(beginners(11), years(16)).state
     const courses = availableCourses(state)
     expect(courses).toHaveLength(2)
     expect(courses[0].cost).toBeLessThanOrEqual(courses[1].cost)

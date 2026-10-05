@@ -25,19 +25,24 @@ Jogue em [linhagem.vercel.app](https://linhagem.vercel.app).
 - Acompanhar na aba Trabalho as carreiras, os níveis e as promoções, e pagar os cursos que levam
   ao 4º e ao 5º nível
 - Casar quem fez 18 anos, escolhendo entre pessoas sugeridas, cada uma com formação e emprego; o
-  cônjuge entra na família e trabalha
-- Comprar imóveis, do kitnet ao shopping, que rendem aluguel todo mês na aba Imóveis
+  cônjuge entra na família e trabalha. Sem lugar em casa, o casal sai para formar a própria
+  família e continua na árvore como um ramo
+- Comprar imóveis na aba Imóveis: kitnets, apartamentos e casas dão lugar para a família morar, e
+  os que ela não usa, como os comerciais, rendem aluguel todo mês
 - Cumprir as três missões do dia, que valem até a meia-noite, e pegar a recompensa: meses de renda
   ou a renda em dobro por 5 anos do jogo
-- Acompanhar o dinheiro em reais, com salários, aluguel e despesas por mês e o 13º salário em
-  dezembro
+- Acompanhar o dinheiro em reais, com salários, aluguel, custo de vida (mercado, plano de saúde,
+  transporte e moradia) e o 13º salário em dezembro, e passar por imprevistos: demissão, cirurgia
+  e conserto do carro
 - Ver a família numa árvore com zoom e arrasto, com quem já morreu esmaecido
-- Ver o histórico na aba Família: nascimentos, casamentos, estudos, empregos, promoções e mortes
+- Ver o histórico na aba Família: nascimentos, casamentos, estudos, empregos, promoções,
+  imprevistos e mortes
 - Voltar ao jogo e ver o resumo do que aconteceu enquanto esteve fora
 - Entrar com e-mail, sem senha, para guardar a família na nuvem e continuar em outro aparelho
 
-Filhos e casamentos ficam 6% mais caros a cada pessoa viva, para que a família se estabilize num
-tamanho que a renda sustenta: na simulação de 10 horas, entre 80 e 145 pessoas vivas.
+Os preços são fixos: um filho custa R$ 15 mil e um casamento, R$ 30 mil. O que limita a família é
+o lugar em casa: cada pessoa precisa de um, e o bairro tem 10 kitnets, 10 apartamentos e 10 casas
+à venda. Na simulação de 10 horas, a família chega a cerca de 120 pessoas vivas.
 
 ## Stack
 
@@ -100,8 +105,8 @@ sincroniza com a nuvem.
 O jogo passa a 1 ano por minuto, ou 1 mês a cada 5 segundos (`BALANCE.secondsPerGameMonth` em
 `src/content/balance.ts`): um filho vira adulto em 18 minutos. Salários e despesas são em reais
 por mês do jogo e o dinheiro entra aos poucos, a cada instante. Os eventos (aniversários,
-maioridade, aposentadoria, morte, promoções, provas de concurso e o 13º salário, em 20 de
-dezembro) acontecem na virada de cada dia do jogo.
+maioridade, aposentadoria, morte, promoções, imprevistos, provas de concurso e o 13º salário, em
+20 de dezembro) acontecem na virada de cada dia do jogo.
 
 Quando alguém precisa de uma escolha, como a matrícula ou o primeiro emprego, o relógio para até o
 jogador decidir. As escolhas abertas ficam no save (`choices`), e a sugestão de cada uma já vem
@@ -150,9 +155,25 @@ continuar estudando para o cargo de nível superior ou procurar outro emprego. N
 a promoção vem só com o tempo, e a aposentadoria paga 70% do último salário, em vez de 50%. As
 regras ficam em `src/engine/concurso.ts`, e os valores em `BALANCE.concurso`.
 
-O casal fundador começa no 1º nível de uma carreira de ensino médio. Quem é sugerido como par chega
-com formação e emprego sorteados, já com as promoções dos anos de trabalho
-(`src/engine/jobs.ts`).
+O casal fundador, de 24 a 29 anos, começa numa carreira de ensino médio, já com as promoções dos
+anos que trabalhou desde os 18. Quem é sugerido como par chega com formação e emprego sorteados,
+também com as promoções dos anos de trabalho (`src/engine/jobs.ts`).
+
+## Custo de vida e imprevistos
+
+Cada pessoa tem um custo de vida por mês (`livingCost` em `src/engine/economy.ts`, com os valores
+em `BALANCE.living` e `BALANCE.children`). Uma criança custa R$ 400 mais R$ 30 por ano de idade,
+sem a escola. Um adulto paga R$ 800 de mercado e contas, R$ 300 de plano de saúde, com médico e
+dentista (R$ 900 a partir dos 65), e o transporte: R$ 200 de ônibus, ou R$ 800 de carro para quem
+ganha a partir de R$ 6 mil. A moradia é da família inteira (veja Moradia e imóveis).
+
+Imprevistos acontecem com uma chance pequena por ano (`src/engine/mishaps.ts`, com os valores em
+`BALANCE.mishaps`). Quem trabalha fora do serviço público pode ser demitido (3% ao ano) e fica de 3
+a 9 meses sem salário, voltando no mesmo nível. Adultos podem precisar de cirurgia (1% ao ano, 4% a
+partir dos 65), de R$ 15 mil a R$ 60 mil, e quem tem carro pode precisar de conserto (6% ao ano),
+de R$ 1.500 a R$ 8 mil. A família paga o que tiver no caixa. Cada sorteio depende só da seed, do dia
+e da pessoa, sem gastar o gerador do jogo, então o resultado é o mesmo avançando de uma vez ou aos
+poucos. Demissões e cirurgias aparecem como aviso; o resto fica no histórico.
 
 Com o jogo fechado ou a aba escondida, o relógio não anda. Ao voltar, o tempo fora é simulado de
 uma vez, com limite de 5 anos do jogo (`BALANCE.offlineCapYears`), e para na primeira escolha que
@@ -164,17 +185,26 @@ calendário exatamente igual.
 Todo sorteio usa um gerador com seed guardada no save, então a mesma partida avançada da mesma
 forma chega sempre ao mesmo estado. Os testes conferem isso.
 
-## Imóveis
+## Moradia e imóveis
 
-São nove tipos, do kitnet ao shopping (`src/content/properties.ts`), cada um de 3 a 6 vezes mais
-caro que o anterior. O primeiro de cada tipo se paga em 10 anos do jogo, no kitnet, até 32, no
-shopping. Cada imóvel a mais do mesmo tipo custa 20% mais que o anterior, com o mesmo aluguel, e o
-tipo seguinte libera com a primeira compra do anterior. A compra é de um em um, sem venda nem
-financiamento por enquanto.
+Cada pessoa da família precisa de um lugar em casa. Kitnet tem 2 lugares, apartamento 4 e casa 6,
+e o bairro tem 10 de cada, com preço fixo: R$ 80 mil, R$ 450 mil e R$ 1,5 milhão. Quem não cabe nos
+imóveis da família mora de aluguel, a R$ 350 por lugar, até 4 lugares. Sem lugar livre, o casal não
+pode ter filho, e quem casa sai de casa com o par para formar a própria família: os dois continuam
+na árvore como um ramo, envelhecendo até a expectativa de vida, mas saem das contas. A família mora
+primeiro nos imóveis que rendem menos aluguel por lugar (kitnets, depois apartamentos e casas) e
+paga as contas deles, de condomínio, IPTU e manutenção; os outros ficam alugados.
+
+Os comerciais, da sala comercial ao shopping, não acabam, mas cada um a mais do mesmo tipo custa 3%
+mais que o anterior, com o mesmo aluguel. Alugados, os de moradia se pagam em 10 a 13 anos do jogo,
+e os comerciais em 45 a 70: com um ano por minuto, um aluguel que se paga em poucos anos faria a
+renda disparar. Cada tipo libera com a primeira compra do anterior, e a compra é de um em um, sem
+venda nem financiamento por enquanto.
 
 O aluguel entra na renda da família todo mês, sem depender de quem está vivo: os imóveis são da
 família e ficam quando as pessoas morrem. O resumo da volta ao jogo mostra quanto veio de aluguel.
-As regras ficam em `src/engine/properties.ts`, e o crescimento do preço em `BALANCE.properties`.
+As regras ficam em `src/engine/properties.ts`, o catálogo em `src/content/properties.ts`, e os
+valores em `BALANCE.housing` e `BALANCE.properties`.
 
 ## Missões e bônus
 
@@ -185,7 +215,8 @@ da store, porque a engine não conhece o relógio do aparelho, e o sorteio acont
 simular o tempo fora, para que o jogo fechado não cumpra missões sozinho.
 
 Cada missão só aparece quando a família consegue cumpri-la, como Formatura, que pede alguém na
-faculdade ou no técnico, e conta só o que acontece depois que aparece. A recompensa vale meses da
+faculdade ou no técnico, ou Chá de bebê, que pede lugar livre em casa, e conta só o que acontece
+depois que aparece. A recompensa vale meses da
 renda líquida na hora de pegar, ou a renda em dobro por 5 anos do jogo; outro bônus soma 5 anos ao
 que falta. O bônus conta o tempo de jogo andando, então para nas pausas e nas escolhas, e o fim
 dele é um ponto de corte do relógio, como a virada do dia. Recompensas não pegas somem com as
@@ -195,11 +226,12 @@ missões quando o dia vira. As regras ficam em `src/engine/missions.ts` e `src/e
 
 Os números ficam em `src/content/balance.ts` e foram ajustados com uma simulação de 10 horas de
 jogo (`npm run sim`). Um jogador automático (`src/sim/autoplay.ts`) casa todos e tem até 4 filhos
-por casal, põe os filhos no colégio particular quando a renda cobre, tenta a federal e paga a
-faculdade particular quando não passa, escolhe a vaga de maior salário, paga os cursos e pega as
-recompensas das missões. Metade de tudo o que entra fica guardada para o imóvel que se paga mais
-rápido, e a outra metade vai para a família; o dia das missões vira a cada hora, como quem joga uma
-hora por dia.
+por casal; põe os filhos no colégio particular quando sobra renda depois de guardar um quarto dela,
+tenta a federal e paga a faculdade particular quando não passa; escolhe a vaga de maior salário,
+paga os cursos e pega as recompensas das missões. Filhos e casamentos vêm primeiro: quando falta
+lugar em casa para eles, o dinheiro vai para o imóvel de moradia com o lugar mais barato, e quando
+o bairro não tem mais imóvel de moradia, quem casa sai de casa. O resto vai para o imóvel que se
+paga mais rápido. O dia das missões vira a cada hora, como quem joga uma hora por dia.
 
 A simulação confere sete limites (`src/sim/limits.ts`) e sai com erro se algum falhar:
 
@@ -213,10 +245,12 @@ A simulação confere sete limites (`src/sim/limits.ts`) e sai com erro se algum
 | Relógio       | cada segundo de jogo custa menos de 2 ms com a família do fim                 |
 | Volta ao jogo | 5 anos de progresso offline em menos de 200 ms                                |
 
-Com as seeds de 1 a 4, a renda vai de cerca de R$ 700 mil por mês na primeira hora a R$ 25 milhões
-na décima, o save fica perto de 600 KB, e cada segundo de jogo custa menos de 1 ms. O CI roda uma
-versão de 1 hora com duas seeds (`tests/sim/balance.test.ts`), com os limites que já valem nesse
-tempo.
+Com as seeds de 1 a 4, a família chega a 124 pessoas, o máximo que as casas do bairro e o aluguel
+comportam, em cerca de 1 hora e meia, e fica entre 118 e 124 dali em diante. A renda vai de cerca
+de R$ 700 mil por mês na primeira hora a R$ 450 milhões na décima, crescendo de 5 vezes, na segunda
+hora, a 1,2 vez, na última. O save fica perto de 560 KB, cada segundo de jogo custa cerca de 1 ms, e
+5 anos de progresso offline, menos de 80 ms. O CI roda uma versão de 1 hora com duas seeds
+(`tests/sim/balance.test.ts`), com os limites que já valem nesse tempo.
 
 ## Avatares
 
@@ -235,6 +269,13 @@ O save é um JSON versionado (`schemaVersion`). Ao mudar o formato:
 3. Os testes abrem todos os saves de exemplo e conferem que continuam funcionando.
 
 Migrações são sempre aditivas: criam campos com valores padrão e nunca apagam dados do jogador.
+
+O que sai do save é regra do jogo, não da migração. Para o save não crescer sem limite, todo
+janeiro, quando a árvore passa de 800 pessoas, os ramos antigos que já terminaram saem dela
+(`src/engine/archive.ts`, com o limite em `BALANCE.archive`). Sai quem morreu, ou saiu de casa e já
+passou da expectativa de vida, sem filhos na árvore, sem acontecimento no histórico e com o par na
+mesma situação, de quem se foi há mais tempo para quem se foi há menos. Os ancestrais de quem está
+na árvore ficam sempre. Os Ajustes mostram quantas pessoas já saíram.
 
 ## Nuvem
 

@@ -6,30 +6,32 @@
  * de promoção, compra o imóvel que se paga mais rápido e pega as recompensas
  * das missões.
  *
- * O dinheiro se divide ao meio: metade de tudo o que entra fica guardada para
- * os imóveis, e a outra metade paga as escolas, os cursos, os casamentos e os
- * filhos, os mais baratos primeiro. Gastar tudo na família deixaria os imóveis
- * parados quando ela fica grande, e a renda pararia de crescer.
+ * A família vem primeiro: filhos e casamentos saem antes dos investimentos, e
+ * quando falta lugar em casa para eles, o dinheiro vai para o imóvel de
+ * moradia com o lugar mais barato. Quando o bairro não tem mais imóvel de
+ * moradia à venda, quem casa sai de casa para formar a própria família. O que
+ * sobra vai para os imóveis que se pagam mais rápido.
  *
  * Fica fora da engine e do jogo: só o script `npm run sim` e o teste de
  * balanceamento usam.
  */
 import { careerLevel } from '../content/careers'
+import { PROPERTY_TYPES, type PropertyId } from '../content/properties'
 import { degree } from '../content/schools'
 import {
   advance,
   applyAction,
-  availableCourses,
   checkHaveChild,
   checkSeekPartner,
-  childrenOf,
   claimableMissions,
   familyRates,
+  freePlaces,
   isPropertyUnlocked,
   livingMembers,
   msToTicks,
   newGame,
   paybackYears,
+  propertiesLeft,
   propertyPrice,
   stageFee,
   TICKS_PER_DAY,
@@ -41,8 +43,8 @@ import {
   type ChoicePick,
   type GameEvent,
   type GameState,
+  type Member,
 } from '../engine'
-import type { PropertyId } from '../content/properties'
 
 export type AutoplayOptions = {
   seed: number
@@ -59,6 +61,8 @@ export type AutoplayOptions = {
 export type AutoplayCounters = {
   births: number
   weddings: number
+  /** Casais que saíram de casa para formar a própria família. */
+  leftHome: number
   deaths: number
   courses: number
   properties: number
@@ -71,16 +75,8 @@ export type Autoplay = {
   elapsedMs: number
   maxChildren: number
   missionDayMs: number
-  /** Dinheiro guardado para o próximo imóvel; o resto é da família. */
-  propertyFund: number
-  /** Total ganho e aluguel recebido até o último passo, para separar a parte dos imóveis. */
-  earnedSoFar: number
-  rentSoFar: number
   counters: AutoplayCounters
 }
-
-/** Parte de tudo o que entra (salários, aluguel e recompensas) guardada para imóveis. */
-export const PROPERTY_SHARE = 0.5
 
 /** Quantos minutos a estratégia espera, no máximo, para juntar o dinheiro do imóvel melhor. */
 const PATIENCE_MINUTES = 20
@@ -94,10 +90,15 @@ export function createAutoplay(options: AutoplayOptions): Autoplay {
     elapsedMs: 0,
     maxChildren: options.maxChildren ?? 4,
     missionDayMs: options.missionDayMs ?? 3_600_000,
-    propertyFund: 0,
-    earnedSoFar: 0,
-    rentSoFar: 0,
-    counters: { births: 0, weddings: 0, deaths: 0, courses: 0, properties: 0, rewards: 0 },
+    counters: {
+      births: 0,
+      weddings: 0,
+      leftHome: 0,
+      deaths: 0,
+      courses: 0,
+      properties: 0,
+      rewards: 0,
+    },
   }
 }
 
@@ -116,13 +117,18 @@ export function runClock(play: Autoplay, ms: number): void {
   play.elapsedMs += ms
 }
 
+/** Parte da renda que a estratégia guarda antes de pagar colégio ou faculdade particular. */
+const SAVINGS_SHARE = 0.25
+
 /**
  * Respostas da estratégia para as escolhas abertas. As mensalidades escolhidas
- * saem do que sobra para a família, uma escolha depois da outra, para várias
- * matrículas no mesmo janeiro não passarem juntas do orçamento.
+ * saem do que sobra para a família depois de guardar `SAVINGS_SHARE` da renda,
+ * uma escolha depois da outra, para várias matrículas no mesmo janeiro não
+ * passarem juntas do orçamento.
  */
 export function strategyPicks(state: GameState): ChoicePick[] {
-  const budget = { left: familyNet(state) }
+  const { net, income } = familyRates(state)
+  const budget = { left: net - SAVINGS_SHARE * income }
   return state.choices.map((choice) => ({
     memberId: choice.memberId,
     option: pick(choice, budget),
@@ -175,68 +181,114 @@ function pick(choice: Choice, budget: { left: number }): number {
 }
 
 /**
- * Gasta o dinheiro na ordem da estratégia. Metade de tudo o que entra fica
- * guardada para o imóvel que se paga mais rápido; com a outra metade, a família
- * pega as recompensas das missões, paga os cursos, casa e tem filhos.
+ * Gasta o dinheiro na ordem da estratégia: recompensas das missões, cursos,
+ * filhos, casamentos e, por último, os imóveis que se pagam mais rápido. Filho
+ * e casamento sem lugar em casa esperam o imóvel de moradia com o lugar mais
+ * barato, e o dinheiro dele fica guardado. Sem imóvel de moradia à venda, quem
+ * casa sai de casa.
  */
 export function spend(play: Autoplay): void {
-  const { totalEarned, rentEarned } = play.state.stats
-  const rent = rentEarned - play.rentSoFar
-  const salaries = totalEarned - play.earnedSoFar - rent
-  play.earnedSoFar = totalEarned
-  play.rentSoFar = rentEarned
-  play.propertyFund = Math.min(
-    play.state.money,
-    play.propertyFund + (rent + salaries) * PROPERTY_SHARE,
-  )
-  const free = () => play.state.money - play.propertyFund
-
   const date = missionDate(play)
   if (play.state.missions?.date !== date) act(play, { type: 'drawMissions', date })
   for (const mission of claimableMissions(play.state)) {
     if (act(play, { type: 'claimMission', missionId: mission.id })) play.counters.rewards += 1
   }
 
-  for (const course of availableCourses(play.state)) {
-    if (course.cost > free()) break
-    if (act(play, { type: 'payCourse', memberId: course.memberId })) play.counters.courses += 1
+  const paid = applyAction(play.state, { type: 'payAllCourses' })
+  if (paid.ok) {
+    play.state = paid.state
+    play.counters.courses += paid.events.length
   }
 
+  // Quantos lugares em casa a família quer a mais: um para cada filho e cada casamento.
+  let wanted = 0
+  const kids = childrenCount(play.state)
+  for (const member of couples(play.state)) {
+    if ((kids.get(member.id) ?? 0) >= play.maxChildren) continue
+    const check = checkHaveChild(play.state, member.id)
+    if (check.ok) {
+      if (act(play, { type: 'haveChild', parentId: member.id })) play.counters.births += 1
+    } else if (check.error === 'noRoom') {
+      wanted += 1
+    }
+  }
+
+  const cost = weddingCost()
   for (const member of livingMembers(play.state)) {
-    if (!checkSeekPartner(play.state, member.id).ok || free() < weddingCost(play.state)) continue
+    if (!checkSeekPartner(play.state, member.id).ok) continue
+    if (freePlaces(play.state) < 1 && homeForRoom(play.state)) {
+      wanted += 1
+      continue
+    }
+    if (play.state.money < cost) break
     if (!act(play, { type: 'findSuitors', memberId: member.id })) continue
     const suitorIndex = bestSuitor(play.state, member.id)
-    if (act(play, { type: 'marry', memberId: member.id, suitorIndex })) play.counters.weddings += 1
+    const result = applyAction(play.state, { type: 'marry', memberId: member.id, suitorIndex })
+    if (!result.ok) continue
+    play.state = result.state
+    play.counters.weddings += 1
+    play.counters.leftHome += count(result.events, 'leftHome')
   }
-  // Os filhos mais baratos primeiro: o primeiro filho de cada casal antes do terceiro de outro.
-  const couples = livingMembers(play.state)
-    .filter((member) => member.partnerId !== null && member.id < member.partnerId)
-    .filter((member) => childrenOf(play.state, member.id).length < play.maxChildren)
-    .map((member) => ({ member, check: checkHaveChild(play.state, member.id) }))
-    .flatMap(({ member, check }) => (check.ok ? [{ id: member.id, cost: check.cost }] : []))
-    .sort((a, b) => a.cost - b.cost)
-  for (const couple of couples) {
-    if (couple.cost > free()) break
-    if (act(play, { type: 'haveChild', parentId: couple.id })) play.counters.births += 1
+
+  // O imóvel de moradia que dá lugar para quem espera, ou o dinheiro guardado para ele.
+  let reserve = 0
+  while (wanted > 0) {
+    const home = homeForRoom(play.state)
+    if (!home) break
+    if (home.price > play.state.money) {
+      reserve = home.price
+      break
+    }
+    if (!act(play, { type: 'buyProperty', propertyId: home.id })) break
+    play.counters.properties += 1
+    wanted -= home.places
   }
 
   for (;;) {
-    const choice = propertyToBuy(play)
+    const choice = propertyToBuy(play.state, play.state.money - reserve)
     if (!choice || !act(play, { type: 'buyProperty', propertyId: choice.id })) break
-    play.propertyFund -= choice.price
     play.counters.properties += 1
   }
 }
 
+/** Pessoas casadas e vivas, uma de cada casal. */
+function couples(state: GameState): Member[] {
+  return livingMembers(state).filter(
+    (member) => member.partnerId !== null && member.id < member.partnerId,
+  )
+}
+
+/** O imóvel de moradia à venda com o lugar em casa mais barato, ou null quando o bairro não tem mais. */
+function homeForRoom(state: GameState): { id: PropertyId; price: number; places: number } | null {
+  let best: { id: PropertyId; price: number; places: number } | null = null
+  for (const type of PROPERTY_TYPES) {
+    if (!type.home || !isPropertyUnlocked(state, type.id) || propertiesLeft(state, type.id) < 1) {
+      continue
+    }
+    const option = { id: type.id, price: propertyPrice(state, type.id), places: type.home.places }
+    if (!best || option.price / option.places < best.price / best.places) best = option
+  }
+  return best
+}
+
+/** Quantos filhos cada pessoa tem, numa passada só por todos. */
+function childrenCount(state: GameState): Map<string, number> {
+  const kids = new Map<string, number>()
+  for (const member of Object.values(state.members)) {
+    for (const parentId of member.parentIds) kids.set(parentId, (kids.get(parentId) ?? 0) + 1)
+  }
+  return kids
+}
+
 /**
- * O imóvel que se paga mais rápido, quando o dinheiro guardado alcança. Se
- * juntar para ele levaria mais que `PATIENCE_MINUTES`, compra o que se paga mais
- * rápido entre os que já dá para comprar.
+ * O imóvel que se paga mais rápido, quando `budget` alcança. Se juntar para ele
+ * levaria mais que `PATIENCE_MINUTES`, compra o que se paga mais rápido entre os
+ * que já dá para comprar, desde que não demore mais que o dobro para se pagar;
+ * senão, continua juntando.
  */
-function propertyToBuy(play: Autoplay): { id: PropertyId; price: number } | null {
-  const { state } = play
+function propertyToBuy(state: GameState, budget: number): { id: PropertyId; price: number } | null {
   const options = visiblePropertyTypes(state)
-    .filter((type) => isPropertyUnlocked(state, type.id))
+    .filter((type) => isPropertyUnlocked(state, type.id) && propertiesLeft(state, type.id) > 0)
     .map((type) => ({
       id: type.id,
       price: propertyPrice(state, type.id),
@@ -245,17 +297,13 @@ function propertyToBuy(play: Autoplay): { id: PropertyId; price: number } | null
     .sort((a, b) => a.payback - b.payback)
   const [best] = options
   if (!best) return null
-  if (best.price <= play.propertyFund) return best
-  const perMinute = PROPERTY_SHARE * 12 * familyRates(state).income
-  const wait = (best.price - play.propertyFund) / Math.max(perMinute, 1)
+  if (best.price <= budget) return best
+  const perMinute = 12 * familyRates(state).net
+  const wait = (best.price - budget) / Math.max(perMinute, 1)
   if (wait <= PATIENCE_MINUTES) return null
-  return options.find((option) => option.price <= play.propertyFund) ?? null
-}
-
-/** O que sobra por mês para a família: a metade da renda que não vai para imóveis, menos as despesas. */
-function familyNet(state: GameState): number {
-  const { income, expense } = familyRates(state)
-  return income * (1 - PROPERTY_SHARE) - expense
+  return (
+    options.find((option) => option.price <= budget && option.payback <= 2 * best.payback) ?? null
+  )
 }
 
 /** Entre as pessoas sugeridas como par, a de maior salário. */
