@@ -141,12 +141,15 @@ function Summary({ game, compact = false }: { game: GameState; compact?: boolean
   )
 }
 
-/** Valor por mês em destaque: o sinal e o número grandes, "/mês" pequeno, para não estourar a caixa. */
+/**
+ * Valor por mês em destaque: o sinal e o número grandes, sem quebrar a linha,
+ * e "/mês" pequeno, para caber em meia tela mesmo nos celulares estreitos.
+ */
 function Amount({ value, none }: { value: number; none: string }) {
   if (value === 0) return <p className="text-ink-soft text-[20px] leading-7 font-black">{none}</p>
   return (
     <p
-      className={`tabular text-[20px] leading-7 font-black ${value < 0 ? 'text-expense' : 'text-income'}`}
+      className={`tabular text-[clamp(16px,5.6vw,20px)] leading-7 font-black whitespace-nowrap ${value < 0 ? 'text-expense' : 'text-income'}`}
     >
       {formatSignedMoney(value)}
       <span className="text-[12px] font-bold">/mês</span>
