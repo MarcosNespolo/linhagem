@@ -1,6 +1,6 @@
 'use client'
 
-import { GraduationCap } from 'lucide-react'
+import { Briefcase, GraduationCap, X } from 'lucide-react'
 import { BALANCE } from '@/content/balance'
 import { concursoOf, getCareer } from '@/content/careers'
 import {
@@ -11,12 +11,15 @@ import {
   expectedConcursoScore,
   halfTimeCaregivers,
   incomeOf,
+  membersWithJobOffer,
   isRetired,
   livingMembers,
   nextExamDay,
   type GameState,
   type Member,
 } from '@/engine'
+import { careerLevel } from '@/content/careers'
+import { useGameStore } from '@/game/store'
 import { formatMoney, formatMonthYear, formatRate } from '@/lib/format'
 import { PersonAvatar } from '../avatar/person-avatar'
 import { showCourse, showMember } from '../flows'
@@ -63,6 +66,7 @@ export function WorkTab({ game }: { game: GameState }) {
         </p>
       </section>
 
+      <JobOffers game={game} />
       <Courses game={game} />
 
       {studying.length > 0 ? (
@@ -111,6 +115,79 @@ export function WorkTab({ game }: { game: GameState }) {
         </section>
       ) : null}
     </div>
+  )
+}
+
+/** Quem tem proposta de outra empresa esperando resposta. */
+function JobOffers({ game }: { game: GameState }) {
+  const members = membersWithJobOffer(game)
+  if (members.length === 0) return null
+  return (
+    <section>
+      <h2 className="px-1 text-lg font-extrabold">Propostas de emprego</h2>
+      <ul className="mt-3 space-y-2">
+        {members.map((member) => (
+          <JobOfferRow key={member.id} game={game} member={member} />
+        ))}
+      </ul>
+    </section>
+  )
+}
+
+function JobOfferRow({ game, member }: { game: GameState; member: Member }) {
+  const dispatch = useGameStore((store) => store.dispatch)
+  const offer = member.jobOffer
+  const career = member.career
+  if (!offer || !career) return null
+  const current = careerLevel(career.id, career.level).salaryPerMonth
+  const offered = careerLevel(offer.careerId, offer.level).salaryPerMonth
+  const until = formatMonthYear(calendarDate(game.startDate, offer.until), 'short')
+  const answer = (accept: boolean) =>
+    dispatch({ type: 'answerJobOffer', memberId: member.id, accept })
+  return (
+    <li className={`${card} p-2.5`}>
+      <button
+        type="button"
+        onClick={() => showMember(member.id)}
+        className="flex w-full items-center gap-3 text-left"
+      >
+        <PersonAvatar
+          person={member}
+          day={game.clock.day}
+          size={44}
+          className="shrink-0 rounded-full"
+        />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-[16px] font-bold">{member.firstName}</span>
+          <span className="block text-[14px] leading-snug font-semibold">
+            {levelTitle(member, offer.careerId, offer.level)}
+          </span>
+          <span className="text-ink-soft block text-[13px]">
+            {careerLine(offer.careerId, offer.level)} · vale até {until}
+          </span>
+        </span>
+        <span className="tabular text-income shrink-0 text-right text-[14px] font-bold">
+          {formatRate(offered)}
+          <span className="text-ink-soft block text-[12px] font-semibold">
+            hoje {formatMoney(current)}
+          </span>
+        </span>
+      </button>
+      <div className="mt-2 flex gap-2">
+        <button type="button" className={`${button.small} flex-1`} onClick={() => answer(true)}>
+          <Briefcase size={15} />
+          Aceitar
+        </button>
+        <button
+          type="button"
+          className={`${button.smallSecondary} flex-1`}
+          onClick={() => answer(false)}
+        >
+          <X size={15} />
+          Recusar
+        </button>
+      </div>
+    </li>
   )
 }
 

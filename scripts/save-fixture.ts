@@ -7,14 +7,15 @@
  * versão.
  *
  * O exemplo passa pelas ações principais do jogo. Quem funda a família começa
- * sozinho, com 18 anos, namora quem aparece e casa. Depois vêm dois filhos, com
+ * sozinho, com 18 anos, faz o primeiro curso, namora quem aparece e casa; o par
+ * faz o curso dele. Depois vêm dois filhos, com
  * a aptidão herdada dos pais, que fizeram a escola com as matrículas sugeridas. O
  * mais velho faz Direito numa faculdade particular e namora quem conheceu, com o
  * pedido de casamento aberto no fim do exemplo. O mais novo teve professor
  * particular no médio, acabou, estudou para concurso e passou. Quem fundou a
  * família faz o curso do próximo nível no ritmo normal, e o par acabou de
- * começar o dele com dedicação. A família tem kitnets, um deles financiado, e
- * um apartamento, e as missões do dia sorteadas: cumpriu a Investidor, com
+ * começar o dele com dedicação. A família tem kitnets, o primeiro financiado,
+ * e um apartamento, e as missões do dia sorteadas: cumpriu a Investidor, com
  * três kitnets a mais, e está com o bônus na renda. Nos anos do exemplo, a
  * família passa pelos imprevistos que a seed sorteia, e algum inquilino sai.
  */
@@ -74,10 +75,13 @@ let state = newGame({
   familyName: 'Exemplo',
 })
 state = { ...state, money: 18_000_000 }
-// Quem funda a família namora quem aparece e casa no pedido, com as sugestões; os filhos
-// esperam os dois terem 20 anos.
+// Quem funda a família já pode fazer o primeiro curso, no ritmo normal.
+state = act(state, { type: 'startCourse', memberId: 'm1', dedicated: false })
+// Namora quem aparece e casa no pedido, com as sugestões; os filhos esperam os dois terem 20 anos.
 state = play(state, 3 * year)
 if (!state.members.m1?.partnerId) throw new Error('O exemplo devia casar quem fundou a família')
+// O par também faz o primeiro curso: com os dois no 2º nível, o banco financia o kitnet mais tarde.
+state = act(state, { type: 'startCourse', memberId: 'm2', dedicated: false })
 state = act(state, { type: 'haveChild', parentId: 'm1' })
 state = play(state, 2 * year)
 state = act(state, { type: 'haveChild', parentId: 'm1' })
@@ -93,9 +97,9 @@ const law = afterSchool.options.findIndex(
 state = act(state, { type: 'choose', picks: [{ memberId: afterSchool.memberId, option: law }] })
 // O mais novo, no médio, ganha um professor particular até o fim da escola.
 state = act(state, { type: 'setTutor', memberId: 'm4', active: true })
-// Já com 18, o mais velho pode conhecer alguém. A família compra um kitnet.
+// Já com 18, o mais velho pode conhecer alguém. A família financia o primeiro kitnet.
 state = play(state, year)
-state = act(state, { type: 'buyProperty', propertyId: 'kitnet' })
+state = act(state, { type: 'buyProperty', propertyId: 'kitnet', financed: true })
 // No janeiro em que o mais novo faz 18, ele vai trabalhar e escolhe estudar para concurso.
 state = play(state, 2 * year, 'afterSchool')
 state = act(state, {
@@ -116,10 +120,9 @@ state = act(state, {
 })
 // Quem fundou a família começa o curso do próximo nível, no ritmo normal.
 state = act(state, { type: 'startCourse', memberId: 'm1', dedicated: false })
-// A família compra mais um kitnet e um apartamento para alugar, e financia outro kitnet.
+// A família compra mais um kitnet e um apartamento para alugar.
 state = act(state, { type: 'buyProperty', propertyId: 'kitnet' })
 state = act(state, { type: 'buyProperty', propertyId: 'apartamento' })
-state = act(state, { type: 'buyProperty', propertyId: 'kitnet', financed: true })
 // O primeiro dia, a partir de 4 de outubro de 2026, em que a Investidor é sorteada.
 for (let day = 4; ; day++) {
   const date = `2026-10-${String(day).padStart(2, '0')}`

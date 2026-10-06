@@ -5,6 +5,8 @@ import {
   advance,
   applyAction,
   calendarDate,
+  checkStudyForConcurso,
+  familyRates,
   memberExpense,
   memberIncome,
   type Choice,
@@ -16,6 +18,7 @@ import {
   expectSameState,
   lastMember,
   makeGame,
+  makeStart,
   play,
   setMember,
   withChild,
@@ -214,6 +217,48 @@ describe('concurso público', () => {
     expect(resultChoice(passedMedio).options[0]).toEqual({
       kind: 'posse',
       careerId: 'tecnicoFederal',
+    })
+  })
+
+  it('quem trabalha e tem o ensino médio pode largar o emprego para estudar', () => {
+    const start = makeStart(25)
+    const [founder] = Object.values(start.members)
+    expect(checkStudyForConcurso(start, founder.id)).toEqual({ ok: true })
+    const quit = expectOk(applyAction(start, { type: 'studyForConcurso', memberId: founder.id }))
+    expect(quit.events).toEqual([
+      { type: 'quitJob', day: 0, memberId: founder.id },
+      { type: 'concursoStarted', day: 0, memberId: founder.id },
+    ])
+    const member = quit.state.members[founder.id]
+    expect(member.career).toBeNull()
+    expect(member.concurso).toEqual({ since: 0, exams: 0, lastScore: null })
+    expect(memberIncome(member, 0)).toBe(0)
+    // Na casa dos pais, sem salário, só paga o custo de vida e o cursinho.
+    expect(familyRates(quit.state).income).toBe(0)
+    expect(familyRates(quit.state).expense).toBe(memberExpense(member, 0))
+    expect(quit.state.log.map((event) => event.type)).toEqual(['quitJob', 'concursoStarted'])
+
+    // Com a nota de partida alta, passa na primeira prova e toma posse.
+    const strong = setMember(quit.state, founder.id, { aptitude: 700 })
+    const passed = play(strong, years(1), 'concurso')
+    expect(resultChoice(passed).options[0]).toMatchObject({ kind: 'posse' })
+
+    // Quem não trabalha, está em curso, aposentou ou tem escolha aberta não larga nada.
+    expect(checkStudyForConcurso(quit.state, founder.id)).toEqual({
+      ok: false,
+      error: 'notWorking',
+    })
+    const studying = expectOk(
+      applyAction(start, { type: 'startCourse', memberId: founder.id, dedicated: false }),
+    ).state
+    expect(checkStudyForConcurso(studying, founder.id)).toEqual({ ok: false, error: 'inCourse' })
+    const retired = setMember(start, founder.id, {
+      birthDay: -BALANCE.retirementAge * BALANCE.daysPerYear,
+    })
+    expect(checkStudyForConcurso(retired, founder.id)).toEqual({ ok: false, error: 'notWorking' })
+    expect(applyAction(start, { type: 'studyForConcurso', memberId: 'm99' })).toEqual({
+      ok: false,
+      error: 'memberNotFound',
     })
   })
 

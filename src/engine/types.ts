@@ -87,6 +87,9 @@ export type Education = {
  */
 export type JobOffer = { careerId: CareerId; level: number }
 
+/** Proposta de emprego esperando resposta. */
+export type PendingJobOffer = JobOffer & { until: number }
+
 /** Opção quando sai o resultado do concurso. */
 export type ConcursoOption =
   /** Tomar posse no cargo em que a nota passou: a carreira pública daquela faixa, no primeiro nível. */
@@ -228,6 +231,12 @@ export type Member = {
   unemployedUntil: number | null
   /** Estudo para concurso, ou null para quem não está estudando. */
   concurso: ConcursoStudy | null
+  /**
+   * Proposta de outra empresa esperando resposta, ou null: a vaga, no mesmo
+   * nível de outra carreira, e o dia do jogo em que ela deixa de valer. O
+   * relógio não para; a pessoa aceita pela aba Trabalho ou pela ficha.
+   */
+  jobOffer: PendingJobOffer | null
   /** Dia do jogo em que teve o último filho, para o intervalo mínimo entre filhos. */
   lastChildDay: number | null
   /** Traços de personalidade. Ficam para depois do v1. */
@@ -384,7 +393,13 @@ export type MemberEvent =
       level?: number
     }
   | { type: 'promoted'; day: number; memberId: MemberId; careerId: CareerId; level: number }
+  /** Recebeu proposta de outra empresa, no mesmo nível de outra carreira. */
+  | { type: 'jobOffered'; day: number; memberId: MemberId; careerId: CareerId; level: number }
+  /** Aceitou a proposta de outra empresa e trocou de carreira, no mesmo nível. */
+  | { type: 'changedJob'; day: number; memberId: MemberId; careerId: CareerId; level: number }
   | { type: 'concursoStarted'; day: number; memberId: MemberId }
+  /** Largou o emprego para estudar para concurso. */
+  | { type: 'quitJob'; day: number; memberId: MemberId }
   | {
       /** Resultado de uma prova: aprovado num cargo, ou reprovado na última prova da tentativa. */
       type: 'concurso'

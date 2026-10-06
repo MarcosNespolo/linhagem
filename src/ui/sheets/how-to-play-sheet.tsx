@@ -36,7 +36,7 @@ const span = (days: number) => formatGameSpan(days, BALANCE.daysPerYear)
 
 /** As regras do jogo, poucas linhas por assunto, com os números do balanceamento. */
 function topics(): Topic[] {
-  const { children, marriage, dating, housing, school, college, careers, concurso } = BALANCE
+  const { children, marriage, dating, housing, school, college, careers, concurso, jobs } = BALANCE
   const { layoff } = BALANCE.mishaps
   const homes = (['kitnet', 'apartamento', 'casa'] as PropertyId[])
     .map((id) => `${propertyType(id).name.toLowerCase()} ${propertyType(id).home?.places ?? 0}`)
@@ -63,7 +63,8 @@ function topics(): Topic[] {
       title: 'Começo',
       icon: <Sprout size={18} />,
       lines: [
-        `Uma pessoa de ${BALANCE.adultAge} anos, com ensino médio, no primeiro emprego, e ${formatMoney(BALANCE.startingMoney)}.`,
+        `Uma pessoa de ${BALANCE.adultAge} anos, com ensino médio, trabalhando desde os ${BALANCE.founder.workSinceAge}, e ${formatMoney(BALANCE.startingMoney)}.`,
+        'Mora com os pais, sem aluguel, até casar. O primeiro curso já está liberado.',
         'Casamento e filhos vêm depois do namoro.',
       ],
     },
@@ -103,6 +104,7 @@ function topics(): Topic[] {
         `Lugares: ${homes}.`,
         `Sem lugar em casa: aluguel de ${formatMoney(housing.rentPerPlace)}/mês por pessoa.`,
         `Depois de ${housing.basePlaces} pessoas de aluguel, cada lugar a mais custa ${growth(housing.rentGrowth)}.`,
+        'Quem funda a família mora com os pais enquanto está sozinho e solteiro.',
       ],
     },
     {
@@ -150,6 +152,7 @@ function topics(): Topic[] {
         `Cada nível pede um curso: ${careers.courseYears.join(', ')} anos, depois de ${careers.minYearsInLevel} anos no nível.`,
         `Mensalidade: ${percent(careers.courseFeeShare)} do aumento.`,
         'Dedicação: metade do tempo, o dobro por mês, sem namoro nem filho.',
+        `Com até ${jobs.offers.maxFamily} pessoas na família, quem está numa carreira de ensino médio pode receber proposta de outra, no mesmo nível, pagando ${percent(jobs.offers.minRaise)} a mais; aceitar recomeça o tempo no nível.`,
         `Aposentadoria aos ${BALANCE.retirementAge}, com ${percent(BALANCE.pensionRatio)} do salário.`,
       ],
     },
@@ -158,6 +161,7 @@ function topics(): Topic[] {
       icon: <Landmark size={18} />,
       lines: [
         `Sem salário, cursinho de ${formatMoney(concurso.fee)}/mês, prova a cada 3 meses; a nota sobe ${concurso.pointsPerMonth} por mês de estudo.`,
+        'Quem trabalha e tem o ensino médio pode largar o emprego para estudar, pela ficha da pessoa.',
         `Corte: ${cargos} (*com faculdade).`,
         `A cada ${concurso.maxExams} provas sem passar, decide se continua.`,
         `Sobe com o tempo, sem demissão; aposenta com ${percent(BALANCE.publicPensionRatio)}.`,

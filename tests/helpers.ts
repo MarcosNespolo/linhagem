@@ -33,13 +33,17 @@ export function makeStart(seed = 1): GameState {
 /** Idade de quem funda a família nas partidas dos testes, que já começam com um casal. */
 export const COUPLE_AGE = 26
 
+/** Dinheiro com que o casal dos testes começa: o bastante para o aluguel não o levar ao vermelho. */
+export const COUPLE_SAVINGS = 20_000
+
 /**
  * A partida da maioria dos testes: a pessoa que funda a família com
  * `COUPLE_AGE` anos, já casada com alguém de fora sorteado como no namoro, no
- * dia 0, para os dois poderem ter filhos.
+ * dia 0, para os dois poderem ter filhos, e com uma poupança, porque fora da
+ * casa dos pais o aluguel do casal passa do que dois salários de começo pagam.
  */
 export function makeGame(seed = 1): GameState {
-  return withPartner(makeStart(seed))
+  return withMoney(withPartner(makeStart(seed)), COUPLE_SAVINGS)
 }
 
 /**

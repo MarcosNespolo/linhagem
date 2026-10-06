@@ -5,6 +5,7 @@ import {
   courseCandidates,
   familyRates,
   livingMembers,
+  membersWithJobOffer,
   type GameState,
 } from '@/engine'
 import { useGameStore } from '@/game/store'
@@ -118,7 +119,7 @@ export function Shell({ game }: { game: GameState }) {
       <BottomNav
         badges={{
           love: actions.ready,
-          work: courseCandidates(game).length,
+          work: courseCandidates(game).length + membersWithJobOffer(game).length,
           properties: affordableProperties(game).length,
         }}
       />

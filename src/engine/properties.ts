@@ -213,9 +213,28 @@ export function ownedPlaces(state: GameState): number {
   return places
 }
 
+/**
+ * Quem funda a família mora com os pais, sem aluguel, enquanto está sozinho
+ * e solteiro. Os imóveis que comprar nesse tempo ficam alugados. Ao casar,
+ * ou ficando viúvo, sai da casa dos pais.
+ */
+export function livesWithParents(state: GameState, living: number = livingCount(state)): boolean {
+  if (living !== 1) return false
+  for (const member of Object.values(state.members)) {
+    if (member.deathDay !== null) continue
+    return member.origin === 'founder' && member.marriedDay === null
+  }
+  return false
+}
+
+/** Quantas pessoas precisam de lugar nos imóveis da família ou de aluguel. */
+function placesNeeded(state: GameState, living: number): number {
+  return livesWithParents(state, living) ? 0 : living
+}
+
 /** A família ainda mora de aluguel: os imóveis dela não têm lugar para todos. */
 export function isRenting(state: GameState, living: number = livingCount(state)): boolean {
-  return ownedPlaces(state) < living
+  return ownedPlaces(state) < placesNeeded(state, living)
 }
 
 /**
@@ -228,7 +247,7 @@ export function homesInUse(
   living: number = livingCount(state),
 ): Partial<Record<PropertyId, number>> {
   const used: Partial<Record<PropertyId, number>> = {}
-  let need = living
+  let need = placesNeeded(state, living)
   for (const type of HOME_TYPES) {
     if (need <= 0) break
     const units = Math.min(ownedCount(state, type.id), Math.ceil(need / type.home!.places))
@@ -241,7 +260,7 @@ export function homesInUse(
 
 /** Lugares alugados: os de quem não cabe nos imóveis de moradia da família, sem limite. */
 export function rentedPlaces(state: GameState, living: number = livingCount(state)): number {
-  return Math.max(0, living - ownedPlaces(state))
+  return Math.max(0, placesNeeded(state, living) - ownedPlaces(state))
 }
 
 /**

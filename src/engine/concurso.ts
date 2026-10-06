@@ -1,6 +1,8 @@
 import { BALANCE } from '../content/balance'
 import { concursoOf, PUBLIC_CAREERS, type CareerId } from '../content/careers'
-import { openFirstJobChoice } from './jobs'
+import { refuse, type Refusal } from './errors'
+import { canStudyForConcurso, openFirstJobChoice } from './jobs'
+import { ageOf, isAlive } from './members'
 import type { Rng } from './rng'
 import { schoolScore } from './school'
 import { calendarDate } from './time'
@@ -20,6 +22,36 @@ export function startConcurso(member: Member, day: number): GameEvent[] {
   }
   member.concurso = { since: day, exams: 0, lastScore: null }
   return [{ type: 'concursoStarted', day, memberId: member.id }]
+}
+
+export type ConcursoCheck = { ok: true } | Refusal
+
+/**
+ * Diz se a pessoa pode largar o emprego para estudar para concurso: viva,
+ * adulta, trabalhando (antes da aposentadoria), com pelo menos o ensino
+ * médio, sem curso de promoção em andamento e sem escolha aberta.
+ */
+export function checkStudyForConcurso(state: GameState, memberId: string): ConcursoCheck {
+  const member = state.members[memberId]
+  if (!member) return refuse('memberNotFound')
+  if (!isAlive(member)) return refuse('memberDeceased')
+  const day = state.clock.day
+  if (!member.career || ageOf(member, day) >= BALANCE.retirementAge) return refuse('notWorking')
+  if (!canStudyForConcurso(member)) return refuse('notStudying')
+  if (member.course) return refuse('inCourse')
+  if (state.choices.some((choice) => choice.memberId === memberId)) return refuse('choiceOpen')
+  return { ok: true }
+}
+
+/**
+ * Larga o emprego e começa a estudar para concurso: sem salário, com o
+ * cursinho, a partir da nota de hoje. Quem desistir depois procura outro
+ * emprego do zero. Altera o rascunho.
+ */
+export function quitToStudy(member: Member, day: number): GameEvent[] {
+  member.career = null
+  member.unemployedUntil = null
+  return [{ type: 'quitJob', day, memberId: member.id }, ...startConcurso(member, day)]
 }
 
 /** Nota de partida: a do ENEM, ou a da escola no dia para quem não fez o ENEM. */

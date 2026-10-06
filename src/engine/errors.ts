@@ -15,6 +15,11 @@ export type ActionError =
   | 'notStudying'
   | 'invalidSchool'
   | 'noCourse'
+  /** Largar o emprego para estudar: só quem trabalha, sem curso em andamento e sem escolha aberta. */
+  | 'notWorking'
+  | 'inCourse'
+  | 'choiceOpen'
+  | 'noJobOffer'
   | 'propertyNotFound'
   | 'propertyLocked'
   | 'soldOut'

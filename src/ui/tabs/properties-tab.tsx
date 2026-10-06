@@ -24,6 +24,7 @@ import {
   homesInUse,
   housingCost,
   isPropertyUnlocked,
+  livesWithParents,
   livingCount,
   loanInstallments,
   maintenanceCost,
@@ -110,7 +111,10 @@ function Summary({ game, compact = false }: { game: GameState; compact?: boolean
       <div className="grid grid-cols-2 gap-3">
         <section className={`${card} min-w-0 ${pad}`}>
           <p className={`text-ink-soft font-semibold ${label}`}>Moradia</p>
-          <Amount value={-housing} none="Nenhuma" />
+          <Amount
+            value={-housing}
+            none={livesWithParents(game, living) ? 'Sem custo' : 'Nenhuma'}
+          />
           <p className={`tabular text-ink-soft ${small}`}>{rentersLine(game, living)}</p>
           <p className={`tabular text-ink-soft ${small}`}>{nextPlaceLine(game, living)}</p>
         </section>
@@ -369,6 +373,7 @@ function PropertyCard({
 
 /** Quem mora de aluguel, ou os lugares que sobram nos imóveis da família. */
 function rentersLine(game: GameState, living: number): string {
+  if (livesWithParents(game, living)) return 'Mora com os pais'
   const rented = rentedPlaces(game, living)
   if (rented > 0) return rented === 1 ? '1 pessoa de aluguel' : `${rented} pessoas de aluguel`
   const free = ownedPlaces(game) - living

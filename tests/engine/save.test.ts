@@ -19,23 +19,38 @@ import { chooseSuggested, makeGame, withChild, years } from '../helpers'
 const FIXTURES = new URL('../fixtures/', import.meta.url)
 const fixtureFiles = readdirSync(FIXTURES).filter((file) => /^save-v\d+\.json$/.test(file))
 
+/** Anos de casa que a versão 18 dá a quem fundou a família e ainda está no primeiro nível. */
+const FOUNDER_HEAD = (BALANCE.adultAge - BALANCE.founder.workSinceAge) * BALANCE.daysPerYear
+
 /**
- * Um membro de um save antigo como a versão 17 o deixa: a carreira pública
- * única vira um cargo federal, o técnico no primeiro nível e o analista em
- * diante um nível abaixo, também no namoro.
+ * Um membro de um save antigo como as versões 17 e 18 o deixam: a carreira
+ * pública única vira um cargo federal, o técnico no primeiro nível e o
+ * analista em diante um nível abaixo, também no namoro; ninguém tem proposta
+ * de emprego; e quem fundou a família no primeiro nível ganha os anos de
+ * casa de jovem aprendiz.
  */
-function after17<T extends { career: unknown; dating?: unknown }>(member: T): T {
-  const career = (value: unknown) => {
-    const old = value as { id: string; level: number } | null
-    if (!old || old.id !== 'publico') return old
-    return old.level <= 0
-      ? { ...old, id: 'tecnicoFederal', level: 0 }
-      : { ...old, id: 'analistaFederal', level: old.level - 1 }
+function afterMigrations<T extends { career: unknown; dating?: unknown; origin?: unknown }>(
+  member: T,
+): T {
+  const career = (value: unknown, founder = false) => {
+    const old = value as { id: string; level: number; levelSince: number } | null
+    if (!old) return old
+    const remapped =
+      old.id !== 'publico'
+        ? old
+        : old.level <= 0
+          ? { ...old, id: 'tecnicoFederal', level: 0 }
+          : { ...old, id: 'analistaFederal', level: old.level - 1 }
+    if (founder && remapped.level === 0) {
+      return { ...remapped, levelSince: remapped.levelSince - FOUNDER_HEAD }
+    }
+    return remapped
   }
   const dating = member.dating as { partner: { career: unknown } } | null | undefined
   return {
     ...member,
-    career: career(member.career),
+    career: career(member.career, member.origin === 'founder'),
+    jobOffer: null,
     ...(dating
       ? {
           dating: {
@@ -137,8 +152,17 @@ describe('save', () => {
     expect(state.clock).toEqual(v2.clock)
     expect(state.choices).toEqual([])
     for (const [id, member] of Object.entries(state.members)) {
-      const { education, concurso, career, aptitude, unemployedUntil, dating, course, ...rest } =
-        member
+      const {
+        education,
+        concurso,
+        career,
+        aptitude,
+        unemployedUntil,
+        dating,
+        course,
+        jobOffer,
+        ...rest
+      } = member
       const { career: before, ...restBefore } = v2.members[id]
       expect(rest).toEqual(restBefore)
       expect(education.formation).toEqual({ level: 'medio' })
@@ -147,9 +171,12 @@ describe('save', () => {
       expect(unemployedUntil).toBeNull()
       expect(dating).toBeNull()
       expect(course).toBeNull()
-      // A carreira fica no mesmo nível, com o tempo contando a partir da migração.
+      expect(jobOffer).toBeNull()
+      // A carreira fica no mesmo nível, com o tempo contando a partir da migração; quem fundou a
+      // família no primeiro nível ganha os anos de jovem aprendiz.
+      const head = member.origin === 'founder' && before?.level === 0 ? FOUNDER_HEAD : 0
       expect(career).toEqual(
-        before && { id: before.id, level: before.level, levelSince: v2.clock.day },
+        before && { id: before.id, level: before.level, levelSince: v2.clock.day - head },
       )
     }
   })
@@ -159,7 +186,7 @@ describe('save', () => {
     const v15 = JSON.parse(json) as GameState
     const state = deserialize(json)
     for (const [id, member] of Object.entries(state.members)) {
-      expect(member).toEqual(after17({ ...v15.members[id], course: null }))
+      expect(member).toEqual(afterMigrations({ ...v15.members[id], course: null }))
     }
     expect(state.choices).toEqual(v15.choices)
     expect(state.money).toBe(v15.money)
@@ -174,7 +201,7 @@ describe('save', () => {
     expect(servants.length).toBeGreaterThan(0)
     const state = deserialize(json)
     for (const [id, member] of Object.entries(state.members)) {
-      expect(member).toEqual(after17(v16.members[id]))
+      expect(member).toEqual(afterMigrations(v16.members[id]))
     }
     expect(state.vacancies).toEqual({})
     expect(state.loans).toEqual([])
@@ -199,7 +226,7 @@ describe('save', () => {
     const state = deserialize(JSON.stringify(save))
     expect('suitors' in state).toBe(false)
     for (const [id, member] of Object.entries(state.members)) {
-      expect(member).toEqual(after17({ ...v14.members[id], dating: null, course: null }))
+      expect(member).toEqual(afterMigrations({ ...v14.members[id], dating: null, course: null }))
     }
     // O resultado do concurso aberto no exemplo aponta para o cargo novo.
     expect(state.choices).toEqual(
@@ -270,7 +297,7 @@ describe('save', () => {
     expect(state.stats).toEqual({ ...v10.stats, archived: 0, interestPaid: 0 })
     for (const [id, member] of Object.entries(state.members)) {
       expect(member).toEqual(
-        after17({
+        afterMigrations({
           ...v10.members[id],
           unemployedUntil: null,
           dating: null,

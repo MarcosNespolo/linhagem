@@ -37,9 +37,9 @@ describe('histórico', () => {
       'firstJob',
       'becameAdult',
     ])
-    // Enquanto o filho cresce, os fundadores, sem cursos, só passam por imprevistos.
+    // Enquanto o filho cresce, os fundadores, sem cursos, só passam por imprevistos e propostas.
     const others = people.filter((event) => event.memberId !== childId)
-    const meanwhile = new Set(['laidOff', 'rehired', 'mishap'])
+    const meanwhile = new Set(['laidOff', 'rehired', 'mishap', 'jobOffered'])
     expect(others.length).toBeGreaterThan(0)
     expect(others.every((event) => meanwhile.has(event.type))).toBe(true)
 

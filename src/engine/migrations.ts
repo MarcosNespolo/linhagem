@@ -8,7 +8,7 @@ import { ageInYears, lastDayOfYear } from './time'
 import type { GameState } from './types'
 
 /** Versão atual do formato do save. Sobe a cada migração nova. */
-export const CURRENT_SCHEMA_VERSION = 17
+export const CURRENT_SCHEMA_VERSION = 18
 
 export type SaveErrorCode = 'corrupt' | 'futureVersion' | 'missingMigration'
 
@@ -416,6 +416,39 @@ const toVersion17: Migration = (save) => {
 }
 
 /**
+ * Versão 18: propostas de emprego, que ficam esperando resposta na pessoa
+ * (ninguém tem uma ainda), e quem funda a família trabalha desde jovem
+ * aprendiz, então quem ainda está no primeiro nível ganha os anos de casa que
+ * faltam para o primeiro curso. O resto (morar com os pais, aluguel,
+ * casamento e missões) é regra do jogo, sem campo novo no save.
+ */
+const toVersion18: Migration = (save) => {
+  const members = isRecord(save.members) ? save.members : {}
+  const upgraded: RawSave = {}
+  const head = (BALANCE.adultAge - BALANCE.founder.workSinceAge) * BALANCE.daysPerYear
+  for (const [id, member] of Object.entries(members)) {
+    if (!isRecord(member)) {
+      upgraded[id] = member
+      continue
+    }
+    const career = member.career
+    const founderAtStart =
+      member.origin === 'founder' &&
+      isRecord(career) &&
+      career.level === 0 &&
+      typeof career.levelSince === 'number'
+    upgraded[id] = {
+      ...member,
+      jobOffer: null,
+      ...(founderAtStart && isRecord(career)
+        ? { career: { ...career, levelSince: (career.levelSince as number) - head } }
+        : {}),
+    }
+  }
+  return { ...save, members: upgraded }
+}
+
+/**
  * Migrações, indexadas pela versão de origem. São sempre aditivas: criam
  * campos novos com valores padrão e nunca apagam dados do jogador; uma troca
  * de unidade, como a do dinheiro na versão 3, converte o valor sem perder
@@ -440,6 +473,7 @@ export const MIGRATIONS: Readonly<Record<number, Migration>> = {
   14: toVersion15,
   15: toVersion16,
   16: toVersion17,
+  17: toVersion18,
 }
 
 /** Valida um save lido de JSON e o leva até a versão atual. */

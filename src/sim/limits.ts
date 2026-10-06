@@ -31,7 +31,7 @@ export const LIMITS = {
    * e o primeiro comercial depois de duas.
    */
   milestones: {
-    firstProperty: { minMs: 6 * MINUTE, maxMs: 20 * MINUTE },
+    firstProperty: { minMs: 3 * MINUTE, maxMs: 20 * MINUTE },
     tenProperties: { minMs: 40 * MINUTE, maxMs: 120 * MINUTE },
     firstCommercial: { minMs: 70 * MINUTE, maxMs: Infinity },
   },

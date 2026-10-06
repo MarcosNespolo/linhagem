@@ -15,6 +15,7 @@ import {
   advance,
   applyAction,
   bestOffer,
+  betterCareers,
   canMeet,
   checkHaveChild,
   courseAvailableDay,
@@ -24,7 +25,9 @@ import {
   deserialize,
   familyRates,
   formationCareer,
+  hasJobOffer,
   memberIncome,
+  membersWithJobOffer,
   rollJobOffers,
   rollSuitor,
   type Formation,
@@ -32,6 +35,7 @@ import {
   type Member,
 } from '@/engine'
 import {
+  chooseSuggested,
   days,
   expectOk,
   founders,
@@ -155,12 +159,20 @@ function study(state: GameState, memberId: string, dedicated = false): GameState
 }
 
 describe('promoções', () => {
-  it('quem funda a família começa no primeiro nível de uma carreira de médio, sem curso', () => {
+  it('quem funda a família começa no primeiro nível de uma carreira de médio, com o curso já liberado', () => {
+    const head = (BALANCE.adultAge - BALANCE.founder.workSinceAge) * BALANCE.daysPerYear
     for (const seed of [1, 2, 3, 4, 5, 6]) {
-      const [founder] = Object.values(makeStart(seed).members)
+      const start = makeStart(seed)
+      const [founder] = Object.values(start.members)
       expect(MEDIO_CAREERS).toContain(founder.career!.id)
       expect(founder.career?.level).toBe(0)
       expect(founder.course).toBeNull()
+      // Trabalha desde os 16, como jovem aprendiz: já tem os 2 anos no nível, e um pouco mais,
+      // pelos meses desde o aniversário de 18.
+      expect(founder.career?.levelSince).toBeLessThanOrEqual(-head)
+      expect(founder.career?.levelSince).toBeGreaterThan(-head - BALANCE.daysPerYear)
+      expect(courseOffer(founder, 0, false)).toMatchObject({ level: 1 })
+      expect(courseCandidates(start).map((member) => member.id)).toEqual([founder.id])
     }
   })
 
@@ -351,6 +363,95 @@ describe('promoções', () => {
   })
 })
 
+describe('propostas de emprego', () => {
+  const { perYear, maxFamily, minRaise, validMonths } = BALANCE.jobs.offers
+
+  /** Avança dia a dia até alguém receber proposta, respondendo as escolhas com a sugestão. */
+  function untilOffer(start: GameState, maxYears = 30): { state: GameState; day: number } {
+    let state = start
+    for (let i = 0; i < maxYears * BALANCE.daysPerYear; i++) {
+      const result = advance(state, days(1))
+      state = result.state
+      if (result.events.some((event) => event.type === 'jobOffered')) {
+        return { state, day: state.clock.day }
+      }
+      if (state.choices.length > 0) state = chooseSuggested(state)
+    }
+    throw new Error('Ninguém recebeu proposta')
+  }
+
+  it('chega para quem está numa carreira de médio: outra carreira, no mesmo nível, pagando mais', () => {
+    const { state, day } = untilOffer(withMoney(makeGame(41), 1e6))
+    const member = Object.values(state.members).find((candidate) => candidate.jobOffer)!
+    const offer = member.jobOffer!
+    const career = member.career!
+    expect(MEDIO_CAREERS).toContain(career.id)
+    expect(MEDIO_CAREERS).toContain(offer.careerId)
+    expect(offer.careerId).not.toBe(career.id)
+    expect(offer.level).toBe(career.level)
+    expect(salary(offer.careerId, offer.level)).toBeGreaterThanOrEqual(
+      salary(career.id, career.level) * (1 + minRaise),
+    )
+    expect(offer.until).toBe(day + Math.round((validMonths * BALANCE.daysPerYear) / 12))
+    expect(betterCareers(member)).toContain(offer.careerId)
+    expect(state.log.at(-1)).toMatchObject({ type: 'jobOffered', memberId: member.id })
+    expect(state.choices).toEqual([])
+    expect(membersWithJobOffer(state).map((candidate) => candidate.id)).toEqual([member.id])
+
+    // Aceitar troca a carreira, no mesmo nível, e zera o tempo nele.
+    const accepted = expectOk(
+      applyAction(state, { type: 'answerJobOffer', memberId: member.id, accept: true }),
+    )
+    expect(accepted.state.members[member.id].career).toEqual({
+      id: offer.careerId,
+      level: offer.level,
+      levelSince: day,
+    })
+    expect(accepted.state.members[member.id].jobOffer).toBeNull()
+    expect(accepted.events).toEqual([
+      {
+        type: 'changedJob',
+        day,
+        memberId: member.id,
+        careerId: offer.careerId,
+        level: offer.level,
+      },
+    ])
+    expect(familyRates(accepted.state).income).toBeGreaterThan(familyRates(state).income)
+
+    // Recusar só tira a proposta. Sem proposta, não há o que responder.
+    const declined = expectOk(
+      applyAction(state, { type: 'answerJobOffer', memberId: member.id, accept: false }),
+    ).state
+    expect(declined.members[member.id].jobOffer).toBeNull()
+    expect(declined.members[member.id].career).toEqual(career)
+    expect(
+      applyAction(declined, { type: 'answerJobOffer', memberId: member.id, accept: true }),
+    ).toEqual({ ok: false, error: 'noJobOffer' })
+
+    // Sem resposta, a proposta deixa de valer no dia marcado.
+    const expired = advance(state, days(offer.until - day)).state
+    expect(hasJobOffer(expired.members[member.id], expired.clock.day)).toBe(false)
+  })
+
+  it('não chega a quem está fora das carreiras de médio, em curso, ou numa família grande', () => {
+    const state = makeGame(42)
+    const [first] = founders(state)
+    const day = state.clock.day
+    const without = (patch: Partial<Member>) =>
+      betterCareers(setMember(state, first.id, patch).members[first.id])
+    expect(without({ career: { id: 'medicina', level: 0, levelSince: 0 } })).toEqual([])
+    expect(without({ career: { id: 'prefeitura', level: 0, levelSince: 0 } })).toEqual([])
+    expect(without({ career: null })).toEqual([])
+    // A carreira de médio que mais paga no nível não recebe proposta melhor.
+    const best = MEDIO_CAREERS.reduce((top, id) => (salary(id, 0) > salary(top, 0) ? id : top))
+    expect(without({ career: { id: best, level: 0, levelSince: 0 } })).toEqual([])
+    expect(perYear).toBeGreaterThan(0)
+    expect(maxFamily).toBeGreaterThanOrEqual(2)
+    expect(day).toBe(0)
+  })
+})
+
 describe('quem o membro conhece', () => {
   it('chega com formação, emprego da formação e o nível dos anos de trabalho', () => {
     const { state, childId } = withAdultChild(13)
@@ -400,10 +501,13 @@ describe('save da versão 5', () => {
   it('conta o tempo no nível a partir da migração, sem concurso e sem o campo de experiência', () => {
     const raw = JSON.parse(json)
     const state = deserialize(json)
+    // Quem fundou a família e está no primeiro nível ganha, na versão 18, os anos de jovem aprendiz.
+    const head = (BALANCE.adultAge - BALANCE.founder.workSinceAge) * BALANCE.daysPerYear
     for (const member of Object.values(state.members)) {
       expect(member.concurso).toBeNull()
       if (!member.career) continue
-      expect(member.career.levelSince).toBe(raw.clock.day)
+      const founderAtStart = member.origin === 'founder' && member.career.level === 0
+      expect(member.career.levelSince).toBe(raw.clock.day - (founderAtStart ? head : 0))
       expect(member.career).not.toHaveProperty('xp')
     }
   })

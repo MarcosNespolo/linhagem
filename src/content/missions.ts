@@ -6,8 +6,10 @@ export type MissionReward = { kind: 'income'; months: number } | { kind: 'boost'
 
 /**
  * Missões que o jogo sorteia todo dia. A meta conta o que acontece depois que
- * a missão aparece. No Pé-de-meia, a meta é em meses de renda e vira dinheiro
- * no sorteio. As recompensas são pequenas de propósito: ajudam, mas não
+ * a missão aparece. No Pé-de-meia, a meta é em meses de renda, e na Reserva,
+ * em meses de despesa; as duas viram dinheiro no sorteio. Promoção, Namoro e
+ * Reserva cabem numa família de uma pessoa só, para o começo ter o que
+ * cumprir. As recompensas são pequenas de propósito: ajudam, mas não
  * substituem a renda.
  */
 export const MISSIONS = [
@@ -67,6 +69,27 @@ export const MISSIONS = [
     text: 'Juntar o equivalente a 1 ano de renda',
     reward: { kind: 'income', months: 3 },
   },
+  {
+    id: 'promocao',
+    name: 'Promoção',
+    goal: 1,
+    text: 'Subir 1 pessoa de nível',
+    reward: { kind: 'income', months: 1 },
+  },
+  {
+    id: 'namoro',
+    name: 'Namoro',
+    goal: 1,
+    text: 'Começar a namorar',
+    reward: { kind: 'income', months: 1 },
+  },
+  {
+    id: 'reserva',
+    name: 'Reserva',
+    goal: 3,
+    text: 'Guardar 3 meses de despesa',
+    reward: { kind: 'income', months: 1 },
+  },
 ] as const satisfies readonly {
   id: string
   name: string
@@ -78,6 +101,9 @@ export const MISSIONS = [
 export type MissionId = (typeof MISSIONS)[number]['id']
 
 export const MISSION_IDS: readonly MissionId[] = MISSIONS.map((mission) => mission.id)
+
+/** Missões cuja meta é uma quantia em dinheiro, mostrada em reais. */
+export const MONEY_MISSIONS: readonly MissionId[] = ['peDeMeia', 'reserva']
 
 export function missionInfo(id: MissionId): (typeof MISSIONS)[number] {
   const mission = MISSIONS.find((candidate) => candidate.id === id)
