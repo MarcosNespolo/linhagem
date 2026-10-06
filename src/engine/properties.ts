@@ -7,17 +7,65 @@ import {
   type PropertyType,
 } from '../content/properties'
 import { refuse, type Refusal } from './errors'
+import { installmentCap, loanInstallment, loanInstallments, openLoan } from './financing'
 import { livingCount } from './members'
+import { hashUnit } from './rng'
 import type { GameEvent, GameState } from './types'
+
+const { priceGrowth, transferTax, maintenanceShare, vacancy, financing } = BALANCE.properties
 
 /** Quantos imóveis do tipo a família tem. */
 export function ownedCount(state: GameState, id: PropertyId): number {
   return state.properties[id] ?? 0
 }
 
-/** Preço de um imóvel do tipo, sempre o mesmo. */
-export function propertyPrice(id: PropertyId): number {
-  return propertyType(id).price
+/**
+ * Preço do próximo imóvel do tipo: nos de moradia, cada um que a família já
+ * tem deixa o próximo `priceGrowth` mais caro; nos comerciais, sempre o mesmo.
+ */
+export function propertyPrice(state: GameState, id: PropertyId): number {
+  const type = propertyType(id)
+  if (!type.home) return type.price
+  return Math.round(type.price * (1 + priceGrowth) ** ownedCount(state, id))
+}
+
+/** ITBI: o imposto da compra, sobre o preço. */
+export function transferTaxOf(price: number): number {
+  return Math.round(price * transferTax)
+}
+
+/** O que sai do caixa numa compra à vista: o preço mais o ITBI. */
+export function purchaseCost(state: GameState, id: PropertyId): number {
+  const price = propertyPrice(state, id)
+  return price + transferTaxOf(price)
+}
+
+/** As contas de um financiamento do próximo imóvel do tipo. */
+export type FinancingTerms = {
+  price: number
+  /** O ITBI, pago na hora. */
+  tax: number
+  /** A entrada, paga na hora. */
+  down: number
+  /** O que o banco empresta. */
+  principal: number
+  /** A parcela fixa por mês. */
+  installment: number
+  months: number
+}
+
+export function financingTerms(state: GameState, id: PropertyId): FinancingTerms {
+  const price = propertyPrice(state, id)
+  const down = Math.round(price * financing.downShare)
+  const principal = price - down
+  return {
+    price,
+    tax: transferTaxOf(price),
+    down,
+    principal,
+    installment: loanInstallment(principal),
+    months: financing.years * 12,
+  }
 }
 
 /**
@@ -50,10 +98,14 @@ export function lotsForSale(state: GameState, id: PropertyId): number[] {
   return propertyType(id).home ? free : free.slice(0, propertiesLeft(state, id))
 }
 
-/** Anos do jogo que um imóvel do tipo leva para se pagar com o aluguel. */
-export function paybackYears(id: PropertyId): number {
-  const { price, rentPerMonth } = propertyType(id)
-  return price / rentPerMonth / 12
+/** O que um imóvel alugado do tipo rende por mês, já sem a manutenção. */
+export function netRent(id: PropertyId): number {
+  return propertyType(id).rentPerMonth * (1 - maintenanceShare)
+}
+
+/** Anos do jogo que o próximo imóvel do tipo leva para se pagar com o aluguel. */
+export function paybackYears(state: GameState, id: PropertyId): number {
+  return propertyPrice(state, id) / netRent(id) / 12
 }
 
 /** Comerciais à venda no começo da partida: o máximo de cada tipo. */
@@ -112,17 +164,41 @@ export function visiblePropertyTypes(state: GameState): PropertyType[] {
   return next ? [...unlocked, next] : unlocked
 }
 
+/** Imóveis do tipo que a família não usa para morar: alugados ou vazios. */
+export function rentedUnits(state: GameState, id: PropertyId, living: number): number {
+  const inUse = propertyType(id).home ? (homesInUse(state, living)[id] ?? 0) : 0
+  return Math.max(0, ownedCount(state, id) - inUse)
+}
+
 /**
- * Aluguel por mês que os imóveis da família rendem. Os imóveis em que a família
- * mora não rendem aluguel.
+ * Imóveis do tipo que estão vazios, sem inquilino. Quando a família passa a
+ * morar num imóvel que estava vazio, ele deixa de contar.
+ */
+export function vacantUnits(state: GameState, id: PropertyId, living: number): number {
+  return Math.min(state.vacancies[id]?.length ?? 0, rentedUnits(state, id, living))
+}
+
+/** Quantos imóveis da família estão vazios, de todos os tipos. */
+export function totalVacant(state: GameState, living: number = livingCount(state)): number {
+  return PROPERTY_IDS.reduce((sum, id) => sum + vacantUnits(state, id, living), 0)
+}
+
+/**
+ * Aluguel por mês que os imóveis da família rendem, antes da manutenção. Os
+ * imóveis em que a família mora e os vazios não rendem.
  */
 export function rentPerMonth(state: GameState, living: number = livingCount(state)): number {
-  const inUse = homesInUse(state, living)
   let rent = 0
   for (const type of PROPERTY_TYPES) {
-    rent += (ownedCount(state, type.id) - (inUse[type.id] ?? 0)) * type.rentPerMonth
+    const earning = rentedUnits(state, type.id, living) - vacantUnits(state, type.id, living)
+    rent += earning * type.rentPerMonth
   }
   return rent
+}
+
+/** Manutenção por mês dos imóveis alugados: uma parte do aluguel que rendem. */
+export function maintenanceCost(state: GameState, living: number = livingCount(state)): number {
+  return rentPerMonth(state, living) * maintenanceShare
 }
 
 /** Tipos de moradia, do que perde menos aluguel por lugar ao virar casa da família ao que perde mais. */
@@ -189,14 +265,57 @@ export function rentFor(places: number): number {
 }
 
 /**
- * Custo da moradia por mês: as contas dos imóveis em que a família mora e o
- * aluguel dos lugares de quem não cabe neles.
+ * Custo da moradia por mês: o aluguel dos lugares de quem não cabe nos
+ * imóveis da família e as contas dos imóveis em que ela mora e dos que estão
+ * vazios.
  */
 export function housingCost(state: GameState, living: number = livingCount(state)): number {
   const inUse = homesInUse(state, living)
   let cost = rentFor(rentedPlaces(state, living))
-  for (const type of HOME_TYPES) cost += (inUse[type.id] ?? 0) * type.home!.billsPerMonth
+  for (const type of PROPERTY_TYPES) {
+    const paying = (inUse[type.id] ?? 0) + vacantUnits(state, type.id, living)
+    cost += paying * type.billsPerMonth
+  }
   return cost
+}
+
+/** Sorteios de cada imóvel por dia: o de o inquilino sair e o de quanto tempo fica vazio. */
+const ROLL = { leave: 1, months: 2 }
+
+/** Chance por dia de o inquilino de um imóvel sair. */
+const LEAVE_CHANCE = vacancy.perYear / BALANCE.daysPerYear
+
+/**
+ * Vacância do dia: quem achou inquilino volta a render, e cada imóvel alugado
+ * tem uma chance pequena de o inquilino sair, ficando vazio por alguns meses.
+ * O sorteio depende só da seed, do dia, do tipo e da posição do imóvel, sem
+ * gastar o gerador do jogo, então dá o mesmo resultado avançando de uma vez ou
+ * aos poucos. Altera o rascunho e devolve true quando o aluguel mudou.
+ */
+export function processVacancies(draft: GameState, living: number): boolean {
+  const day = draft.clock.day
+  let changed = false
+  PROPERTY_TYPES.forEach((type, index) => {
+    const open = draft.vacancies[type.id] ?? []
+    const staying = open.filter((until) => until > day)
+    let typeChanged = staying.length !== open.length
+    const earning = Math.max(0, rentedUnits(draft, type.id, living) - staying.length)
+    const seed = draft.seed ^ (index << 8)
+    for (let unit = 0; unit < earning; unit++) {
+      if (hashUnit(seed, day, unit, ROLL.leave) >= LEAVE_CHANCE) continue
+      const { min, max } = vacancy.months
+      const months = min + Math.floor(hashUnit(seed, day, unit, ROLL.months) * (max - min + 1))
+      staying.push(day + Math.round((months * BALANCE.daysPerYear) / 12))
+      typeChanged = true
+    }
+    if (!typeChanged) return
+    changed = true
+    const vacancies = { ...draft.vacancies }
+    if (staying.length === 0) delete vacancies[type.id]
+    else vacancies[type.id] = staying
+    draft.vacancies = vacancies
+  })
+  return changed
 }
 
 /**
@@ -212,7 +331,7 @@ export function extraHousingCost(
   return housingCost(state, living + extra) - housingCost(state, living)
 }
 
-/** Tipos liberados com algum imóvel à venda que cabe no dinheiro da família agora. */
+/** Tipos liberados com algum imóvel à venda que cabe no dinheiro da família agora, à vista. */
 export function affordableProperties(state: GameState): PropertyId[] {
   return PROPERTY_IDS.filter((id) => checkBuyProperty(state, id).ok)
 }
@@ -222,41 +341,76 @@ export function totalProperties(state: GameState): number {
   return PROPERTY_IDS.reduce((sum, id) => sum + ownedCount(state, id), 0)
 }
 
-export type PropertyCheck = { ok: true; price: number; lot: number | null } | Refusal
+export type PropertyCheck =
+  | {
+      ok: true
+      /** O preço do imóvel. */
+      price: number
+      /** O que sai do caixa agora: o preço e o ITBI à vista, ou a entrada e o ITBI no financiamento. */
+      cost: number
+      lot: number | null
+      /** As contas do financiamento, quando a compra é financiada. */
+      financing: FinancingTerms | null
+    }
+  | Refusal
 
 /**
  * Diz se a família pode comprar agora um imóvel do tipo, por quanto e qual
  * lote ela leva. Com `lot`, é aquele lote, que precisa estar à venda; sem ele,
  * o primeiro lote à venda, ou nenhum, quando o anúncio comercial está fora da
- * rua.
+ * rua. À vista, o caixa precisa cobrir o preço e o ITBI. Financiado, a entrada
+ * e o ITBI, e as parcelas de todos os financiamentos precisam caber no teto
+ * da renda da família (`familyIncome`, a renda por mês antes do imposto).
  */
-export function checkBuyProperty(state: GameState, id: PropertyId, lot?: number): PropertyCheck {
+export function checkBuyProperty(
+  state: GameState,
+  id: PropertyId,
+  lot?: number,
+  financed: boolean = false,
+  familyIncome: number = 0,
+): PropertyCheck {
   if (!(PROPERTY_IDS as readonly string[]).includes(id)) return refuse('propertyNotFound')
   if (!isPropertyUnlocked(state, id)) return refuse('propertyLocked')
   if (propertiesLeft(state, id) <= 0) return refuse('soldOut')
   const forSale = lotsForSale(state, id)
   if (lot !== undefined && !forSale.includes(lot)) return refuse('lotNotForSale')
-  const price = propertyPrice(id)
-  if (state.money < price) return refuse('notEnoughMoney')
-  return { ok: true, price, lot: lot ?? forSale[0] ?? null }
+  const chosen = lot ?? forSale[0] ?? null
+  if (!financed) {
+    const price = propertyPrice(state, id)
+    const cost = price + transferTaxOf(price)
+    if (state.money < cost) return refuse('notEnoughMoney')
+    return { ok: true, price, cost, lot: chosen, financing: null }
+  }
+  const terms = financingTerms(state, id)
+  const cost = terms.down + terms.tax
+  if (state.money < cost) return refuse('notEnoughMoney')
+  if (loanInstallments(state) + terms.installment > installmentCap(familyIncome)) {
+    return refuse('loanTooBig')
+  }
+  return { ok: true, price: terms.price, cost, lot: chosen, financing: terms }
 }
 
-/** Compra um imóvel já conferido. Altera o rascunho e devolve o acontecimento. */
+/**
+ * Compra um imóvel já conferido: paga o que sai do caixa, abre o financiamento
+ * quando houver e dá o lote à família. Altera o rascunho e devolve o
+ * acontecimento.
+ */
 export function buyProperty(
   draft: GameState,
   id: PropertyId,
-  price: number,
-  lot: number | null,
+  check: Extract<PropertyCheck, { ok: true }>,
 ): GameEvent {
   const count = ownedCount(draft, id) + 1
   draft.properties = { ...draft.properties, [id]: count }
-  if (lot !== null) {
-    draft.lots = { ...draft.lots, [id]: [...ownedLots(draft, id), lot].sort((a, b) => a - b) }
+  if (check.lot !== null) {
+    draft.lots = { ...draft.lots, [id]: [...ownedLots(draft, id), check.lot].sort((a, b) => a - b) }
   }
   if (propertyType(id).market) {
     draft.market = { ...draft.market, [id]: propertiesLeft(draft, id) - 1 }
   }
-  draft.money -= price
-  draft.stats.totalSpent += price
-  return { type: 'propertyBought', day: draft.clock.day, propertyId: id, count }
+  draft.money -= check.cost
+  draft.stats.totalSpent += check.cost
+  if (check.financing) openLoan(draft, id, check.financing.principal)
+  const event: GameEvent = { type: 'propertyBought', day: draft.clock.day, propertyId: id, count }
+  return check.financing ? { ...event, financed: true } : event
 }

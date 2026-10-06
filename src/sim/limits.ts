@@ -5,21 +5,18 @@
 import {
   advance,
   applyAction,
-  checkBuyProperty,
-  checkHaveChild,
-  courseCandidates,
-  courseOffer,
   daysToMs,
   familyRates,
   livingMembers,
+  ownedCount,
   serialize,
-  visiblePropertyTypes,
+  totalProperties,
   type GameState,
-  type Member,
 } from '../engine'
 import { BALANCE } from '../content/balance'
+import { PROPERTY_TYPES } from '../content/properties'
 import { formatGameSpan, formatMoney } from '../lib/format'
-import { clockMs, courseShortfall, strategyPicks } from './autoplay'
+import { clockMs, strategyPicks } from './autoplay'
 
 const MINUTE = 60_000
 const HOUR = 60 * MINUTE
@@ -27,15 +24,25 @@ const HOUR = 60 * MINUTE
 export const LIMITS = {
   /** Números: dinheiro e renda finitos e abaixo disto. */
   maxNumber: 1e15,
-  /** Ritmo: depois do começo, nunca mais que isto sem nada para comprar. */
-  rhythm: { graceMs: 5 * MINUTE, maxIdleMs: 2 * MINUTE },
   /**
-   * Crescimento: a renda por mês no fim de cada hora, sem a renda em dobro das
-   * missões, é maior que a do fim da hora anterior, e no máximo tantas vezes.
-   * Com o começo de uma pessoa só, a primeira hora é a mais fraca, e o salto
-   * para a segunda fica entre 8 e 10 vezes.
+   * Marcos: em que momento do jogo a família chega a cada um. O primeiro
+   * imóvel não pode vir cedo demais, para o começo ter escolhas apertadas, nem
+   * tarde demais, para o jogador ver progresso; dez imóveis perto de uma hora;
+   * e o primeiro comercial depois de duas.
    */
-  maxHourlyGrowth: 12,
+  milestones: {
+    firstProperty: { minMs: 6 * MINUTE, maxMs: 20 * MINUTE },
+    tenProperties: { minMs: 40 * MINUTE, maxMs: 120 * MINUTE },
+    firstCommercial: { minMs: 70 * MINUTE, maxMs: Infinity },
+  },
+  /**
+   * Crescimento: a renda por mês no fim de cada hora, sem o bônus das
+   * missões, fica entre `min` e `max` vezes a do fim da hora anterior. Com o
+   * começo de uma pessoa só, a primeira hora é a mais fraca, e a família
+   * cresce de uma dezena para uma centena de pessoas na segunda; depois, a
+   * renda oscila com as gerações que nascem e morrem.
+   */
+  hourlyGrowth: { min: 0.75, max: 30 },
   /** Família: pessoas vivas depois das primeiras horas. */
   family: { afterMs: 3 * HOUR, min: 60, max: 150 },
   /** Save: o limite de cada save na nuvem, em bytes. */
@@ -46,35 +53,16 @@ export const LIMITS = {
   offline: { years: BALANCE.away.capYears, maxMs: 200 },
 } as const
 
-/**
- * Se a família consegue comprar alguma coisa agora: um filho, um imóvel ou um
- * curso de promoção cuja mensalidade cabe na renda ou, com a renda curta, no
- * dinheiro guardado até o fim do curso. O casamento vem no pedido, depois do
- * namoro.
- */
-export function canBuySomething(state: GameState): boolean {
-  const { net } = familyRates(state)
-  const day = state.clock.day
-  const affordable = (member: Member) =>
-    state.money >= courseShortfall(courseOffer(member, day, false)!, net)
-  if (courseCandidates(state).some(affordable)) return true
-  if (visiblePropertyTypes(state).some((type) => checkBuyProperty(state, type.id).ok)) return true
-  for (const member of livingMembers(state)) {
-    if (member.partnerId && checkHaveChild(state, member.id).ok) return true
-  }
-  return false
-}
-
 /** Medidas que se acumulam a cada passo da simulação. */
 export type Measures = {
   /** Maior valor visto em dinheiro, total ganho ou renda por mês. */
   maxNumber: number
   allFinite: boolean
-  /** Maior tempo seguido sem nada para comprar, depois do começo, e quando terminou. */
-  maxIdleMs: number
-  maxIdleAtMs: number
-  idleMs: number
-  /** Renda por mês no fim de cada hora completa, sem a renda em dobro das missões. */
+  /** Quando a família chegou a cada marco, em milissegundos reais, ou null ainda não. */
+  firstPropertyAtMs: number | null
+  tenPropertiesAtMs: number | null
+  firstCommercialAtMs: number | null
+  /** Renda por mês no fim de cada hora completa, sem o bônus das missões. */
   hourlyIncome: number[]
   /** Menor e maior número de pessoas vivas depois das primeiras horas. */
   familyMin: number
@@ -85,42 +73,40 @@ export function newMeasures(): Measures {
   return {
     maxNumber: 0,
     allFinite: true,
-    maxIdleMs: 0,
-    maxIdleAtMs: 0,
-    idleMs: 0,
+    firstPropertyAtMs: null,
+    tenPropertiesAtMs: null,
+    firstCommercialAtMs: null,
     hourlyIncome: [],
     familyMin: Infinity,
     familyMax: 0,
   }
 }
 
+/** Quantos imóveis comerciais a família tem. */
+function commercialCount(state: GameState): number {
+  return PROPERTY_TYPES.reduce((sum, type) => sum + (type.home ? 0 : ownedCount(state, type.id)), 0)
+}
+
 /**
- * Registra o passo de `stepMs` que termina em `elapsedMs`. Chame com o estado
- * depois do relógio andar e antes da estratégia gastar, para ver o que dava
- * para comprar.
+ * Registra o passo que termina em `elapsedMs`. Chame com o estado depois do
+ * relógio andar e da estratégia gastar, para os marcos contarem as compras.
  */
-export function measureStep(
-  measures: Measures,
-  state: GameState,
-  elapsedMs: number,
-  stepMs: number,
-): void {
+export function measureStep(measures: Measures, state: GameState, elapsedMs: number): void {
   const { income } = familyRates(state)
   for (const value of [state.money, state.stats.totalEarned, income]) {
     if (!Number.isFinite(value)) measures.allFinite = false
     else measures.maxNumber = Math.max(measures.maxNumber, Math.abs(value))
   }
 
-  if (elapsedMs > LIMITS.rhythm.graceMs) {
-    if (canBuySomething(state)) {
-      measures.idleMs = 0
-    } else {
-      measures.idleMs += stepMs
-      if (measures.idleMs > measures.maxIdleMs) {
-        measures.maxIdleMs = measures.idleMs
-        measures.maxIdleAtMs = elapsedMs
-      }
-    }
+  const properties = totalProperties(state)
+  if (measures.firstPropertyAtMs === null && properties >= 1) {
+    measures.firstPropertyAtMs = elapsedMs
+  }
+  if (measures.tenPropertiesAtMs === null && properties >= 10) {
+    measures.tenPropertiesAtMs = elapsedMs
+  }
+  if (measures.firstCommercialAtMs === null && commercialCount(state) >= 1) {
+    measures.firstCommercialAtMs = elapsedMs
   }
 
   if (elapsedMs % HOUR === 0) measures.hourlyIncome.push(baseIncome(state))
@@ -132,7 +118,7 @@ export function measureStep(
   }
 }
 
-/** Renda por mês sem a renda em dobro das missões, que dura poucos minutos. */
+/** Renda por mês sem o bônus das missões, que dura poucos minutos. */
 export function baseIncome(state: GameState): number {
   return familyRates({ ...state, boosts: { incomeUntil: 0 } }).income
 }
@@ -215,11 +201,40 @@ export type FinalMeasures = {
 }
 
 /**
+ * Um marco: ok quando a família chegou a ele dentro da faixa, ou quando a
+ * partida ainda não durou o bastante para cobrar.
+ */
+function milestone(
+  name: string,
+  at: number | null,
+  { minMs, maxMs }: { minMs: number; maxMs: number },
+  elapsedMs: number,
+): LimitResult {
+  const limit =
+    maxMs === Infinity
+      ? `depois de ${minutes(minMs)}`
+      : `entre ${minutes(minMs)} e ${minutes(maxMs)}`
+  if (at === null) {
+    return {
+      name,
+      ok: elapsedMs < maxMs,
+      value: elapsedMs < maxMs ? 'ainda não' : `não chegou em ${minutes(elapsedMs)}`,
+      limit,
+    }
+  }
+  return { name, ok: at >= minMs && at <= maxMs, value: `aos ${minutes(at)}`, limit }
+}
+
+/**
  * Confere cada limite. Crescimento e família só valem quando a partida dura o
  * bastante: com menos de duas horas completas, ou sem passar das primeiras
  * horas, ficam de fora. Uma família que acabou antes conta como zero pessoas.
  */
-export function evaluate(measures: Measures, final: FinalMeasures): LimitResult[] {
+export function evaluate(
+  measures: Measures,
+  final: FinalMeasures,
+  elapsedMs: number,
+): LimitResult[] {
   const results: LimitResult[] = []
   results.push({
     name: 'Números',
@@ -227,23 +242,19 @@ export function evaluate(measures: Measures, final: FinalMeasures): LimitResult[
     value: measures.allFinite ? `maior valor ${formatMoney(measures.maxNumber)}` : 'valor infinito',
     limit: 'finitos e abaixo de 10^15',
   })
-  results.push({
-    name: 'Ritmo',
-    ok: measures.maxIdleMs <= LIMITS.rhythm.maxIdleMs,
-    value:
-      measures.maxIdleMs > 0
-        ? `${minutes(measures.maxIdleMs)} sem nada para comprar, até ${minutes(measures.maxIdleAtMs)}`
-        : 'sempre com algo para comprar',
-    limit: `até ${minutes(LIMITS.rhythm.maxIdleMs)} depois de ${minutes(LIMITS.rhythm.graceMs)}`,
-  })
+  const { firstProperty, tenProperties, firstCommercial } = LIMITS.milestones
+  results.push(milestone('1º imóvel', measures.firstPropertyAtMs, firstProperty, elapsedMs))
+  results.push(milestone('10 imóveis', measures.tenPropertiesAtMs, tenProperties, elapsedMs))
+  results.push(milestone('1º comercial', measures.firstCommercialAtMs, firstCommercial, elapsedMs))
   const hours = measures.hourlyIncome
   if (hours.length >= 2) {
+    const { min, max } = LIMITS.hourlyGrowth
     const ratios = hours.slice(1).map((income, index) => income / hours[index])
     results.push({
       name: 'Crescimento',
-      ok: ratios.every((ratio) => ratio > 1 && ratio <= LIMITS.maxHourlyGrowth),
+      ok: ratios.every((ratio) => ratio >= min && ratio <= max),
       value: `renda no fim de cada hora: ${hours.map((income) => formatMoney(income)).join(' → ')}`,
-      limit: `sobe toda hora, até ${LIMITS.maxHourlyGrowth}×`,
+      limit: `de ${min}× a ${max}× a da hora anterior`,
     })
   }
   if (measures.familyMin !== Infinity) {

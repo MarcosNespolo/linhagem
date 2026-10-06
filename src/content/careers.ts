@@ -11,20 +11,29 @@ export type CareerLevel = {
  */
 export type CareerRequirement = 'medio' | 'tecnico' | 'superior' | 'concurso'
 
+/** Formação que um cargo público pede: ensino médio ou faculdade. */
+export type ConcursoFormation = 'medio' | 'superior'
+
 export type Career = {
   id: string
   name: string
   requires: CareerRequirement
   /** Cinco níveis, do primeiro emprego ao topo da carreira. */
   levels: readonly CareerLevel[]
+  /**
+   * Só no serviço público: a nota de corte do concurso e a formação que o
+   * cargo pede. Quem passa entra no primeiro nível e sobe com o tempo.
+   */
+  concurso?: { cutoff: number; formation: ConcursoFormation }
 }
 
 const title = (m: string, f: string = m) => ({ m, f })
 
 /**
- * As 12 carreiras. As que pedem mais formação pagam mais. Do 1º para o 3º nível
- * a pessoa sobe sozinha com o tempo; o 4º e o 5º pedem um curso pago, menos no
- * serviço público.
+ * As 16 carreiras: 11 privadas, em que cada nível pede um curso pago, e 5 do
+ * serviço público, uma por faixa de concurso, da prefeitura à auditoria fiscal,
+ * em que a promoção vem com o tempo. As que pedem mais formação, ou nota mais
+ * alta, pagam mais.
  */
 export const CAREERS = [
   {
@@ -163,15 +172,68 @@ export const CAREERS = [
     ],
   },
   {
-    id: 'publico',
-    name: 'Serviço público',
+    id: 'prefeitura',
+    name: 'Prefeitura',
     requires: 'concurso',
+    concurso: { cutoff: 540, formation: 'medio' },
     levels: [
-      { title: title('Técnico do INSS', 'Técnica do INSS'), salaryPerMonth: 5500 },
+      { title: title('Auxiliar administrativo', 'Auxiliar administrativa'), salaryPerMonth: 2400 },
+      { title: title('Agente administrativo', 'Agente administrativa'), salaryPerMonth: 3000 },
+      { title: title('Fiscal municipal'), salaryPerMonth: 3600 },
+      { title: title('Chefe de setor'), salaryPerMonth: 4400 },
+      { title: title('Diretor de departamento', 'Diretora de departamento'), salaryPerMonth: 5500 },
+    ],
+  },
+  {
+    id: 'estado',
+    name: 'Estado',
+    requires: 'concurso',
+    concurso: { cutoff: 620, formation: 'medio' },
+    levels: [
+      { title: title('Agente do estado'), salaryPerMonth: 4200 },
+      { title: title('Técnico do estado', 'Técnica do estado'), salaryPerMonth: 5200 },
+      { title: title('Supervisor', 'Supervisora'), salaryPerMonth: 6400 },
+      { title: title('Chefe de seção'), salaryPerMonth: 7600 },
+      { title: title('Diretor estadual', 'Diretora estadual'), salaryPerMonth: 9000 },
+    ],
+  },
+  {
+    id: 'tecnicoFederal',
+    name: 'Técnico federal',
+    requires: 'concurso',
+    concurso: { cutoff: 700, formation: 'medio' },
+    levels: [
+      { title: title('Técnico do INSS', 'Técnica do INSS'), salaryPerMonth: 6400 },
+      { title: title('Técnico judiciário', 'Técnica judiciária'), salaryPerMonth: 7800 },
+      { title: title('Técnico sênior', 'Técnica sênior'), salaryPerMonth: 9400 },
+      { title: title('Supervisor federal', 'Supervisora federal'), salaryPerMonth: 10_800 },
+      { title: title('Chefe de agência'), salaryPerMonth: 12_000 },
+    ],
+  },
+  {
+    id: 'analistaFederal',
+    name: 'Analista federal',
+    requires: 'concurso',
+    concurso: { cutoff: 760, formation: 'superior' },
+    levels: [
       { title: title('Analista'), salaryPerMonth: 12_000 },
-      { title: title('Analista sênior'), salaryPerMonth: 16_300 },
-      { title: title('Coordenador', 'Coordenadora'), salaryPerMonth: 22_100 },
-      { title: title('Auditor fiscal', 'Auditora fiscal'), salaryPerMonth: 30_000 },
+      { title: title('Analista sênior'), salaryPerMonth: 14_500 },
+      { title: title('Coordenador', 'Coordenadora'), salaryPerMonth: 17_000 },
+      { title: title('Gerente'), salaryPerMonth: 19_500 },
+      { title: title('Diretor', 'Diretora'), salaryPerMonth: 22_000 },
+    ],
+  },
+  {
+    id: 'auditoria',
+    name: 'Auditoria fiscal',
+    requires: 'concurso',
+    concurso: { cutoff: 850, formation: 'superior' },
+    levels: [
+      { title: title('Auditor fiscal', 'Auditora fiscal'), salaryPerMonth: 23_000 },
+      { title: title('Auditor sênior', 'Auditora sênior'), salaryPerMonth: 27_000 },
+      { title: title('Auditor-chefe', 'Auditora-chefe'), salaryPerMonth: 31_000 },
+      { title: title('Superintendente'), salaryPerMonth: 35_000 },
+      { title: title('Secretário da Receita', 'Secretária da Receita'), salaryPerMonth: 40_000 },
     ],
   },
 ] as const satisfies readonly Career[]
@@ -180,8 +242,16 @@ export type CareerId = (typeof CAREERS)[number]['id']
 
 export const CAREER_IDS: readonly CareerId[] = CAREERS.map((career) => career.id)
 
-/** Carreira de quem passa em concurso. */
-export const PUBLIC_CAREER: CareerId = 'publico'
+/** Carreiras do serviço público, da nota de corte mais baixa à mais alta. */
+export const PUBLIC_CAREERS: readonly CareerId[] = (CAREERS as readonly Career[])
+  .filter((career) => career.concurso)
+  .sort((a, b) => (a.concurso?.cutoff ?? 0) - (b.concurso?.cutoff ?? 0))
+  .map((career) => career.id as CareerId)
+
+/** Cargos públicos de nível médio: os que quem o membro conhece pode ter. */
+export const PUBLIC_MEDIO_CAREERS: readonly CareerId[] = (CAREERS as readonly Career[])
+  .filter((career) => career.concurso?.formation === 'medio')
+  .map((career) => career.id as CareerId)
 
 /** Carreiras que pedem só o ensino médio. */
 export const MEDIO_CAREERS: readonly CareerId[] = CAREERS.filter(
@@ -194,6 +264,18 @@ export function getCareer(id: CareerId): Career {
   const career = BY_ID.get(id)
   if (!career) throw new Error(`Carreira desconhecida: ${id}`)
   return career
+}
+
+/** Carreira do serviço público: quem entra passou em concurso e sobe com o tempo. */
+export function isPublicCareer(id: CareerId): boolean {
+  return getCareer(id).requires === 'concurso'
+}
+
+/** A nota de corte e a formação do cargo público. */
+export function concursoOf(id: CareerId): { cutoff: number; formation: ConcursoFormation } {
+  const { concurso } = getCareer(id)
+  if (!concurso) throw new Error(`${id} não é uma carreira de concurso`)
+  return concurso
 }
 
 /** Índice do último nível, o topo da carreira. */

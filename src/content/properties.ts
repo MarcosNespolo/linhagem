@@ -1,11 +1,15 @@
 /**
- * Tipos de imóvel, do mais barato ao mais caro, todos com preço fixo. Cada um
- * libera depois da primeira compra do anterior. Os três primeiros são de
- * moradia: a família pode morar neles, e cada um tem lugar para algumas pessoas
- * e contas por mês (condomínio, IPTU e manutenção) enquanto alguém mora lá; o
- * bairro tem `lots` de cada. Os comerciais ficam à venda poucos de cada vez,
- * até `BALANCE.properties.maxForSale`, e um novo aparece a cada
- * `market.everyYears` anos do jogo.
+ * Tipos de imóvel, do mais barato ao mais caro. Cada um libera depois da
+ * primeira compra do anterior. Os três primeiros são de moradia: a família
+ * pode morar neles, cada um tem lugar para algumas pessoas, o bairro tem
+ * `lots` de cada e cada um comprado deixa o próximo do tipo mais caro
+ * (`BALANCE.properties.priceGrowth`). Os comerciais têm preço fixo e ficam à
+ * venda poucos de cada vez, até `BALANCE.properties.maxForSale`, e um novo
+ * aparece a cada `market.everyYears` anos do jogo. Alugado, cada imóvel rende
+ * `rentPerMonth` menos a manutenção; vazio, ou com a família morando nele, a
+ * família paga as contas (`billsPerMonth`: condomínio e IPTU). Os de moradia
+ * rendem perto de 6% do preço por ano, como na vida real; os comerciais bem
+ * menos, porque chegam quando a renda já é alta.
  */
 export const PROPERTY_TYPES = [
   {
@@ -14,8 +18,9 @@ export const PROPERTY_TYPES = [
     gender: 'm',
     plural: 'Kitnets',
     price: 80_000,
-    rentPerMonth: 670,
-    home: { places: 2, billsPerMonth: 200 },
+    rentPerMonth: 400,
+    billsPerMonth: 200,
+    home: { places: 2 },
     market: null,
     lots: 10,
   },
@@ -25,8 +30,9 @@ export const PROPERTY_TYPES = [
     gender: 'm',
     plural: 'Apartamentos',
     price: 400_000,
-    rentPerMonth: 3_200,
-    home: { places: 4, billsPerMonth: 450 },
+    rentPerMonth: 1_950,
+    billsPerMonth: 450,
+    home: { places: 4 },
     market: null,
     lots: 10,
   },
@@ -36,8 +42,9 @@ export const PROPERTY_TYPES = [
     gender: 'f',
     plural: 'Casas',
     price: 1_200_000,
-    rentPerMonth: 9_400,
-    home: { places: 6, billsPerMonth: 700 },
+    rentPerMonth: 5_800,
+    billsPerMonth: 700,
+    home: { places: 6 },
     market: null,
     lots: 10,
   },
@@ -48,6 +55,7 @@ export const PROPERTY_TYPES = [
     plural: 'Salas comerciais',
     price: 5_000_000,
     rentPerMonth: 9_300,
+    billsPerMonth: 900,
     home: null,
     market: { everyYears: 2 },
     lots: 5,
@@ -59,6 +67,7 @@ export const PROPERTY_TYPES = [
     plural: 'Lojas',
     price: 18_000_000,
     rentPerMonth: 30_000,
+    billsPerMonth: 3_000,
     home: null,
     market: { everyYears: 3 },
     lots: 5,
@@ -70,6 +79,7 @@ export const PROPERTY_TYPES = [
     plural: 'Galpões',
     price: 70_000_000,
     rentPerMonth: 106_000,
+    billsPerMonth: 10_000,
     home: null,
     market: { everyYears: 4 },
     lots: 3,
@@ -81,6 +91,7 @@ export const PROPERTY_TYPES = [
     plural: 'Prédios',
     price: 280_000_000,
     rentPerMonth: 390_000,
+    billsPerMonth: 40_000,
     home: null,
     market: { everyYears: 5 },
     lots: 4,
@@ -92,6 +103,7 @@ export const PROPERTY_TYPES = [
     plural: 'Fazendas',
     price: 1_200_000_000,
     rentPerMonth: 1_540_000,
+    billsPerMonth: 150_000,
     home: null,
     market: { everyYears: 7 },
     lots: 2,
@@ -103,6 +115,7 @@ export const PROPERTY_TYPES = [
     plural: 'Shoppings',
     price: 5_000_000_000,
     rentPerMonth: 5_950_000,
+    billsPerMonth: 600_000,
     home: null,
     market: { everyYears: 9 },
     lots: 2,
@@ -114,12 +127,14 @@ export const PROPERTY_TYPES = [
   gender: 'm' | 'f'
   /** Nome no plural: "3 salas comerciais". */
   plural: string
-  /** Preço de cada imóvel do tipo, sempre o mesmo. */
+  /** Preço do primeiro imóvel do tipo. Nos de moradia, cada um comprado sobe o do próximo. */
   price: number
-  /** Aluguel por mês de cada imóvel do tipo, quando a família não mora nele. */
+  /** Aluguel por mês de cada imóvel do tipo, quando a família não mora nele e ele não está vazio. */
   rentPerMonth: number
-  /** Moradia: lugares para pessoas da família e contas por mês de quando alguém mora lá. */
-  home: { places: number; billsPerMonth: number } | null
+  /** Contas por mês (condomínio e IPTU), pagas pela família quando ela mora nele ou ele está vazio. */
+  billsPerMonth: number
+  /** Moradia: lugares para pessoas da família. Null nos comerciais. */
+  home: { places: number } | null
   /** Comercial: de quantos em quantos anos do jogo um novo fica à venda. */
   market: { everyYears: number } | null
   /**

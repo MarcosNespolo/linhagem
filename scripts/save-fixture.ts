@@ -13,10 +13,10 @@
  * pedido de casamento aberto no fim do exemplo. O mais novo teve professor
  * particular no médio, acabou, estudou para concurso e passou. Quem fundou a
  * família faz o curso do próximo nível no ritmo normal, e o par acabou de
- * começar o dele com dedicação. A família tem kitnets e um apartamento, e as
- * missões do dia sorteadas: cumpriu a Investidor, com três kitnets a mais, e
- * está com a renda em dobro. Nos anos do exemplo, a família passa pelos
- * imprevistos que a seed sorteia.
+ * começar o dele com dedicação. A família tem kitnets, um deles financiado, e
+ * um apartamento, e as missões do dia sorteadas: cumpriu a Investidor, com
+ * três kitnets a mais, e está com o bônus na renda. Nos anos do exemplo, a
+ * família passa pelos imprevistos que a seed sorteia, e algum inquilino sai.
  */
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { BALANCE } from '../src/content/balance'
@@ -116,9 +116,10 @@ state = act(state, {
 })
 // Quem fundou a família começa o curso do próximo nível, no ritmo normal.
 state = act(state, { type: 'startCourse', memberId: 'm1', dedicated: false })
-// A família compra mais um kitnet e um apartamento para alugar.
+// A família compra mais um kitnet e um apartamento para alugar, e financia outro kitnet.
 state = act(state, { type: 'buyProperty', propertyId: 'kitnet' })
 state = act(state, { type: 'buyProperty', propertyId: 'apartamento' })
+state = act(state, { type: 'buyProperty', propertyId: 'kitnet', financed: true })
 // O primeiro dia, a partir de 4 de outubro de 2026, em que a Investidor é sorteada.
 for (let day = 4; ; day++) {
   const date = `2026-10-${String(day).padStart(2, '0')}`
@@ -128,7 +129,7 @@ for (let day = 4; ; day++) {
     break
   }
 }
-// Três kitnets cumprem a Investidor, e a recompensa põe a renda em dobro.
+// Três kitnets cumprem a Investidor, e a recompensa dá o bônus na renda.
 for (let i = 0; i < 3; i++) state = act(state, { type: 'buyProperty', propertyId: 'kitnet' })
 state = act(state, { type: 'claimMission', missionId: 'investidor' })
 // Até a primeira prova, que abre o resultado do concurso, respondido com a sugestão.

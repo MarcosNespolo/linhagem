@@ -16,32 +16,45 @@ export {
 export { advance, advanceTo, isWaiting, type AdvanceResult } from './advance'
 export { inheritAppearance, rollAppearance } from './appearance'
 export { archiveMembers } from './archive'
-export { boostTicksLeft, clockPosition, isBoosted } from './boost'
+export { boostFactor, boostTicksLeft, clockPosition, isBoosted } from './boost'
 export { optionCount, suggestedPicks, type ChoicePick } from './choices'
 export { rollEnem } from './college'
 export {
+  allowedCargos,
   concursoBase,
   expectedConcursoScore,
   highestCargo,
   isExamDay,
   monthsStudied,
+  nextCargo,
   nextExamDay,
-  passedLevel,
+  passedCargo,
 } from './concurso'
 export { FAMILY_NAME_MAX_LENGTH } from './constants'
 export {
   familyRates,
+  feesOf,
   hasCar,
   incomeOf,
+  incomeTax,
   isUnemployed,
   unemploymentPay,
   healthPlanCost,
+  lifestyleCost,
   livingCost,
   memberExpense,
   memberIncome,
   salaryPerMonth,
+  taxOf,
   type Rates,
 } from './economy'
+export {
+  installmentCap,
+  loanInstallment,
+  loanInstallments,
+  loanMonths,
+  totalDebt,
+} from './financing'
 export {
   ageThisYear,
   homeCareCost,
@@ -85,12 +98,15 @@ export {
   affordableProperties,
   checkBuyProperty,
   extraHousingCost,
+  financingTerms,
   homesInUse,
   housingCost,
   initialMarket,
   isPropertyUnlocked,
   isRenting,
   lotsForSale,
+  maintenanceCost,
+  netRent,
   nextListingDay,
   ownedCount,
   ownedLots,
@@ -99,14 +115,21 @@ export {
   placeRent,
   propertiesLeft,
   propertyPrice,
+  purchaseCost,
   rentedPlaces,
+  rentedUnits,
   rentFor,
   rentPerMonth,
   totalProperties,
+  totalVacant,
+  transferTaxOf,
+  vacantUnits,
   visiblePropertyTypes,
+  type FinancingTerms,
   type PropertyCheck,
 } from './properties'
 export {
+  courseAvailableDay,
   courseCandidates,
   courseOffer,
   promotesByTime,

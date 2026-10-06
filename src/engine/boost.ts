@@ -12,17 +12,23 @@ export function boostTicksLeft(state: GameState): number {
   return Math.max(0, state.boosts.incomeUntil - clockPosition(state))
 }
 
-/** A renda está em dobro agora. */
+/** O bônus das missões está valendo agora. */
 export function isBoosted(state: GameState): boolean {
   return boostTicksLeft(state) > 0
 }
 
+/** Por quanto a renda da família é multiplicada agora: o bônus das missões, ou 1. */
+export function boostFactor(state: GameState): number {
+  return isBoosted(state) ? BALANCE.missions.boost.factor : 1
+}
+
 /**
- * Põe a renda em dobro por `years` anos do jogo. Com um bônus valendo, soma ao
- * que falta. O bônus conta o tempo de jogo andando, então para nas pausas.
- * Altera o rascunho.
+ * Dá o bônus na renda por `BALANCE.missions.boost.years` anos do jogo. Com um
+ * bônus valendo, soma ao que falta. O bônus conta o tempo de jogo andando,
+ * então para nas pausas. Altera o rascunho.
  */
-export function addBoost(draft: GameState, years: number): void {
+export function addBoost(draft: GameState): void {
   const start = Math.max(clockPosition(draft), draft.boosts.incomeUntil)
+  const { years } = BALANCE.missions.boost
   draft.boosts = { incomeUntil: start + years * BALANCE.daysPerYear * TICKS_PER_DAY }
 }

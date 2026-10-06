@@ -19,6 +19,9 @@ export type ActionError =
   | 'propertyLocked'
   | 'soldOut'
   | 'lotNotForSale'
+  /** As parcelas, com a nova, passariam do teto da renda da família. */
+  | 'loanTooBig'
+  | 'loanNotFound'
   | 'invalidDate'
   | 'alreadyDrawn'
   | 'missionNotFound'

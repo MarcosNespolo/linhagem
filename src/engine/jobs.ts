@@ -3,7 +3,7 @@ import {
   careerLevel,
   getCareer,
   MEDIO_CAREERS,
-  PUBLIC_CAREER,
+  PUBLIC_MEDIO_CAREERS,
   type CareerId,
   type CareerRequirement,
 } from '../content/careers'
@@ -108,8 +108,10 @@ export function rollFounderCareer(rng: Rng, birthDay: number, day: number): Care
 /**
  * Formação e emprego de quem é sugerido como par. A formação cabe na idade:
  * só tem faculdade quem já teve tempo de se formar. Quem tem curso técnico ou
- * faculdade trabalha na área; alguns são servidores públicos. O nível conta os
- * anos de trabalho até hoje, com as promoções que vêm só com o tempo.
+ * faculdade trabalha na área; alguns são servidores públicos, num cargo de
+ * nível médio. O nível conta os anos de trabalho até hoje, com as promoções
+ * que vêm só com o tempo, até `backgroundMaxLevel`: ninguém chega de fora
+ * ganhando muito mais que a família.
  */
 export function rollSuitorBackground(
   rng: Rng,
@@ -130,7 +132,7 @@ export function rollSuitorBackground(
 
   let offer: JobOffer
   if (rng.chance(suitorPublicChance)) {
-    offer = { careerId: PUBLIC_CAREER, level: formation.level === 'superior' ? 1 : 0 }
+    offer = { careerId: rng.pick(PUBLIC_MEDIO_CAREERS), level: 0 }
   } else {
     offer = areaOffer(formation) ?? { careerId: rng.pick(MEDIO_CAREERS), level: 0 }
   }

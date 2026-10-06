@@ -18,9 +18,10 @@ import {
 } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { BALANCE } from '@/content/balance'
-import { MISSIONS } from '@/content/missions'
+import { concursoOf, getCareer, PUBLIC_CAREERS } from '@/content/careers'
 import { propertyType, type PropertyId } from '@/content/properties'
 import { formatDuration, formatGameSpan, formatMoney } from '@/lib/format'
+import { boostLabel } from '../labels'
 import { card } from '../styles'
 import { useUiStore } from '../ui-store'
 import { Sheet } from './sheet'
@@ -40,12 +41,23 @@ function topics(): Topic[] {
   const homes = (['kitnet', 'apartamento', 'casa'] as PropertyId[])
     .map((id) => `${propertyType(id).name.toLowerCase()} ${propertyType(id).home?.places ?? 0}`)
     .join(', ')
-  const boostYears = MISSIONS.flatMap((mission) =>
-    mission.reward.kind === 'boost' ? [mission.reward.years] : [],
-  )[0]
   const stage = school.stages
-  const { living, away } = BALANCE
+  const { living, away, tax, properties } = BALANCE
+  const { financing } = properties
   const thirteenth = Number(BALANCE.thirteenthSalaryDate.slice(3))
+  const cargos = PUBLIC_CAREERS.map((id) => {
+    const { cutoff, formation } = concursoOf(id)
+    return `${cutoff} ${getCareer(id).name.toLowerCase()}${formation === 'superior' ? '*' : ''}`
+  }).join(', ')
+  const brackets = tax.brackets
+    .map(({ upTo, rate }, index) => {
+      const from = index === 0 ? 0 : tax.brackets[index - 1].upTo
+      if (rate === 0) return `isento até ${formatMoney(upTo)}`
+      return upTo === Infinity
+        ? `${percent(rate)} acima de ${formatMoney(from)}`
+        : `${percent(rate)} até ${formatMoney(upTo)}`
+    })
+    .join(', ')
   return [
     {
       title: 'Começo',
@@ -77,9 +89,10 @@ function topics(): Topic[] {
       title: 'Custo de vida',
       icon: <ShoppingCart size={18} />,
       lines: [
-        `Adulto: mercado e contas ${formatMoney(living.adult)}, ônibus ${formatMoney(living.transport.bus)}.`,
+        `Adulto: padrão de vida de ${formatMoney(living.adult)} ou ${percent(living.lifestyleShare)} da renda, o maior; ônibus ${formatMoney(living.transport.bus)}.`,
         `Carro ${formatMoney(living.transport.car)} para quem ganha a partir de ${formatMoney(living.transport.carFromSalary)}.`,
         `Plano de saúde ${formatMoney(living.health.adult)} (${formatMoney(living.health.senior)} depois dos ${living.seniorAge}) a partir de ${formatMoney(living.health.planFromSalary)} de salário; abaixo, SUS.`,
+        `Imposto e INSS por faixa da renda: ${brackets}.`,
         `Criança: ${formatMoney(children.expenseBase)} mais ${formatMoney(children.expensePerYear)} por ano de idade.`,
       ],
     },
@@ -134,7 +147,7 @@ function topics(): Topic[] {
       title: 'Trabalho',
       icon: <Briefcase size={18} />,
       lines: [
-        `Cada nível pede um curso: ${careers.courseYears.join(', ')} anos.`,
+        `Cada nível pede um curso: ${careers.courseYears.join(', ')} anos, depois de ${careers.minYearsInLevel} anos no nível.`,
         `Mensalidade: ${percent(careers.courseFeeShare)} do aumento.`,
         'Dedicação: metade do tempo, o dobro por mês, sem namoro nem filho.',
         `Aposentadoria aos ${BALANCE.retirementAge}, com ${percent(BALANCE.pensionRatio)} do salário.`,
@@ -144,17 +157,21 @@ function topics(): Topic[] {
       title: 'Concurso',
       icon: <Landmark size={18} />,
       lines: [
-        `Até ${concurso.maxExams} provas, sem salário, cursinho de ${formatMoney(concurso.fee)}/mês.`,
-        `Corte: ${concurso.cutoffs[0]} técnico, ${concurso.cutoffs[1]} analista (com faculdade).`,
-        `Sobe com o tempo; aposenta com ${percent(BALANCE.publicPensionRatio)}.`,
+        `Sem salário, cursinho de ${formatMoney(concurso.fee)}/mês, prova a cada 3 meses; a nota sobe ${concurso.pointsPerMonth} por mês de estudo.`,
+        `Corte: ${cargos} (*com faculdade).`,
+        `A cada ${concurso.maxExams} provas sem passar, decide se continua.`,
+        `Sobe com o tempo, sem demissão; aposenta com ${percent(BALANCE.publicPensionRatio)}.`,
       ],
     },
     {
       title: 'Imóveis',
       icon: <Building2 size={18} />,
       lines: [
-        'Preço fixo. Moradia dá lugar; o resto rende aluguel.',
-        `Comerciais: até ${BALANCE.properties.maxForSale} à venda de cada tipo.`,
+        'Moradia dá lugar; o resto rende aluguel.',
+        `Cada moradia comprada deixa a próxima do tipo ${percent(properties.priceGrowth)} mais cara; comerciais têm preço fixo, até ${properties.maxForSale} à venda de cada tipo.`,
+        `ITBI de ${percent(properties.transferTax)} na compra; ${percent(properties.maintenanceShare)} do aluguel vai para a manutenção.`,
+        `Inquilino sai ${percent(properties.vacancy.perYear)} ao ano: ${properties.vacancy.months.min} a ${properties.vacancy.months.max} meses vazio, pagando as contas.`,
+        `Financiamento: ${percent(financing.downShare)} de entrada, ${percent(financing.monthlyRate)} ao mês por ${financing.years} anos, parcelas até ${percent(financing.maxInstallmentShare)} da renda.`,
       ],
     },
     {
@@ -162,7 +179,7 @@ function topics(): Topic[] {
       icon: <Target size={18} />,
       lines: [
         `${BALANCE.missions.perDay} por dia, até a meia-noite.`,
-        `Recompensa: meses de renda ou renda em dobro por ${boostYears} anos.`,
+        `Recompensa: meses de renda ou renda ${boostLabel()} por ${span(BALANCE.missions.boost.years * BALANCE.daysPerYear)}.`,
       ],
     },
     {

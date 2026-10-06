@@ -1,5 +1,12 @@
 import { BALANCE } from '@/content/balance'
-import { careerLevel, getCareer, PUBLIC_CAREER, topLevel, type CareerId } from '@/content/careers'
+import {
+  careerLevel,
+  concursoOf,
+  getCareer,
+  isPublicCareer,
+  topLevel,
+  type CareerId,
+} from '@/content/careers'
 import { propertyType, type PropertyId } from '@/content/properties'
 import {
   degree,
@@ -15,6 +22,7 @@ import {
   ageOf,
   calendarDate,
   childCooldownDaysLeft,
+  courseAvailableDay,
   courseOffer,
   daysToSeconds,
   extraHousingCost,
@@ -22,8 +30,10 @@ import {
   healthPlanCost,
   isAlive,
   isUnemployed,
+  lifestyleCost,
   nextListingDay,
   promotionDay,
+  taxOf,
   type ChildCheck,
   type Enrollment,
   type Formation,
@@ -98,7 +108,9 @@ export function promotionStatus(member: Member, day: number): string | null {
   if (career.level >= topLevel(career.id)) return 'Topo da carreira'
   const due = promotionDay(career)
   if (due !== null) return `Promoção em ${span(due)}`
-  return courseOffer(member, day, false) ? 'Curso disponível' : null
+  if (courseOffer(member, day, false)) return 'Curso disponível'
+  const available = courseAvailableDay(career)
+  return day < available && !isUnemployed(member, day) ? `Curso em ${span(available)}` : null
 }
 
 /** O que a pessoa é ou faz hoje: "Bebê", "Estudante de Direito", "Enfermeira", "Aposentado". */
@@ -133,18 +145,27 @@ export function ageLabel(member: Member, day: number): string {
 
 /**
  * Custo de vida da pessoa em partes, sem a moradia: o de uma criança, ou o
- * mercado, o plano de saúde (ou o SUS) e o transporte de um adulto.
+ * padrão de vida, o plano de saúde (ou o SUS), o transporte e o imposto de um
+ * adulto.
  */
-export function livingCostLine(member: Member, day: number): string {
+export function livingCostLine(state: GameState, member: Member, day: number): string {
   const age = ageOf(member, day)
   if (age < BALANCE.adultAge) return 'Alimentação, roupas, saúde e lazer'
-  const { adult, transport } = BALANCE.living
+  const { transport } = BALANCE.living
   const plan = healthPlanCost(member, day)
   const health = plan > 0 ? `plano de saúde ${formatMoney(plan)}` : 'SUS'
   const ride = hasCar(member, day)
     ? `carro ${formatMoney(transport.car)}`
     : `ônibus ${formatMoney(transport.bus)}`
-  return `Mercado e contas ${formatMoney(adult)} · ${health} · ${ride}`
+  const tax = taxOf(state, member)
+  return [
+    `Padrão de vida ${formatMoney(lifestyleCost(member, day))}`,
+    health,
+    ride,
+    tax > 0 ? `imposto ${formatMoney(tax)}` : '',
+  ]
+    .filter(Boolean)
+    .join(' · ')
 }
 
 /** Como a pessoa se liga à família: filha de quem, com quem casou, se fundou. */
@@ -171,6 +192,10 @@ export function generationLabel(generation: number): string {
 export function describeEvent(state: GameState, event: GameEvent): string {
   if (event.type === 'thirteenth') return `Chegou o 13º salário: ${formatMoney(event.amount)}`
   if (event.type === 'propertyBought') return purchaseText(event)
+  if (event.type === 'loanPaid') {
+    const type = propertyType(event.propertyId)
+    return `A família quitou o financiamento ${type.gender === 'f' ? 'da' : 'do'} ${type.name.toLowerCase()}`
+  }
   if (event.type === 'inDebt') return 'A família entrou no vermelho'
   if (event.type === 'outOfDebt') return 'A família saiu do vermelho'
   if (event.type === 'bankrupt') return 'A família foi à falência'
@@ -183,7 +208,7 @@ export function describeEvent(state: GameState, event: GameEvent): string {
       return `${name} fez ${BALANCE.adultAge} anos`
     case 'firstJob': {
       const title = lowerFirst(levelTitle(member, event.careerId, event.level ?? 0))
-      return event.careerId === PUBLIC_CAREER
+      return isPublicCareer(event.careerId)
         ? `${name} tomou posse como ${title}`
         : `${name} começou a trabalhar como ${title}`
     }
@@ -194,8 +219,8 @@ export function describeEvent(state: GameState, event: GameEvent): string {
     case 'concursoStarted':
       return `${name} começou a estudar para concurso`
     case 'concurso': {
-      if (event.level === null) return `${name} não passou no concurso: nota ${event.score}`
-      const title = lowerFirst(levelTitle(member, PUBLIC_CAREER, event.level))
+      if (event.careerId === null) return `${name} não passou no concurso: nota ${event.score}`
+      const title = lowerFirst(levelTitle(member, event.careerId, 0))
       return `${name} passou no concurso para ${title}, com nota ${event.score}`
     }
     case 'datingStarted':
@@ -245,13 +270,26 @@ export function describeEvent(state: GameState, event: GameEvent): string {
   }
 }
 
-/** Compra de imóvel: "A família comprou um kitnet", "A família comprou a 3ª casa". */
-function purchaseText(event: PropertyEvent): string {
+/** Compra de imóvel: "A família comprou um kitnet", "A família financiou a 3ª casa". */
+function purchaseText(event: Extract<PropertyEvent, { type: 'propertyBought' }>): string {
   const type = propertyType(event.propertyId)
   const name = type.name.toLowerCase()
   const female = type.gender === 'f'
-  if (event.count === 1) return `A família comprou ${female ? 'uma' : 'um'} ${name}`
-  return `A família comprou ${female ? 'a' : 'o'} ${event.count}${female ? 'ª' : 'º'} ${name}`
+  const verb = event.financed ? 'financiou' : 'comprou'
+  if (event.count === 1) return `A família ${verb} ${female ? 'uma' : 'um'} ${name}`
+  return `A família ${verb} ${female ? 'a' : 'o'} ${event.count}${female ? 'ª' : 'º'} ${name}`
+}
+
+/** O bônus das missões em palavras: "em dobro" ou "+50%". */
+export function boostLabel(): string {
+  const factor: number = BALANCE.missions.boost.factor
+  if (factor === 2) return 'em dobro'
+  return `+${Math.round((factor - 1) * 100)}%`
+}
+
+/** Nome do cargo público com a nota de corte, para o meio da frase: "estado (nota 620)". */
+export function cargoLabel(careerId: CareerId): string {
+  return `${getCareer(careerId).name.toLowerCase()} (nota ${concursoOf(careerId).cutoff})`
 }
 
 /** O que a pessoa começou na matrícula, para o histórico. */

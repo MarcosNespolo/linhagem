@@ -1,5 +1,5 @@
 import { BALANCE } from '../content/balance'
-import { PUBLIC_CAREER } from '../content/careers'
+import { isPublicCareer } from '../content/careers'
 import { hasCar } from './economy'
 import { ageOf } from './members'
 import { hashUnit } from './rng'
@@ -72,7 +72,7 @@ export function processMishaps(
     const career = member.career
     const canLoseJob =
       career !== null &&
-      career.id !== PUBLIC_CAREER &&
+      !isPublicCareer(career.id) &&
       member.unemployedUntil === null &&
       age < BALANCE.retirementAge
     if (canLoseJob && value < CHANCE.layoff) {

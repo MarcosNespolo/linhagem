@@ -64,17 +64,35 @@ export const BALANCE = {
   },
 
   /**
-   * Custo de vida de cada adulto por mês, sem a moradia: mercado e contas,
-   * plano de saúde (com médico e dentista) para quem ganha a partir de
-   * `planFromSalary`, mais caro a partir dos 65 anos, e transporte, de ônibus
-   * para quem ganha pouco e de carro para quem ganha a partir de
-   * `carFromSalary`. Quem ganha menos que `planFromSalary` usa o SUS.
+   * Custo de vida de cada adulto por mês, sem a moradia: mercado, contas e o
+   * padrão de vida, que é `adult` ou `lifestyleShare` da renda, o que for
+   * maior (quem ganha mais gasta mais); plano de saúde (com médico e dentista)
+   * para quem ganha a partir de `planFromSalary`, mais caro a partir dos 65
+   * anos; e transporte, de ônibus para quem ganha pouco e de carro para quem
+   * ganha a partir de `carFromSalary`. Quem ganha menos que `planFromSalary`
+   * usa o SUS.
    */
   living: {
     adult: 700,
+    lifestyleShare: 0.35,
     health: { adult: 300, senior: 900, planFromSalary: 3_000 },
     seniorAge: 65,
     transport: { bus: 200, car: 800, carFromSalary: 6_000 },
+  },
+
+  /**
+   * Imposto de renda e INSS, descontados por mês da renda de cada pessoa
+   * (salário, pensão ou seguro-desemprego), por faixas: cada alíquota vale só
+   * para a parte da renda que cai na faixa, até `upTo`. O 13º não paga.
+   */
+  tax: {
+    brackets: [
+      { upTo: 2_500, rate: 0 },
+      { upTo: 5_000, rate: 0.1 },
+      { upTo: 10_000, rate: 0.2 },
+      { upTo: 20_000, rate: 0.275 },
+      { upTo: Infinity, rate: 0.35 },
+    ],
   },
 
   /**
@@ -123,7 +141,7 @@ export const BALANCE = {
      */
     suitorTechnicalChance: 0.2,
     suitorDegreeChance: 0.2,
-    /** Chance de quem o membro conhece ser servidor público. */
+    /** Chance de quem o membro conhece ser servidor público, num cargo de nível médio. */
     suitorPublicChance: 0.1,
   },
 
@@ -149,25 +167,42 @@ export const BALANCE = {
      */
     courseYears: [1, 2, 3, 4],
     /** Mensalidade do curso no ritmo normal: esta parte do aumento que ele traz. */
-    courseFeeShare: 0.5,
+    courseFeeShare: 1,
+    /** Anos no nível atual antes de poder começar o curso do próximo. */
+    minYearsInLevel: 2,
     /**
      * Serviço público: anos no nível para subir ao seguinte, só com o tempo. Quem
      * chega de fora da família, o casal fundador e quem casa, também tem o nível
      * dos anos que já trabalhou, com estes tempos, até `backgroundMaxLevel`.
      */
     yearsToPromote: [3, 5, 8, 12],
-    /** Nível (índice) até onde chega pelo tempo quem vem de fora da família: o 3º. */
-    backgroundMaxLevel: 2,
+    /** Nível (índice) até onde chega pelo tempo quem vem de fora da família: o 2º. */
+    backgroundMaxLevel: 1,
   },
 
   /**
-   * Imóveis, todos com preço fixo. O bairro tem um lote para cada imóvel de
-   * moradia (`lots` em `PROPERTY_TYPES`). Os comerciais ficam à venda poucos de
-   * cada vez: até `maxForSale` de cada tipo, e um novo aparece de tempos em
-   * tempos (`market` em `PROPERTY_TYPES`). Com um ano do jogo por minuto, é o
-   * ritmo das vendas que segura o aluguel, em vez de preços que sobem.
+   * Imóveis. Os de moradia têm um lote para cada um no bairro (`lots` em
+   * `PROPERTY_TYPES`), e cada um que a família compra deixa o próximo do tipo
+   * `priceGrowth` mais caro. Os comerciais têm preço fixo e ficam à venda
+   * poucos de cada vez: até `maxForSale` de cada tipo, e um novo aparece de
+   * tempos em tempos (`market` em `PROPERTY_TYPES`). Toda compra paga o ITBI
+   * (`transferTax` do preço). Alugado, cada imóvel deixa `maintenanceShare` do
+   * aluguel na manutenção e, de vez em quando, o inquilino sai (`vacancy`): o
+   * imóvel fica vazio por alguns meses, sem aluguel e com a família pagando as
+   * contas dele. Um imóvel pode ser financiado (`financing`): a família paga a
+   * entrada e o ITBI e deve o resto ao banco, em parcelas fixas com juros por
+   * mês sobre o que falta pagar, por `years` anos; o banco só financia
+   * enquanto as parcelas de todos os financiamentos cabem em
+   * `maxInstallmentShare` da renda da família.
    */
-  properties: { maxForSale: 2 },
+  properties: {
+    maxForSale: 2,
+    priceGrowth: 0.1,
+    transferTax: 0.03,
+    maintenanceShare: 0.1,
+    vacancy: { perYear: 0.25, months: { min: 2, max: 6 } },
+    financing: { downShare: 0.2, monthlyRate: 0.01, years: 20, maxInstallmentShare: 0.3 },
+  },
 
   /**
    * Arquivo da árvore: quando ela passa deste número de pessoas, os ramos
@@ -176,13 +211,19 @@ export const BALANCE = {
    */
   archive: { maxMembers: 800 },
 
-  /** Missões do dia: quantas aparecem, todas de tipos diferentes. */
-  missions: { perDay: 3 },
+  /**
+   * Missões do dia: quantas aparecem, todas de tipos diferentes, e o bônus
+   * que algumas dão: a renda da família vezes `boost.factor` por `boost.years`
+   * anos do jogo.
+   */
+  missions: { perDay: 3, boost: { factor: 1.5, years: 1 } },
 
   /**
    * Concurso público: quem estuda não trabalha, paga o cursinho e faz uma prova
-   * a cada três meses, por até um ano. A nota parte da nota do ENEM e sobe com
-   * os meses de estudo.
+   * a cada três meses. A nota parte da nota do ENEM e sobe com os meses de
+   * estudo. Cada cargo tem a nota de corte em `CAREERS`. Depois de `maxExams`
+   * provas sem passar, o jogador decide se a pessoa continua estudando, com a
+   * nota que já tem, ou vai trabalhar.
    */
   concurso: {
     /** Mensalidade do cursinho para concurso. */
@@ -195,11 +236,6 @@ export const BALANCE = {
     pointsPerMonth: 10,
     /** A nota de cada prova varia até tantos pontos para cima ou para baixo. */
     spread: 40,
-    /**
-     * Nota de corte por nível de entrada no serviço público: técnico, de nível
-     * médio, e analista, de nível superior.
-     */
-    cutoffs: [620, 720],
   },
 
   /**

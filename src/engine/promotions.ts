@@ -1,5 +1,5 @@
 import { BALANCE } from '../content/balance'
-import { careerLevel, PUBLIC_CAREER, topLevel } from '../content/careers'
+import { careerLevel, isPublicCareer, topLevel } from '../content/careers'
 import { isUnemployed } from './economy'
 import { ageOf } from './members'
 import type { CareerState, GameEvent, GameState, Member, MemberId } from './types'
@@ -18,7 +18,7 @@ function isWorker(member: Member, day: number): member is Worker {
 
 /** No serviço público, a promoção vem com o tempo; nas outras carreiras, com um curso. */
 export function promotesByTime(career: CareerState): boolean {
-  return career.id === PUBLIC_CAREER
+  return isPublicCareer(career.id)
 }
 
 /** Dia em que quem é do serviço público completa o tempo no nível para subir, ou null. */
@@ -39,15 +39,21 @@ export type CourseOffer = {
   fee: number
 }
 
+/** Dia em que a pessoa completa o tempo no nível atual para poder começar o curso do próximo. */
+export function courseAvailableDay(career: CareerState): number {
+  return career.levelSince + BALANCE.careers.minYearsInLevel * BALANCE.daysPerYear
+}
+
 /**
  * O curso que a pessoa pode começar agora: quem trabalha fora do serviço
- * público, sem outro curso e antes do topo da carreira. Com dedicação, dura a
- * metade e a mensalidade dobra. Para os outros, null.
+ * público, há `minYearsInLevel` anos no nível, sem outro curso e antes do
+ * topo da carreira. Com dedicação, dura a metade e a mensalidade dobra. Para
+ * os outros, null.
  */
 export function courseOffer(member: Member, day: number, dedicated: boolean): CourseOffer | null {
   if (!isWorker(member, day) || member.course || promotesByTime(member.career)) return null
   const { id, level } = member.career
-  if (level >= topLevel(id)) return null
+  if (level >= topLevel(id) || day < courseAvailableDay(member.career)) return null
   const raise = careerLevel(id, level + 1).salaryPerMonth - careerLevel(id, level).salaryPerMonth
   const pace = dedicated ? 2 : 1
   const { courseYears, courseFeeShare } = BALANCE.careers

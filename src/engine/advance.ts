@@ -59,7 +59,7 @@ export function advance(state: GameState, ms: number): AdvanceResult {
     draft.clock.tickOfDay = 0
     // O mês que passou fecha antes dos acontecimentos do dia 1º: quem morre ou se
     // aposenta nesse dia ainda recebe o mês inteiro.
-    if (isFirstOfMonth(draft.startDate, draft.clock.day)) settleMonth(draft, living)
+    if (isFirstOfMonth(draft.startDate, draft.clock.day)) events.push(...settleMonth(draft, living))
     processNewDay(draft, rng, events, living)
     if (checkDebt(draft, events) || draft.choices.length > 0) break
   }

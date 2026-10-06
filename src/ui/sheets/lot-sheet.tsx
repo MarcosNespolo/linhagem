@@ -7,10 +7,15 @@ import {
   type PropertyType,
 } from '@/content/properties'
 import {
+  checkBuyProperty,
+  familyRates,
+  financingTerms,
   lotsForSale,
+  netRent,
   nextListingDay,
   propertiesLeft,
   propertyPrice,
+  purchaseCost,
   type GameState,
 } from '@/engine'
 import { useGameStore } from '@/game/store'
@@ -60,13 +65,13 @@ export function LotSheet({
 }
 
 function LotStatus({ game, type, lot }: { game: GameState; type: PropertyType; lot: MapLot }) {
-  const rent = formatMoney(type.rentPerMonth)
+  const rent = formatMoney(netRent(type.id))
   switch (lot.state) {
     case 'home':
       return (
         <Status
           title="A família mora aqui"
-          line={`${type.home?.places} lugares · contas de ${formatMoney(type.home?.billsPerMonth ?? 0)} por mês`}
+          line={`${type.home?.places} lugares · contas de ${formatMoney(type.billsPerMonth)} por mês`}
         />
       )
     case 'rented':
@@ -81,14 +86,14 @@ function LotStatus({ game, type, lot }: { game: GameState; type: PropertyType; l
       ) : (
         <Status
           title={`É da família e está ${type.gender === 'f' ? 'alugada' : 'alugado'}`}
-          line={`Rende ${rent} por mês`}
+          line={`Rende ${rent} por mês, já sem a manutenção`}
         />
       )
     case 'forSale':
       return (
         <>
           <Status
-            title={`À venda por ${formatMoney(propertyPrice(type.id))}`}
+            title={`À venda por ${formatMoney(propertyPrice(game, type.id))}`}
             line={
               type.home
                 ? `${type.home.places} lugares · alugado, rende ${rent} por mês`
@@ -101,7 +106,7 @@ function LotStatus({ game, type, lot }: { game: GameState; type: PropertyType; l
     case 'neighbor':
       return <Status title="É de um vizinho" line={neighborLine(game, type)} />
     case 'locked':
-      return <Status title="Em obras" line={lockedLine(type)} />
+      return <Status title="Em obras" line={lockedLine(game, type)} />
   }
 }
 
@@ -114,26 +119,48 @@ function Status({ title, line }: { title: string; line: string }) {
   )
 }
 
-/** Compra o lote que está aberto no painel. */
+/**
+ * Compra o lote que está aberto no painel, à vista (o preço mais o ITBI) ou
+ * financiado (a entrada e o ITBI agora, e a parcela por mês ao banco).
+ */
 function BuyButton({ game, type, lot }: { game: GameState; type: PropertyType; lot?: number }) {
   const dispatch = useGameStore((store) => store.dispatch)
-  const price = propertyPrice(type.id)
-  const missing = price - game.money
+  const cost = purchaseCost(game, type.id)
+  const terms = financingTerms(game, type.id)
+  const cash = checkBuyProperty(game, type.id, lot)
+  const financed = checkBuyProperty(game, type.id, lot, true, familyRates(game).income)
+  const { years, maxInstallmentShare } = BALANCE.properties.financing
   return (
     <>
       <button
         type="button"
         className={`${button.primary} tabular mt-4 w-full`}
-        disabled={missing > 0}
+        disabled={!cash.ok}
         onClick={() => dispatch({ type: 'buyProperty', propertyId: type.id, lot })}
       >
-        Comprar por {formatMoney(price)}
+        Comprar por {formatMoney(cost)}
       </button>
-      {missing > 0 ? (
-        <p className="tabular text-ink-soft mt-2 text-center text-[13px]">
-          Faltam {formatMoney(missing)}
-        </p>
-      ) : null}
+      <p className="tabular text-ink-soft mt-1.5 text-center text-[13px]">
+        {cash.ok
+          ? `Com o ITBI de ${formatMoney(terms.tax)}`
+          : `Com o ITBI de ${formatMoney(terms.tax)} · faltam ${formatMoney(cost - game.money)}`}
+      </p>
+      <button
+        type="button"
+        className={`${button.secondary} tabular mt-3 w-full`}
+        disabled={!financed.ok}
+        onClick={() => dispatch({ type: 'buyProperty', propertyId: type.id, lot, financed: true })}
+      >
+        Financiar: {formatMoney(terms.down + terms.tax)} agora
+      </button>
+      <p className="tabular text-ink-soft mt-1.5 text-center text-[13px]">
+        {formatMoney(terms.installment)}/mês por {years} anos
+        {financed.ok
+          ? ''
+          : financed.error === 'loanTooBig'
+            ? ` · o banco não financia: parcelas acima de ${Math.round(maxInstallmentShare * 100)}% da renda`
+            : ` · faltam ${formatMoney(terms.down + terms.tax - game.money)}`}
+      </p>
     </>
   )
 }
@@ -162,10 +189,10 @@ function neighborLine(game: GameState, type: PropertyType): string {
 }
 
 /** O que falta para o tipo sair das obras: a primeira compra do tipo anterior. */
-function lockedLine(type: PropertyType): string {
+function lockedLine(game: GameState, type: PropertyType): string {
   const previous = PROPERTY_TYPES[PROPERTY_TYPES.findIndex((other) => other.id === type.id) - 1]
   const first = previous?.gender === 'f' ? 'a primeira' : 'o primeiro'
-  const price = formatMoney(propertyPrice(type.id))
+  const price = formatMoney(propertyPrice(game, type.id))
   if (!previous) return price
   return `Libera ao comprar ${first} ${previous.name.toLowerCase()} · ${price}`
 }

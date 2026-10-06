@@ -46,10 +46,19 @@ export function newGame({ seed, now, startDate, familyName }: NewGameOptions): G
     properties: {},
     market: initialMarket(),
     lots: {},
+    vacancies: {},
+    loans: [],
     missions: null,
     boosts: { incomeUntil: 0 },
     log: [],
-    stats: { simulatedMs: 0, totalEarned: 0, totalSpent: 0, rentEarned: 0, archived: 0 },
+    stats: {
+      simulatedMs: 0,
+      totalEarned: 0,
+      totalSpent: 0,
+      rentEarned: 0,
+      interestPaid: 0,
+      archived: 0,
+    },
   }
 
   addFounder(draft, rng, rng.chance(0.5) ? 'f' : 'm')

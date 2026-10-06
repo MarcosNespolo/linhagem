@@ -13,6 +13,7 @@ import {
 } from '@/engine'
 import { useGameStore } from '@/game/store'
 import { formatAmount, formatGameSpan, formatMonthYear, formatRate } from '@/lib/format'
+import { boostLabel } from './labels'
 import { useUiStore } from './ui-store'
 
 /**
@@ -119,7 +120,7 @@ export function Hud({ game, net }: { game: GameState; net: number }) {
       ) : boostLeft > 0 ? (
         <p className="bg-gold-soft text-gold mx-auto mt-2 flex max-w-3xl items-center justify-center gap-1.5 rounded-xl px-3 py-1.5 text-[13px] font-bold">
           <Zap size={14} fill="currentColor" aria-hidden="true" />
-          Renda ×2 por mais{' '}
+          Renda {boostLabel()} por mais{' '}
           {formatGameSpan(Math.ceil(boostLeft / TICKS_PER_DAY), BALANCE.daysPerYear)}
         </p>
       ) : null}

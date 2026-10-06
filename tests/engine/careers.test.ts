@@ -4,8 +4,10 @@ import { BALANCE } from '@/content/balance'
 import {
   CAREERS,
   careerLevel,
+  concursoOf,
   MEDIO_CAREERS,
-  PUBLIC_CAREER,
+  PUBLIC_CAREERS,
+  PUBLIC_MEDIO_CAREERS,
   type CareerId,
 } from '@/content/careers'
 import { degree } from '@/content/schools'
@@ -15,6 +17,7 @@ import {
   bestOffer,
   canMeet,
   checkHaveChild,
+  courseAvailableDay,
   courseCandidates,
   courseOffer,
   createRng,
@@ -45,21 +48,27 @@ import {
 const salary = (id: CareerId, level: number) => careerLevel(id, level).salaryPerMonth
 const yearDays = (n: number) => n * BALANCE.daysPerYear
 
-/** Partida em que o casal fundador começa a trabalhar no dia 0, no 1º nível. */
+/** Dia em que quem está há tempo bastante no nível para o curso chegou a ele. */
+const SETTLED = -yearDays(BALANCE.careers.minYearsInLevel)
+
+/**
+ * Partida em que o casal fundador trabalha no 1º nível de uma carreira
+ * privada, há tempo bastante no nível para começar um curso.
+ */
 function beginners(seed: number): GameState {
   // Com dinheiro guardado, o salário de começo não leva a família ao vermelho.
   let state = withMoney(makeGame(seed), 1_000_000)
   for (const founder of founders(state)) {
     state = setMember(state, founder.id, {
-      career: { id: founder.career!.id, level: 0, levelSince: 0 },
+      career: { id: MEDIO_CAREERS[seed % MEDIO_CAREERS.length], level: 0, levelSince: SETTLED },
     })
   }
   return state
 }
 
 describe('carreiras', () => {
-  it('são 12, com 5 níveis, salários que sobem e títulos nas duas formas', () => {
-    expect(CAREERS).toHaveLength(12)
+  it('são 16, com 5 níveis, salários que sobem e títulos nas duas formas', () => {
+    expect(CAREERS).toHaveLength(16)
     for (const career of CAREERS) {
       expect(career.levels).toHaveLength(5)
       career.levels.forEach((level, index) => {
@@ -79,6 +88,26 @@ describe('carreiras', () => {
       )
     expect(Math.max(...first('medio'))).toBeLessThan(Math.min(...first('tecnico')))
     expect(Math.max(...first('tecnico'))).toBeLessThan(Math.min(...first('superior')))
+  })
+
+  it('o serviço público tem cinco cargos, da prefeitura à auditoria, por nota de corte', () => {
+    expect(PUBLIC_CAREERS).toEqual([
+      'prefeitura',
+      'estado',
+      'tecnicoFederal',
+      'analistaFederal',
+      'auditoria',
+    ])
+    expect(PUBLIC_MEDIO_CAREERS).toEqual(['prefeitura', 'estado', 'tecnicoFederal'])
+    PUBLIC_CAREERS.forEach((id, index) => {
+      if (index === 0) return
+      const previous = PUBLIC_CAREERS[index - 1]
+      expect(concursoOf(id).cutoff).toBeGreaterThan(concursoOf(previous).cutoff)
+      expect(salary(id, 0)).toBeGreaterThan(salary(previous, 0))
+    })
+    expect(concursoOf('analistaFederal').formation).toBe('superior')
+    expect(concursoOf('auditoria').formation).toBe('superior')
+    expect(() => concursoOf('comercio')).toThrow()
   })
 })
 
@@ -141,7 +170,7 @@ describe('promoções', () => {
     expect(events.some((event) => event.type === 'promoted')).toBe(false)
   })
 
-  it('o curso no ritmo normal leva 1 ano para o 2º nível, custa meio aumento por mês e sobe no fim', () => {
+  it('o curso no ritmo normal leva 1 ano para o 2º nível, custa o aumento por mês e sobe no fim', () => {
     const state = beginners(11)
     const [first] = founders(state)
     const careerId = first.career!.id
@@ -151,7 +180,7 @@ describe('promoções', () => {
       level: 1,
       dedicated: false,
       days: yearDays(1),
-      fee: raise / 2,
+      fee: raise,
     })
 
     const studying = study(state, first.id)
@@ -159,9 +188,9 @@ describe('promoções', () => {
       since: 0,
       until: yearDays(1),
       dedicated: false,
-      fee: raise / 2,
+      fee: raise,
     })
-    expect(familyRates(studying).expense).toBeCloseTo(familyRates(state).expense + raise / 2)
+    expect(familyRates(studying).expense).toBeCloseTo(familyRates(state).expense + raise)
 
     const almost = advance(studying, days(yearDays(1) - 1)).state
     expect(almost.members[first.id].career?.level).toBe(0)
@@ -191,7 +220,7 @@ describe('promoções', () => {
       level: 1,
       dedicated: true,
       days: Math.round(yearDays(1) / 2),
-      fee: raise,
+      fee: raise * 2,
     })
 
     const studying = study(state, first.id, true)
@@ -203,7 +232,9 @@ describe('promoções', () => {
   })
 
   it('com dedicação, quem é solteiro não conhece ninguém até terminar', () => {
-    const { state, childId } = withAdultChild(5)
+    const { state: start, childId } = withAdultChild(5)
+    const career = start.members[childId].career!
+    const state = setMember(start, childId, { career: { ...career, levelSince: SETTLED } })
     const studying = study(state, childId, true)
     expect(canMeet(studying, studying.members[childId])).toBe(false)
     const until = studying.members[childId].course!.until
@@ -212,14 +243,25 @@ describe('promoções', () => {
     expect(canMeet(done, done.members[childId])).toBe(true)
   })
 
-  it('cada nível pede o seu curso, mais longo, até o topo', () => {
+  it('cada nível pede o seu curso, mais longo, depois de 2 anos no nível, até o topo', () => {
     let state = beginners(13)
     const [first] = founders(state)
+    const wait = yearDays(BALANCE.careers.minYearsInLevel)
     BALANCE.careers.courseYears.forEach((duration, level) => {
       const offer = courseOffer(state.members[first.id], state.clock.day, false)!
       expect(offer).toMatchObject({ level: level + 1, days: yearDays(duration) })
+      // Uma demissão no meio tranca o curso, que termina mais tarde: anda até o fim dele.
       state = advance(study(state, first.id), days(offer.days)).state
-      expect(state.members[first.id].career?.level).toBe(level + 1)
+      const until = state.members[first.id].course?.until
+      if (until) state = advance(state, days(until - state.clock.day)).state
+      const member = state.members[first.id]
+      expect(member.career?.level).toBe(level + 1)
+      if (level + 1 < BALANCE.careers.courseYears.length) {
+        // Recém-promovido, espera o tempo no nível antes do próximo curso.
+        expect(courseOffer(member, state.clock.day, false)).toBeNull()
+        expect(courseAvailableDay(member.career!)).toBe(state.clock.day + wait)
+        state = advance(state, days(wait)).state
+      }
     })
     expect(courseOffer(state.members[first.id], state.clock.day, false)).toBeNull()
     expect(
@@ -254,8 +296,10 @@ describe('promoções', () => {
     const offer = (patch: Partial<Member>) =>
       courseOffer(setMember(state, second.id, patch).members[second.id], 0, false)
     expect(offer({ career: null })).toBeNull()
-    expect(offer({ career: { id: PUBLIC_CAREER, level: 0, levelSince: 0 } })).toBeNull()
+    expect(offer({ career: { id: 'tecnicoFederal', level: 0, levelSince: SETTLED } })).toBeNull()
     expect(offer({ unemployedUntil: yearDays(1) })).toBeNull()
+    // Há menos de 2 anos no nível, ainda não.
+    expect(offer({ career: { id: 'comercio', level: 0, levelSince: SETTLED + 1 } })).toBeNull()
   })
 
   it('quem está demitido tranca o curso e não paga a mensalidade', () => {
@@ -285,9 +329,11 @@ describe('promoções', () => {
   it('no serviço público, sobe só com o tempo até o topo, e a aposentadoria paga 70%', () => {
     const start = makeGame(12)
     const [first, second] = founders(start)
-    const servant = setMember(start, first.id, {
-      career: { id: PUBLIC_CAREER, level: 0, levelSince: 0 },
-    })
+    const servant = setMember(
+      setMember(start, first.id, { career: { id: 'prefeitura', level: 0, levelSince: 0 } }),
+      second.id,
+      { career: { id: 'comercio', level: 0, levelSince: 0 } },
+    )
     const later = advance(servant, years(3 + 5 + 8 + 12)).state
     const member = later.members[first.id]
     expect(member.career?.level).toBe(4)
@@ -295,11 +341,12 @@ describe('promoções', () => {
 
     const atRetirement = (person: Member) => person.birthDay + yearDays(BALANCE.retirementAge)
     expect(memberIncome(member, atRetirement(member))).toBe(
-      salary(PUBLIC_CAREER, 4) * BALANCE.publicPensionRatio,
+      salary('prefeitura', 4) * BALANCE.publicPensionRatio,
     )
     const other = later.members[second.id]
+    expect(other.career?.level).toBe(0)
     expect(memberIncome(other, atRetirement(other))).toBe(
-      salary(other.career!.id, other.career!.level) * BALANCE.pensionRatio,
+      salary('comercio', 0) * BALANCE.pensionRatio,
     )
   })
 })
@@ -312,7 +359,7 @@ describe('quem o membro conhece', () => {
     for (let i = 0; i < 90; i++) {
       const person = rollSuitor(state, rng, state.members[childId])
       const { formation, career } = person
-      expect(career.level).toBeLessThanOrEqual(2)
+      expect(career.level).toBeLessThanOrEqual(BALANCE.careers.backgroundMaxLevel)
       expect(career.levelSince).toBeLessThanOrEqual(day)
       // Só tem faculdade ou curso técnico quem já teve tempo de terminar.
       const age = (day - person.birthDay) / BALANCE.daysPerYear
@@ -322,7 +369,11 @@ describe('quem o membro conhece', () => {
       if (formation.level === 'tecnico') {
         expect(age).toBeGreaterThanOrEqual(BALANCE.adultAge + BALANCE.college.technical.years)
       }
-      if (career.id === PUBLIC_CAREER) continue
+      // Servidor, só num cargo de nível médio.
+      if (PUBLIC_CAREERS.includes(career.id)) {
+        expect(PUBLIC_MEDIO_CAREERS).toContain(career.id)
+        continue
+      }
       // Com curso técnico ou faculdade, trabalha na área; com ensino médio, numa carreira dele.
       if (formation.level === 'medio') expect(MEDIO_CAREERS).toContain(career.id)
       else expect(career.id).toBe(formationCareer(formation))

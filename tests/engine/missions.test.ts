@@ -5,6 +5,7 @@ import { missionInfo, type MissionId } from '@/content/missions'
 import {
   advance,
   applyAction,
+  boostFactor,
   boostTicksLeft,
   claimableMissions,
   clockPosition,
@@ -25,6 +26,7 @@ import {
   lastMember,
   marryMember,
   play,
+  setMember,
   singlePolicy,
   untilParentAge,
   withHomes,
@@ -125,10 +127,17 @@ describe('missões do dia', () => {
     expect(mission(state, 'chaDeBebe').progress).toBe(2)
     expect(claimableMissions(state).map((item) => item.id)).toContain('chaDeBebe')
 
+    // Com três filhos, a renda do casal não cobre o mês: uma promoção põe a família no azul,
+    // porque a recompensa vale meses da renda líquida, e sem sobra não vale nada.
+    for (const parent of founders(state)) {
+      state = setMember(state, parent.id, { career: { id: 'direito', level: 3, levelSince: 0 } })
+    }
     expect(familyRates(state).net).toBeGreaterThan(0)
-    const reward = 6 * familyRates(state).net
+    const reward = missionInfo('chaDeBebe').reward
+    if (reward.kind !== 'income') throw new Error('Chá de bebê paga meses de renda')
+    const amount = reward.months * familyRates(state).net
     const claimed = expectOk(applyAction(state, { type: 'claimMission', missionId: 'chaDeBebe' }))
-    expect(claimed.state.money).toBeCloseTo(state.money + reward)
+    expect(claimed.state.money).toBeCloseTo(state.money + amount)
     expect(mission(claimed.state, 'chaDeBebe').claimed).toBe(true)
     expect(applyAction(claimed.state, { type: 'claimMission', missionId: 'chaDeBebe' })).toEqual({
       ok: false,
@@ -148,11 +157,11 @@ describe('missões do dia', () => {
     })
   })
 
-  it('Pé-de-meia: juntar, depois do sorteio, dois anos da renda daquele dia', () => {
+  it('Pé-de-meia: juntar, depois do sorteio, um ano da renda daquele dia', () => {
     const state = draw(makeGame(36))
     const piggy = mission(state, 'peDeMeia')
     expect(piggy.base).toBe(state.money)
-    expect(piggy.goal).toBe(Math.round(24 * familyRates(state).net))
+    expect(piggy.goal).toBe(Math.round(missionInfo('peDeMeia').goal * familyRates(state).net))
     const later = advance(state, years(3)).state
     expect(mission(later, 'peDeMeia').progress).toBe(piggy.goal)
   })
@@ -177,16 +186,19 @@ describe('missões do dia', () => {
   })
 })
 
-describe('renda em dobro', () => {
-  it('dobra a renda por 5 anos do jogo, e outro bônus soma 5 anos ao que falta', () => {
+describe('bônus na renda', () => {
+  const { factor, years: boostYears } = BALANCE.missions.boost
+
+  it('aumenta a renda por 1 ano do jogo, e outro bônus soma 1 ano ao que falta', () => {
     const state = withDoneMission(draw(makeGame(38)), 'investidor')
     const before = familyRates(state)
     const boosted = expectOk(
       applyAction(state, { type: 'claimMission', missionId: 'investidor' }),
     ).state
     expect(isBoosted(boosted)).toBe(true)
-    expect(boostTicksLeft(boosted)).toBe(5 * YEAR_TICKS)
-    expect(familyRates(boosted).income).toBe(2 * before.income)
+    expect(boostFactor(boosted)).toBe(factor)
+    expect(boostTicksLeft(boosted)).toBe(boostYears * YEAR_TICKS)
+    expect(familyRates(boosted).income).toBeCloseTo(factor * before.income)
     expect(familyRates(boosted).expense).toBe(before.expense)
 
     const again = expectOk(
@@ -195,7 +207,7 @@ describe('renda em dobro', () => {
         missionId: 'aprovado',
       }),
     ).state
-    expect(boostTicksLeft(again)).toBe(10 * YEAR_TICKS)
+    expect(boostTicksLeft(again)).toBe(2 * boostYears * YEAR_TICKS)
   })
 
   it('acaba na hora certa, e de uma vez ou aos poucos dá o mesmo resultado', () => {
@@ -207,10 +219,10 @@ describe('renda em dobro', () => {
         missionId: 'aprovado',
       }),
     ).state
-    const end = clockPosition(claimed) + 5 * YEAR_TICKS
+    const end = clockPosition(claimed) + boostYears * YEAR_TICKS
     expect(claimed.clock.tickOfDay).toBeGreaterThan(0)
 
-    const total = years(6)
+    const total = years(boostYears + 1)
     const atOnce = advance(claimed, total).state
     let stepwise = claimed
     for (let elapsed = 0; elapsed < total; elapsed += 1_000) {
@@ -220,7 +232,7 @@ describe('renda em dobro', () => {
     expect(atOnce.boosts.incomeUntil).toBe(end)
     expectSameState(atOnce, stepwise)
 
-    const justBefore = advance(claimed, years(5) - 1).state
+    const justBefore = advance(claimed, years(boostYears) - 1).state
     expect(isBoosted(justBefore)).toBe(true)
   })
 

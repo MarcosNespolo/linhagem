@@ -89,9 +89,9 @@ export type JobOffer = { careerId: CareerId; level: number }
 
 /** Opção quando sai o resultado do concurso. */
 export type ConcursoOption =
-  /** Tomar posse no serviço público, no nível do cargo: técnico (0) ou analista (1). */
-  | { kind: 'posse'; level: number }
-  /** Continuar estudando para o cargo de nível superior. */
+  /** Tomar posse no cargo em que a nota passou: a carreira pública daquela faixa, no primeiro nível. */
+  | { kind: 'posse'; careerId: CareerId }
+  /** Continuar estudando para um cargo de nota mais alta. */
   | { kind: 'estudar' }
   /** Desistir do cargo e escolher uma vaga fora do serviço público. */
   | { kind: 'privada' }
@@ -271,6 +271,23 @@ export type Clock = {
   paused: boolean
 }
 
+/**
+ * Financiamento de um imóvel: o que falta pagar ao banco, a parcela fixa por
+ * mês e quantas faltam. Cada mês, os juros incidem sobre o saldo e o resto da
+ * parcela abate o saldo. A família pode quitar o saldo quando quiser.
+ */
+export type Loan = {
+  id: number
+  propertyId: PropertyId
+  /** Saldo devedor, em reais. */
+  balance: number
+  /** Parcela por mês, em reais, fixada no começo. */
+  installment: number
+  monthsLeft: number
+  /** Dia do jogo em que o financiamento começou. */
+  since: number
+}
+
 export type GameStats = {
   /** Milissegundos reais simulados, sem contar pausas. Decide conflitos de save entre aparelhos. */
   simulatedMs: number
@@ -278,6 +295,8 @@ export type GameStats = {
   totalSpent: number
   /** A parte do que entrou que veio do aluguel dos imóveis. */
   rentEarned: number
+  /** Juros pagos aos bancos nos financiamentos. */
+  interestPaid: number
   /** Pessoas de ramos antigos que já terminaram e saíram da árvore guardada (`archiveMembers`). */
   archived: number
 }
@@ -329,6 +348,13 @@ export type GameState = {
   /** Quantos imóveis comerciais de cada tipo estão à venda no bairro. */
   market: Partial<Record<PropertyId, number>>
   /**
+   * Imóveis alugados que estão vazios, por tipo: o dia do jogo em que cada um
+   * volta a ter inquilino. Até lá, não rendem aluguel e a família paga as contas.
+   */
+  vacancies: Partial<Record<PropertyId, number[]>>
+  /** Financiamentos em aberto, na ordem em que foram feitos. */
+  loans: Loan[]
+  /**
    * Lotes do bairro que são da família, por tipo, em ordem: o número de cada
    * lote, de 0 a `lots - 1`. Nos de moradia, um por imóvel; nos comerciais, a
    * família pode ter mais imóveis do que lotes, e os outros ficam fora da rua.
@@ -337,7 +363,7 @@ export type GameState = {
   /** Missões do dia, ou null antes do primeiro sorteio. */
   missions: Missions | null
   boosts: {
-    /** Posição do relógio, em unidades desde o dia 0, até a qual a renda fica em dobro. */
+    /** Posição do relógio, em unidades desde o dia 0, até a qual vale o bônus na renda. */
     incomeUntil: number
   }
   /** Últimos acontecimentos da família, do mais antigo para o mais novo. */
@@ -360,13 +386,13 @@ export type MemberEvent =
   | { type: 'promoted'; day: number; memberId: MemberId; careerId: CareerId; level: number }
   | { type: 'concursoStarted'; day: number; memberId: MemberId }
   | {
-      /** Resultado final de uma tentativa: aprovado num nível, ou reprovado depois da última prova. */
+      /** Resultado de uma prova: aprovado num cargo, ou reprovado na última prova da tentativa. */
       type: 'concurso'
       day: number
       memberId: MemberId
       score: number
-      /** Nível do cargo em que passou, ou null para quem não passou. */
-      level: number | null
+      /** Carreira pública do cargo em que passou, ou null para quem não passou. */
+      careerId: CareerId | null
     }
   | { type: 'datingStarted'; day: number; memberId: MemberId; partnerName: string }
   | { type: 'breakup'; day: number; memberId: MemberId; partnerName: string }
@@ -399,13 +425,19 @@ export type MemberEvent =
 /** Imprevistos que custam dinheiro: cirurgia e conserto do carro. */
 export type MishapKind = 'surgery' | 'car'
 
-/** Compra de um imóvel pela família. `count` é quantos do tipo ela tem depois da compra. */
-export type PropertyEvent = {
-  type: 'propertyBought'
-  day: number
-  propertyId: PropertyId
-  count: number
-}
+/**
+ * Imóveis da família: a compra de um, à vista ou financiada (`count` é quantos
+ * do tipo ela tem depois da compra), e a última parcela de um financiamento.
+ */
+export type PropertyEvent =
+  | {
+      type: 'propertyBought'
+      day: number
+      propertyId: PropertyId
+      count: number
+      financed?: boolean
+    }
+  | { type: 'loanPaid'; day: number; propertyId: PropertyId }
 
 /** O dinheiro da família: entrar e sair do vermelho, e a falência, que acaba a partida. */
 export type MoneyEvent =
