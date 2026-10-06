@@ -13,6 +13,7 @@ import {
 } from '@/engine'
 import { useGameStore } from '@/game/store'
 import { formatGameSpan, formatMoney } from '@/lib/format'
+import { boostLabel } from '../labels'
 import { button, card } from '../styles'
 import { useUiStore } from '../ui-store'
 import { Sheet } from './sheet'
@@ -32,7 +33,7 @@ export function MissionsSheet({ game }: { game: GameState }) {
       {boostLeft > 0 ? (
         <p className="bg-gold-soft text-gold mt-3 flex items-center gap-2 rounded-2xl px-3 py-2 text-[14px] font-bold">
           <Zap size={16} fill="currentColor" aria-hidden="true" />
-          Renda em dobro por mais{' '}
+          Renda {boostLabel()} por mais{' '}
           {formatGameSpan(Math.ceil(boostLeft / TICKS_PER_DAY), BALANCE.daysPerYear)} do jogo
         </p>
       ) : null}
@@ -56,8 +57,8 @@ function MissionCard({ game, mission }: { game: GameState; mission: MissionState
       : `${mission.progress} de ${mission.goal}`
   const reward =
     info.reward.kind === 'boost'
-      ? `Renda em dobro por ${info.reward.years} anos do jogo`
-      : `${info.reward.months === 12 ? '1 ano' : `${info.reward.months} meses`} de renda: ${formatMoney(incomeReward(game, info.reward.months))}`
+      ? `Renda ${boostLabel()} por ${formatGameSpan(BALANCE.missions.boost.years * BALANCE.daysPerYear, BALANCE.daysPerYear)} do jogo`
+      : `${info.reward.months === 1 ? '1 mês' : `${info.reward.months} meses`} de renda: ${formatMoney(incomeReward(game, info.reward.months))}`
 
   return (
     <li className={`${card} p-3.5`}>

@@ -11,10 +11,13 @@
  * folga na renda, porque a família não pode ir à falência. Como o aluguel sobe
  * a cada lugar, ela também olha a moradia: casa quase sempre, para ninguém
  * passar da idade de ter filhos esperando lugar, dá o primeiro filho a cada
- * casal antes do segundo e guarda o lugar de quem ainda vai casar. O que
- * sobra vai para o imóvel que se paga mais rápido: os de moradia contam o
- * aluguel que a família deixa de pagar morando neles. Se mesmo assim o saldo
- * ficar negativo, ela despausa o jogo, como o jogador faria.
+ * casal antes do segundo e guarda o lugar de quem ainda vai casar. Enquanto
+ * mora de aluguel, financia uma moradia quando a parcela cabe no aluguel que
+ * deixa de pagar; com financiamento em aberto, quita antes de investir, porque
+ * os juros passam do que qualquer aluguel rende. O que sobra vai para o imóvel
+ * que se paga mais rápido, à vista: os de moradia contam o aluguel que a
+ * família deixa de pagar morando neles. Se mesmo assim o saldo ficar negativo,
+ * ela despausa o jogo, como o jogador faria.
  *
  * Fica fora da engine e do jogo: só o script `npm run sim` e o teste de
  * balanceamento usam.
@@ -27,19 +30,23 @@ import {
   ageOf,
   advance,
   applyAction,
+  checkBuyProperty,
   checkHaveChild,
   claimableMissions,
   courseCandidates,
   courseOffer,
   extraHousingCost,
   familyRates,
+  incomeOf,
   isPropertyUnlocked,
   livingMembers,
   msToTicks,
+  netRent,
   newGame,
   PROPOSE_OPTIONS,
   propertiesLeft,
   propertyPrice,
+  purchaseCost,
   rentedPlaces,
   rentFor,
   stageFee,
@@ -77,6 +84,8 @@ export type AutoplayCounters = {
   deaths: number
   courses: number
   properties: number
+  /** Imóveis financiados. */
+  loans: number
   rewards: number
 }
 
@@ -109,6 +118,7 @@ export function createAutoplay(options: AutoplayOptions): Autoplay {
       deaths: 0,
       courses: 0,
       properties: 0,
+      loans: 0,
       rewards: 0,
     },
   }
@@ -246,10 +256,20 @@ function pick(choice: Choice, budget: Budget): number {
 const RESERVE_MONTHS = 3
 
 /** Folga na renda líquida por mês que a estratégia pede antes de mais um filho. */
-const CHILD_MARGIN = 2_000
+const CHILD_MARGIN = 1_000
+
+/**
+ * A partir desta distância da idade máxima dos pais, o casal sem filhos não
+ * espera a folga: tem o filho assim que o dinheiro cobre o parto e a reserva,
+ * desde que a renda não fique negativa.
+ */
+const HURRY_YEARS = 8
 
 /** Folga na renda líquida por mês que a estratégia pede depois da mensalidade de um curso. */
 const COURSE_MARGIN = 500
+
+/** A mensalidade de um curso cabe em até esta parte do salário de quem o faz. */
+const COURSE_INCOME_SHARE = 0.8
 
 /**
  * Parte da renda por mês que a estratégia aceita a mais de moradia por quem
@@ -278,12 +298,23 @@ export function spend(play: Autoplay): void {
 
   const reserve = () => RESERVE_MONTHS * familyRates(play.state).expense
 
-  // Cursos no ritmo normal: com folga na renda depois da mensalidade e a reserva guardada,
-  // ou, com a renda curta, quando o guardado paga a diferença até o fim do curso.
+  // No vermelho, para o curso mais caro, como o jogador faria ao ver o aviso.
+  if (play.state.money < 0 && familyRates(play.state).net < 0) {
+    const studying = livingMembers(play.state)
+      .filter((member) => member.course)
+      .sort((a, b) => (b.course?.fee ?? 0) - (a.course?.fee ?? 0))
+    const [priciest] = studying
+    if (priciest) act(play, { type: 'stopCourse', memberId: priciest.id })
+  }
+
+  // Cursos no ritmo normal: a mensalidade cabe no salário da pessoa, com folga na renda
+  // da família depois dela e a reserva guardada, ou, com a renda curta, quando o guardado
+  // paga a diferença até o fim do curso.
   for (const member of courseCandidates(play.state)) {
     const offer = courseOffer(member, play.state.clock.day, false)
     if (!offer) continue
     const { net, expense } = familyRates(play.state)
+    if (offer.fee > COURSE_INCOME_SHARE * incomeOf(play.state, member)) continue
     const fits =
       net - offer.fee >= COURSE_MARGIN
         ? play.state.money >= reserve()
@@ -305,25 +336,67 @@ export function spend(play: Autoplay): void {
       return { member, kids: kids.get(member.id) ?? 0, age }
     })
     .sort((a, b) => a.kids - b.kids || b.age - a.age)
-  for (const { member, kids: count } of parents) {
+  for (const { member, kids: count, age } of parents) {
     const { net, income } = familyRates(play.state)
     // O filho precisa de um lugar agora e, quando casar, de outro para quem chegar.
     // Os lugares de quem ainda vai casar ficam guardados antes deles.
     const reserved = futurePartners(play.state)
     const later =
       extraHousingCost(play.state, reserved + 2) - extraHousingCost(play.state, reserved)
-    if (net - extraHousingCost(play.state) < CHILD_MARGIN) break
-    if (later > (CHILD_SHARE / 2 ** count) * income) break
+    const hurry = count === 0 && age >= BALANCE.children.maxParentAge - HURRY_YEARS
+    const margin = hurry ? 0 : CHILD_MARGIN
+    if (net - extraHousingCost(play.state) < margin) break
+    if (!hurry && later > (CHILD_SHARE / 2 ** count) * income) break
     const check = checkHaveChild(play.state, member.id)
     if (!check.ok || play.state.money < check.cost + reserve()) continue
     if (act(play, { type: 'haveChild', parentId: member.id })) play.counters.births += 1
   }
 
+  // Moradia financiada enquanto a família paga aluguel, se a parcela cabe no aluguel que ela deixa de pagar.
+  const home = homeToFinance(play.state, play.state.money - reserve())
+  if (home && act(play, { type: 'buyProperty', propertyId: home, financed: true })) {
+    play.counters.properties += 1
+    play.counters.loans += 1
+  }
+
+  // Os juros passam do que qualquer aluguel rende: quita o que der antes de investir.
+  for (const loan of [...play.state.loans].sort((a, b) => a.balance - b.balance)) {
+    if (play.state.money - reserve() < loan.balance) break
+    act(play, { type: 'payOffLoan', loanId: loan.id })
+  }
+
   for (;;) {
+    if (play.state.loans.length > 0) break
     const choice = propertyToBuy(play.state, play.state.money - reserve())
     if (!choice || !act(play, { type: 'buyProperty', propertyId: choice.id })) break
     play.counters.properties += 1
   }
+}
+
+/**
+ * A moradia que vale financiar agora: a família mora de aluguel, a compra à
+ * vista não cabe, a entrada e o ITBI cabem em `budget`, o banco aceita e a
+ * parcela, com as contas, não passa do aluguel que a família deixa de pagar.
+ * Entre as que valem, a que mais sobra por mês.
+ */
+function homeToFinance(state: GameState, budget: number): PropertyId | null {
+  const rented = rentedPlaces(state)
+  if (rented <= 0 || state.loans.length > 0) return null
+  const income = familyRates(state).income
+  let best: { id: PropertyId; gain: number } | null = null
+  for (const type of visiblePropertyTypes(state)) {
+    if (!type.home || !isPropertyUnlocked(state, type.id) || propertiesLeft(state, type.id) <= 0) {
+      continue
+    }
+    if (purchaseCost(state, type.id) <= budget) continue
+    const check = checkBuyProperty(state, type.id, undefined, true, income)
+    if (!check.ok || !check.financing || check.cost > budget) continue
+    const saved = rentFor(rented) - rentFor(Math.max(0, rented - type.home.places))
+    const gain = saved - type.billsPerMonth - check.financing.installment
+    if (gain < 0) continue
+    if (!best || gain > best.gain) best = { id: type.id, gain }
+  }
+  return best?.id ?? null
 }
 
 /**
@@ -359,9 +432,10 @@ function couples(state: GameState): Member[] {
  */
 function monthlyReturn(state: GameState, type: PropertyType): number {
   const rented = rentedPlaces(state)
-  if (!type.home || rented <= 0) return type.rentPerMonth
+  const rent = netRent(type.id)
+  if (!type.home || rented <= 0) return rent
   const saved = rentFor(rented) - rentFor(Math.max(0, rented - type.home.places))
-  return Math.max(type.rentPerMonth, saved - type.home.billsPerMonth)
+  return Math.max(rent, saved - type.billsPerMonth)
 }
 
 /** Quantos filhos cada pessoa tem, numa passada só por todos. */
@@ -384,8 +458,8 @@ function propertyToBuy(state: GameState, budget: number): { id: PropertyId; pric
     .filter((type) => isPropertyUnlocked(state, type.id) && propertiesLeft(state, type.id) > 0)
     .map((type) => ({
       id: type.id,
-      price: propertyPrice(type.id),
-      payback: propertyPrice(type.id) / monthlyReturn(state, type),
+      price: purchaseCost(state, type.id),
+      payback: propertyPrice(state, type.id) / monthlyReturn(state, type),
     }))
     .sort((a, b) => a.payback - b.payback)
   const [best] = options

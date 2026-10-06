@@ -104,7 +104,11 @@ describe('advance', () => {
   it('não copia quem já morreu, que continua o mesmo objeto no estado novo', () => {
     const start = makeGame(2)
     const [first, second] = founders(start)
-    const widowed = setMember(start, first.id, { deathDay: 0 })
+    // Com a seed 2, o par é servidor e seria promovido nesses dias; numa carreira privada, nada muda.
+    const settled = setMember(start, second.id, {
+      career: { id: 'comercio', level: 1, levelSince: 0 },
+    })
+    const widowed = setMember(settled, first.id, { deathDay: 0 })
     const { state } = advance(widowed, days(10))
     expect(state.members[first.id]).toBe(widowed.members[first.id])
     expect(state.members[second.id]).not.toBe(widowed.members[second.id])

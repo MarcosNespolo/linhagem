@@ -39,8 +39,8 @@ export function simulate(options: SimulationOptions): Simulation {
   options.onRow?.(play)
   for (let elapsed = STEP_MS; elapsed <= options.minutes * 60_000; elapsed += STEP_MS) {
     runClock(play, STEP_MS)
-    measureStep(measures, play.state, play.elapsedMs, STEP_MS)
     spend(play)
+    measureStep(measures, play.state, play.elapsedMs)
     if (elapsed % rowMs === 0) options.onRow?.(play)
   }
   const final = {
@@ -48,5 +48,5 @@ export function simulate(options: SimulationOptions): Simulation {
     clockMs: clockCost(play.state),
     offlineMs: offlineCost(play.state),
   }
-  return { play, measures, final, results: evaluate(measures, final) }
+  return { play, measures, final, results: evaluate(measures, final, play.elapsedMs) }
 }

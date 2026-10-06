@@ -1,5 +1,5 @@
 import { BALANCE } from '../content/balance'
-import { PUBLIC_CAREER } from '../content/careers'
+import { concursoOf, PUBLIC_CAREERS, type CareerId } from '../content/careers'
 import { openFirstJobChoice } from './jobs'
 import type { Rng } from './rng'
 import { schoolScore } from './school'
@@ -8,10 +8,18 @@ import type { Choice, ConcursoOption, ConcursoStudy, GameEvent, GameState, Membe
 
 type ConcursoChoice = Extract<Choice, { type: 'concurso' }>
 
-/** Começa a estudar para concurso: sem salário, com o cursinho. Altera o rascunho. */
-export function startConcurso(member: Member, day: number): GameEvent {
+/**
+ * Começa a estudar para concurso: sem salário, com o cursinho. Quem já estava
+ * estudando continua de onde parou, com a nota que juntou, numa tentativa
+ * nova. Altera o rascunho.
+ */
+export function startConcurso(member: Member, day: number): GameEvent[] {
+  if (member.concurso) {
+    member.concurso = { ...member.concurso, exams: 0 }
+    return []
+  }
   member.concurso = { since: day, exams: 0, lastScore: null }
-  return { type: 'concursoStarted', day, memberId: member.id }
+  return [{ type: 'concursoStarted', day, memberId: member.id }]
 }
 
 /** Nota de partida: a do ENEM, ou a da escola no dia para quem não fez o ENEM. */
@@ -31,18 +39,31 @@ export function expectedConcursoScore(member: Member, day: number): number {
   return Math.min(1000, concursoBase(member, day) + months * BALANCE.concurso.pointsPerMonth)
 }
 
-/** Cargo mais alto que a formação permite: analista (1) com faculdade, técnico (0) sem. */
-export function highestCargo(member: Member): number {
-  return member.education.formation?.level === 'superior' ? 1 : 0
+/** Cargos que a formação da pessoa permite, da nota de corte mais baixa à mais alta. */
+export function allowedCargos(member: Pick<Member, 'education'>): CareerId[] {
+  const superior = member.education.formation?.level === 'superior'
+  return PUBLIC_CAREERS.filter((id) => superior || concursoOf(id).formation === 'medio')
 }
 
-/** Nível do cargo mais alto em que a nota passa, ou null. */
-export function passedLevel(member: Member, score: number): number | null {
-  const { cutoffs } = BALANCE.concurso
-  for (let level = highestCargo(member); level >= 0; level--) {
-    if (score >= cutoffs[level]) return level
+/** O cargo de nota mais alta que a formação permite. */
+export function highestCargo(member: Pick<Member, 'education'>): CareerId {
+  const cargos = allowedCargos(member)
+  return cargos[cargos.length - 1]
+}
+
+/** O cargo de nota mais alta em que a nota passa, entre os que a formação permite, ou null. */
+export function passedCargo(member: Pick<Member, 'education'>, score: number): CareerId | null {
+  let passed: CareerId | null = null
+  for (const id of allowedCargos(member)) {
+    if (score >= concursoOf(id).cutoff) passed = id
   }
-  return null
+  return passed
+}
+
+/** O cargo seguinte ao informado entre os que a formação permite, ou null no mais alto. */
+export function nextCargo(member: Pick<Member, 'education'>, passed: CareerId): CareerId | null {
+  const cargos = allowedCargos(member)
+  return cargos[cargos.indexOf(passed) + 1] ?? null
 }
 
 /** Dia do calendário com resultado de prova de concurso. */
@@ -60,8 +81,9 @@ export function nextExamDay(state: GameState): number {
 
 /**
  * No dia da prova, quem estuda para concurso faz a prova. Quem passa ganha a
- * escolha do resultado; quem faz a última prova da tentativa sem passar volta
- * à escolha de emprego. Altera o rascunho e devolve true quando alguém fez prova.
+ * escolha do resultado; quem faz a última prova da tentativa sem passar ganha
+ * a escolha de emprego, em que pode continuar estudando. Altera o rascunho e
+ * devolve true quando alguém fez prova.
  */
 export function takeExams(draft: GameState, rng: Rng, events: GameEvent[]): boolean {
   if (!isExamDay(draft)) return false
@@ -74,20 +96,19 @@ export function takeExams(draft: GameState, rng: Rng, events: GameEvent[]): bool
     const score = rollConcursoScore(rng, member, day)
     study.exams += 1
     study.lastScore = score
-    const level = passedLevel(member, score)
-    if (level !== null) {
-      events.push({ type: 'concurso', day, memberId: member.id, score, level })
+    const careerId = passedCargo(member, score)
+    if (careerId !== null) {
+      events.push({ type: 'concurso', day, memberId: member.id, score, careerId })
       draft.choices.push({
         type: 'concurso',
         memberId: member.id,
         day,
         score,
-        options: resultOptions(member, study, level),
+        options: resultOptions(member, careerId),
         suggested: 0,
       })
     } else if (study.exams >= BALANCE.concurso.maxExams) {
-      member.concurso = null
-      events.push({ type: 'concurso', day, memberId: member.id, score, level: null })
+      events.push({ type: 'concurso', day, memberId: member.id, score, careerId: null })
       openFirstJobChoice(draft, rng, member)
     }
   }
@@ -102,14 +123,12 @@ function rollConcursoScore(rng: Rng, member: Member, day: number): number {
 }
 
 /**
- * Opções de quem passou: tomar posse no cargo, continuar estudando para o cargo
- * de nível superior enquanto houver provas na tentativa, ou desistir do cargo.
+ * Opções de quem passou: tomar posse no cargo, continuar estudando para um
+ * cargo de nota mais alta, quando a formação permite, ou desistir do cargo.
  */
-function resultOptions(member: Member, study: ConcursoStudy, level: number): ConcursoOption[] {
-  const options: ConcursoOption[] = [{ kind: 'posse', level }]
-  if (level < highestCargo(member) && study.exams < BALANCE.concurso.maxExams) {
-    options.push({ kind: 'estudar' })
-  }
+function resultOptions(member: Member, passed: CareerId): ConcursoOption[] {
+  const options: ConcursoOption[] = [{ kind: 'posse', careerId: passed }]
+  if (nextCargo(member, passed) !== null) options.push({ kind: 'estudar' })
   options.push({ kind: 'privada' })
   return options
 }
@@ -127,16 +146,8 @@ export function applyConcursoPick(
   switch (picked.kind) {
     case 'posse':
       member.concurso = null
-      member.career = { id: PUBLIC_CAREER, level: picked.level, levelSince: day }
-      return [
-        {
-          type: 'firstJob',
-          day,
-          memberId: member.id,
-          careerId: PUBLIC_CAREER,
-          level: picked.level,
-        },
-      ]
+      member.career = { id: picked.careerId, level: 0, levelSince: day }
+      return [{ type: 'firstJob', day, memberId: member.id, careerId: picked.careerId, level: 0 }]
     case 'estudar':
       return []
     case 'privada':

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { BALANCE } from '@/content/balance'
-import { PUBLIC_CAREER } from '@/content/careers'
+import { PUBLIC_CAREERS } from '@/content/careers'
 import {
   advance,
   hashUnit,
@@ -96,15 +96,15 @@ describe('imprevistos', () => {
     expect(memberExpense(member, back)).toBe(livingCost(member, back) + course.fee)
   })
 
-  it('servidor público não é demitido', () => {
+  it('servidor público não é demitido, em nenhum dos cargos', () => {
     const { state, day } = findDay(0, LAYOFF)
     const [founder] = founders(state)
-    const servant = setMember(state, founder.id, {
-      career: { id: PUBLIC_CAREER, level: 0, levelSince: 0 },
-    })
-    const after = liveDay(servant, day)
-    expect(eventsOf(after.events, founder.id).map((event) => event.type)).not.toContain('laidOff')
-    expect(after.state.members[founder.id].unemployedUntil).toBeNull()
+    for (const id of PUBLIC_CAREERS) {
+      const servant = setMember(state, founder.id, { career: { id, level: 0, levelSince: 0 } })
+      const after = liveDay(servant, day)
+      expect(eventsOf(after.events, founder.id).map((event) => event.type)).not.toContain('laidOff')
+      expect(after.state.members[founder.id].unemployedUntil).toBeNull()
+    }
   })
 
   it('cirurgia: a família paga a conta, ou o que tiver no caixa', () => {

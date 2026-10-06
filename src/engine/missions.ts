@@ -125,7 +125,7 @@ function countFor(id: MissionId, events: readonly GameEvent[]): number {
         break
       case 'aprovado':
         if (event.type === 'schoolStarted' && event.network === 'federal') count += 1
-        if (event.type === 'concurso' && event.level !== null) count += 1
+        if (event.type === 'concurso' && event.careerId !== null) count += 1
         break
       case 'investidor':
         if (event.type === 'propertyBought') count += 1
@@ -178,7 +178,7 @@ export function claimReward(draft: GameState, mission: MissionState): void {
   const { reward } = missionInfo(mission.id)
   mission.claimed = true
   if (reward.kind === 'boost') {
-    addBoost(draft, reward.years)
+    addBoost(draft)
     return
   }
   const amount = incomeReward(draft, reward.months)

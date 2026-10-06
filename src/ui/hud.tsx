@@ -13,12 +13,14 @@ import {
 } from '@/engine'
 import { useGameStore } from '@/game/store'
 import { formatAmount, formatGameSpan, formatMonthYear, formatRate } from '@/lib/format'
+import { boostLabel } from './labels'
 import { useUiStore } from './ui-store'
 
 /**
- * Barra do topo: nome da família, data, missões do dia, dinheiro, renda por
- * mês, pausa e Ajustes. Uma faixa embaixo mostra as escolhas abertas, o prazo
- * para a falência no vermelho, o tempo pausado ou o que falta da renda em dobro.
+ * Barra do topo: o nome da família numa linha só dele, com Ajustes; embaixo,
+ * data, missões do dia, dinheiro, renda por mês e pausa. Uma faixa no fim
+ * mostra as escolhas abertas, o prazo para a falência no vermelho, o tempo
+ * pausado ou o que falta do bônus na renda.
  */
 export function Hud({ game, net }: { game: GameState; net: number }) {
   const dispatch = useGameStore((store) => store.dispatch)
@@ -33,37 +35,47 @@ export function Hud({ game, net }: { game: GameState; net: number }) {
   const ended = game.bankruptDay !== null
 
   return (
-    <header className="border-line bg-surface z-20 shrink-0 border-b px-4 pt-[max(env(safe-area-inset-top),0.75rem)] pb-3">
-      <div className="mx-auto flex max-w-3xl items-center gap-2.5">
-        <div className="min-w-0 flex-1">
-          <button
-            type="button"
-            onClick={() => openSheet({ kind: 'rename' })}
-            className="block max-w-full truncate text-left text-[19px] leading-6 font-extrabold"
-            aria-label={`Família ${game.familyName}. Mudar o nome`}
-          >
-            Família {game.familyName}
-          </button>
-          <div className="flex items-center gap-1.5">
-            <span className="text-ink-soft truncate text-[14px] first-letter:uppercase">
-              {formatMonthYear(calendarDate(game.startDate, game.clock.day), 'short')}
-            </span>
-            <MissionsButton game={game} />
-          </div>
-        </div>
-        <div className="shrink-0 text-right">
+    <header className="border-line bg-surface z-20 shrink-0 border-b px-4 pt-[max(env(safe-area-inset-top),0.625rem)] pb-2.5">
+      {/* O nome da família tem quase a linha inteira, para caber mesmo quando é longo. */}
+      <div className="mx-auto flex max-w-3xl items-center gap-2">
+        <button
+          type="button"
+          onClick={() => openSheet({ kind: 'rename' })}
+          className="line-clamp-2 block min-w-0 flex-1 text-left text-[18px] leading-[22px] font-extrabold break-words"
+          aria-label={`Família ${game.familyName}. Mudar o nome`}
+        >
+          Família {game.familyName}
+        </button>
+        <MissionsButton game={game} />
+        <button
+          type="button"
+          onClick={() => setTab(tab === 'settings' ? 'family' : 'settings')}
+          aria-label="Ajustes"
+          aria-current={tab === 'settings' ? 'page' : undefined}
+          className={`-mr-1.5 grid size-9 shrink-0 place-items-center rounded-full transition active:scale-95 ${
+            tab === 'settings' ? 'bg-leaf-soft text-leaf-strong' : 'text-ink-soft'
+          }`}
+        >
+          <Settings size={21} />
+        </button>
+      </div>
+      <div className="mx-auto mt-0.5 flex max-w-3xl items-center gap-2.5">
+        <span className="text-ink-soft min-w-0 flex-1 truncate text-[14px] first-letter:uppercase">
+          {formatMonthYear(calendarDate(game.startDate, game.clock.day), 'short')}
+        </span>
+        <div className="min-w-0 shrink-0 text-right whitespace-nowrap">
           <p
-            className={`tabular flex items-baseline justify-end gap-1 text-[24px] leading-7 font-black ${game.money < 0 ? 'text-expense' : ''}`}
+            className={`tabular flex items-baseline justify-end gap-1 text-[clamp(18px,6vw,22px)] leading-7 font-black ${game.money < 0 ? 'text-expense' : ''}`}
           >
             <span
-              className={`text-[16px] font-extrabold ${game.money < 0 ? 'text-expense' : 'text-gold'}`}
+              className={`text-[15px] font-extrabold ${game.money < 0 ? 'text-expense' : 'text-gold'}`}
             >
               R$
             </span>
             {formatAmount(game.money)}
           </p>
           <p
-            className={`tabular text-[14px] font-bold ${net < 0 ? 'text-expense' : 'text-income'}`}
+            className={`tabular text-[14px] leading-5 font-bold ${net < 0 ? 'text-expense' : 'text-income'}`}
           >
             {formatRate(net)}
           </p>
@@ -84,17 +96,6 @@ export function Hud({ game, net }: { game: GameState; net: number }) {
             )}
           </button>
         )}
-        <button
-          type="button"
-          onClick={() => setTab(tab === 'settings' ? 'family' : 'settings')}
-          aria-label="Ajustes"
-          aria-current={tab === 'settings' ? 'page' : undefined}
-          className={`-mr-1 grid size-9 shrink-0 place-items-center rounded-full transition active:scale-95 ${
-            tab === 'settings' ? 'bg-leaf-soft text-leaf-strong' : 'text-ink-soft'
-          }`}
-        >
-          <Settings size={21} />
-        </button>
       </div>
       {waiting ? (
         <div className="bg-gold-soft text-gold mx-auto mt-2 flex max-w-3xl items-center gap-3 rounded-xl py-1 pr-1 pl-3 text-[13px] font-bold">
@@ -119,7 +120,7 @@ export function Hud({ game, net }: { game: GameState; net: number }) {
       ) : boostLeft > 0 ? (
         <p className="bg-gold-soft text-gold mx-auto mt-2 flex max-w-3xl items-center justify-center gap-1.5 rounded-xl px-3 py-1.5 text-[13px] font-bold">
           <Zap size={14} fill="currentColor" aria-hidden="true" />
-          Renda ×2 por mais{' '}
+          Renda {boostLabel()} por mais{' '}
           {formatGameSpan(Math.ceil(boostLeft / TICKS_PER_DAY), BALANCE.daysPerYear)}
         </p>
       ) : null}

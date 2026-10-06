@@ -20,6 +20,7 @@ import {
   rentedPlaces,
   rentPerMonth,
   serialize,
+  totalDebt,
   totalProperties,
 } from '../src/engine'
 import { formatMoney, formatRate } from '../src/lib/format'
@@ -56,8 +57,10 @@ const snapshot = ({ state, counters, elapsedMs }: Autoplay) => {
     mortes: counters.deaths,
     cursos: counters.courses,
     imóveis: totalProperties(state),
+    financ: counters.loans,
+    dívida: formatMoney(totalDebt(state)),
     aluguel: formatRate(rentPerMonth(state)),
-    '×2': isBoosted(state) ? 'sim' : '',
+    bônus: isBoosted(state) ? 'sim' : '',
     recompensas: counters.rewards,
     vermelho: counters.debts,
     faliu: counters.bankrupt ? 'sim' : '',

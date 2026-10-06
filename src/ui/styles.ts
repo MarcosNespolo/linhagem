@@ -11,6 +11,7 @@ export const button = {
   quiet: `${base} px-3 py-2 text-[14px] text-ink-soft hover:text-ink`,
   small: `${base} bg-leaf px-3.5 py-2 text-[13px] text-white disabled:bg-line disabled:text-ink-soft`,
   smallLove: `${base} bg-rose px-3.5 py-2 text-[13px] text-white disabled:bg-line disabled:text-ink-soft`,
+  smallSecondary: `${base} bg-leaf-soft px-3.5 py-2 text-[13px] text-leaf-strong disabled:bg-line disabled:text-ink-soft`,
 }
 
 export const card = 'rounded-2xl bg-surface ring-1 ring-line'

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { BALANCE } from '@/content/balance'
-import { PUBLIC_CAREER } from '@/content/careers'
+import { concursoOf } from '@/content/careers'
 import {
   advance,
   applyAction,
@@ -73,36 +73,51 @@ describe('concurso público', () => {
     expect(memberExpense(member, day) - memberExpense(without, day)).toBe(BALANCE.concurso.fee)
   })
 
-  it('quem passa toma posse como técnico do serviço público', () => {
-    const { state, memberId } = atJobChoice(21, { enem: 700 })
+  it('com ensino médio, quem passa com nota alta toma posse como técnico federal, o cargo mais alto que o médio permite', () => {
+    // 760 de partida e dois meses de estudo passam de 700 mesmo com o sorteio contra.
+    const { state, memberId } = atJobChoice(21, { enem: 760 })
     const passed = play(chooseConcurso(state, memberId).state, years(1), 'concurso')
     const choice = resultChoice(passed)
     const day = passed.clock.day
     expect(examDate(passed)).toBe(BALANCE.concurso.examDates[0])
-    expect(choice.options).toEqual([{ kind: 'posse', level: 0 }, { kind: 'privada' }])
-    expect(choice.score).toBeGreaterThanOrEqual(BALANCE.concurso.cutoffs[0])
+    expect(choice.options).toEqual([
+      { kind: 'posse', careerId: 'tecnicoFederal' },
+      { kind: 'privada' },
+    ])
+    expect(choice.score).toBeGreaterThanOrEqual(concursoOf('tecnicoFederal').cutoff)
     expect(passed.log).toContainEqual({
       type: 'concurso',
       day,
       memberId,
       score: choice.score,
-      level: 0,
+      careerId: 'tecnicoFederal',
     })
 
     const hired = expectOk(
       applyAction(passed, { type: 'choose', picks: [{ memberId, option: 0 }] }),
     )
     const member = hired.state.members[memberId]
-    expect(member.career).toEqual({ id: PUBLIC_CAREER, level: 0, levelSince: day })
+    expect(member.career).toEqual({ id: 'tecnicoFederal', level: 0, levelSince: day })
     expect(member.concurso).toBeNull()
     expect(hired.events).toEqual([
-      { type: 'firstJob', day, memberId, careerId: PUBLIC_CAREER, level: 0 },
+      { type: 'firstJob', day, memberId, careerId: 'tecnicoFederal', level: 0 },
     ])
     expect(memberIncome(member, day)).toBeGreaterThan(0)
   })
 
+  it('com nota mais baixa, passa para um cargo menor e pode seguir estudando para o maior', () => {
+    // 560 e dois meses de estudo: entre 540 e 620, passa só para a prefeitura.
+    const { state, memberId } = atJobChoice(21, { enem: 560 })
+    const passed = play(chooseConcurso(state, memberId).state, years(1), 'concurso')
+    expect(resultChoice(passed).options).toEqual([
+      { kind: 'posse', careerId: 'prefeitura' },
+      { kind: 'estudar' },
+      { kind: 'privada' },
+    ])
+  })
+
   it('desistir do cargo abre a escolha de emprego, sem o concurso', () => {
-    const { state, memberId } = atJobChoice(21, { enem: 700 })
+    const { state, memberId } = atJobChoice(21, { enem: 760 })
     const passed = play(chooseConcurso(state, memberId).state, years(1), 'concurso')
     const declined = expectOk(
       applyAction(passed, { type: 'choose', picks: [{ memberId, option: 1 }] }),
@@ -112,19 +127,43 @@ describe('concurso público', () => {
     expect((declined.choices[0] as JobChoice).concurso).toBe(false)
   })
 
-  it('quem não passa em nenhuma das quatro provas volta à escolha de emprego', () => {
-    // 400 de partida e 11 meses de estudo não chegam ao corte, nem com o sorteio a favor.
-    const { state, memberId } = atJobChoice(22, { enem: 400 })
+  it('quem não passa em nenhuma das quatro provas decide se continua estudando ou vai trabalhar', () => {
+    // 300 de partida e 11 meses de estudo não chegam a nenhum corte, nem com o sorteio a favor.
+    const { state, memberId } = atJobChoice(22, { enem: 300 })
     const studying = chooseConcurso(state, memberId).state
+    const since = studying.members[memberId].concurso!.since
     const after = play(studying, years(2), 'firstJob')
     expect(after.choices.map((choice) => choice.type)).toEqual(['firstJob'])
-    expect((after.choices[0] as JobChoice).concurso).toBe(true)
+    const choice = after.choices[0] as JobChoice
+    expect(choice.concurso).toBe(true)
     expect(examDate(after)).toBe(BALANCE.concurso.examDates[BALANCE.concurso.maxExams - 1])
-    expect(after.members[memberId].concurso).toBeNull()
+    // O estudo fica de pé, com a nota que juntou, até a resposta.
+    expect(after.members[memberId].concurso).toMatchObject({
+      since,
+      exams: BALANCE.concurso.maxExams,
+    })
     const results = after.log.filter(
       (event) => event.type === 'concurso' && event.memberId === memberId,
     )
-    expect(results).toEqual([expect.objectContaining({ level: null })])
+    expect(results).toEqual([expect.objectContaining({ careerId: null })])
+
+    // Continuar: mais uma tentativa, contando os meses desde o começo, sem acontecimento novo.
+    const continued = expectOk(
+      applyAction(after, { type: 'choose', picks: [{ memberId, option: choice.offers.length }] }),
+    )
+    expect(continued.events).toEqual([])
+    expect(continued.state.members[memberId].concurso).toEqual({
+      since,
+      exams: 0,
+      lastScore: expect.any(Number),
+    })
+
+    // Trabalhar: o estudo acaba.
+    const working = expectOk(
+      applyAction(after, { type: 'choose', picks: [{ memberId, option: 0 }] }),
+    ).state
+    expect(working.members[memberId].concurso).toBeNull()
+    expect(working.members[memberId].career).toMatchObject({ id: choice.offers[0].careerId })
   })
 
   it('com faculdade, quem passa só para técnico pode continuar estudando para analista', () => {
@@ -134,7 +173,7 @@ describe('concurso público', () => {
     })
     const passed = play(chooseConcurso(state, memberId).state, years(1), 'concurso')
     expect(resultChoice(passed).options).toEqual([
-      { kind: 'posse', level: 0 },
+      { kind: 'posse', careerId: expect.stringMatching(/^(estado|tecnicoFederal)$/) },
       { kind: 'estudar' },
       { kind: 'privada' },
     ])
@@ -150,11 +189,36 @@ describe('concurso público', () => {
     const [top] = resultChoice(next).options
     const hired = expectOk(applyAction(next, { type: 'choose', picks: [{ memberId, option: 0 }] }))
     expect(top.kind).toBe('posse')
-    expect(hired.state.members[memberId].career?.level).toBe(top.kind === 'posse' ? top.level : -1)
+    expect(hired.state.members[memberId].career).toMatchObject({
+      id: top.kind === 'posse' ? top.careerId : '',
+      level: 0,
+    })
+  })
+
+  it('só com faculdade dá para chegar a analista e à auditoria, com nota bem alta', () => {
+    const { state, memberId } = atJobChoice(23, {
+      enem: 900,
+      formation: { level: 'superior', degree: 'direito' },
+    })
+    const passed = play(chooseConcurso(state, memberId).state, years(1), 'concurso')
+    expect(resultChoice(passed).options).toEqual([
+      { kind: 'posse', careerId: 'auditoria' },
+      { kind: 'privada' },
+    ])
+    const medio = atJobChoice(23, { enem: 900 })
+    const passedMedio = play(
+      chooseConcurso(medio.state, medio.memberId).state,
+      years(1),
+      'concurso',
+    )
+    expect(resultChoice(passedMedio).options[0]).toEqual({
+      kind: 'posse',
+      careerId: 'tecnicoFederal',
+    })
   })
 
   it('dá o mesmo resultado de uma vez ou aos poucos até o resultado do concurso', () => {
-    const { state, memberId } = atJobChoice(24, { enem: 700 })
+    const { state, memberId } = atJobChoice(24, { enem: 760 })
     const studying = chooseConcurso(state, memberId).state
     const atOnce = advance(studying, years(1)).state
     let stepwise = studying

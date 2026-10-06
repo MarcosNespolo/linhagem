@@ -19,6 +19,34 @@ import { chooseSuggested, makeGame, withChild, years } from '../helpers'
 const FIXTURES = new URL('../fixtures/', import.meta.url)
 const fixtureFiles = readdirSync(FIXTURES).filter((file) => /^save-v\d+\.json$/.test(file))
 
+/**
+ * Um membro de um save antigo como a versão 17 o deixa: a carreira pública
+ * única vira um cargo federal, o técnico no primeiro nível e o analista em
+ * diante um nível abaixo, também no namoro.
+ */
+function after17<T extends { career: unknown; dating?: unknown }>(member: T): T {
+  const career = (value: unknown) => {
+    const old = value as { id: string; level: number } | null
+    if (!old || old.id !== 'publico') return old
+    return old.level <= 0
+      ? { ...old, id: 'tecnicoFederal', level: 0 }
+      : { ...old, id: 'analistaFederal', level: old.level - 1 }
+  }
+  const dating = member.dating as { partner: { career: unknown } } | null | undefined
+  return {
+    ...member,
+    career: career(member.career),
+    ...(dating
+      ? {
+          dating: {
+            ...dating,
+            partner: { ...dating.partner, career: career(dating.partner.career) },
+          },
+        }
+      : {}),
+  }
+}
+
 function errorFrom(fn: () => unknown): SaveError {
   try {
     fn()
@@ -131,10 +159,37 @@ describe('save', () => {
     const v15 = JSON.parse(json) as GameState
     const state = deserialize(json)
     for (const [id, member] of Object.entries(state.members)) {
-      expect(member).toEqual({ ...v15.members[id], course: null })
+      expect(member).toEqual(after17({ ...v15.members[id], course: null }))
     }
     expect(state.choices).toEqual(v15.choices)
     expect(state.money).toBe(v15.money)
+  })
+
+  it('a versão 16 troca a carreira pública pelos cargos por faixa, sem vazios nem financiamento', () => {
+    const json = readFileSync(new URL('save-v16.json', FIXTURES), 'utf8')
+    const v16 = JSON.parse(json) as GameState
+    const servants = Object.values(v16.members).filter(
+      (member) => (member.career?.id as string) === 'publico',
+    )
+    expect(servants.length).toBeGreaterThan(0)
+    const state = deserialize(json)
+    for (const [id, member] of Object.entries(state.members)) {
+      expect(member).toEqual(after17(v16.members[id]))
+    }
+    expect(state.vacancies).toEqual({})
+    expect(state.loans).toEqual([])
+    expect(state.stats).toEqual({ ...v16.stats, interestPaid: 0 })
+    // O histórico aponta para os cargos novos: o técnico que passou é técnico federal.
+    const results = state.log.filter((event) => event.type === 'concurso')
+    expect(results.length).toBeGreaterThan(0)
+    for (const event of results) {
+      if (event.type !== 'concurso') continue
+      expect(event.careerId).toBe('tecnicoFederal')
+    }
+    for (const event of state.log) {
+      if ('careerId' in event) expect(event.careerId).not.toBe('publico')
+    }
+    expect(state.money).toBe(v16.money)
   })
 
   it('a versão 14 começa sem namoros e sem as pessoas sugeridas pela busca antiga', () => {
@@ -144,9 +199,21 @@ describe('save', () => {
     const state = deserialize(JSON.stringify(save))
     expect('suitors' in state).toBe(false)
     for (const [id, member] of Object.entries(state.members)) {
-      expect(member).toEqual({ ...v14.members[id], dating: null, course: null })
+      expect(member).toEqual(after17({ ...v14.members[id], dating: null, course: null }))
     }
-    expect(state.choices).toEqual(v14.choices)
+    // O resultado do concurso aberto no exemplo aponta para o cargo novo.
+    expect(state.choices).toEqual(
+      v14.choices.map((choice) =>
+        choice.type === 'concurso'
+          ? {
+              ...choice,
+              options: choice.options.map((option) =>
+                option.kind === 'posse' ? { ...option, careerId: 'tecnicoFederal' } : option,
+              ),
+            }
+          : choice,
+      ),
+    )
     expect(state.money).toBe(v14.money)
   })
 
@@ -200,14 +267,16 @@ describe('save', () => {
     const json = readFileSync(new URL('save-v10.json', FIXTURES), 'utf8')
     const v10 = JSON.parse(json) as GameState
     const state = deserialize(json)
-    expect(state.stats).toEqual({ ...v10.stats, archived: 0 })
+    expect(state.stats).toEqual({ ...v10.stats, archived: 0, interestPaid: 0 })
     for (const [id, member] of Object.entries(state.members)) {
-      expect(member).toEqual({
-        ...v10.members[id],
-        unemployedUntil: null,
-        dating: null,
-        course: null,
-      })
+      expect(member).toEqual(
+        after17({
+          ...v10.members[id],
+          unemployedUntil: null,
+          dating: null,
+          course: null,
+        }),
+      )
     }
     expect(state.properties).toEqual(v10.properties)
     expect(state.money).toBe(v10.money)

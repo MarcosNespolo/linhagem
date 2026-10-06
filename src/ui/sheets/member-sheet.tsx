@@ -33,6 +33,7 @@ import {
   schoolFee,
   schoolScore,
   stageFee,
+  taxOf,
   yearlyPoints,
   type Choice,
   type Enrollment,
@@ -72,7 +73,7 @@ export function MemberSheet({ game, member }: { game: GameState; member: Member 
   const partner = partnerOf(game, member)
   const parents = member.parentIds.map((id) => game.members[id]).filter(Boolean)
   const children = childrenOf(game, member.id)
-  const rate = incomeOf(game, member) - memberExpense(member, day)
+  const rate = incomeOf(game, member) - memberExpense(member, day) - taxOf(game, member)
   const school = member.education.school
   const formation = member.education.formation
   const choice = game.choices.find((open) => open.memberId === member.id)
@@ -113,9 +114,11 @@ export function MemberSheet({ game, member }: { game: GameState; member: Member 
         ) : null}
         {alive ? (
           <Fact label="Custo de vida">
-            <span className="tabular">{formatMoney(livingCost(member, day))}/mês</span>
+            <span className="tabular">
+              {formatMoney(livingCost(member, day) + taxOf(game, member))}/mês
+            </span>
             <span className="text-ink-soft block text-[13px] font-normal">
-              {livingCostLine(member, day)}
+              {livingCostLine(game, member, day)}
             </span>
           </Fact>
         ) : null}

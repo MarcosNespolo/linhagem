@@ -15,12 +15,14 @@ import {
 } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { BALANCE } from '@/content/balance'
-import { careerLevel, PUBLIC_CAREER } from '@/content/careers'
+import { careerLevel, concursoOf, getCareer } from '@/content/careers'
 import { degree, DEGREES, techCourseName } from '@/content/schools'
 import {
+  allowedCargos,
   calendarDate,
   highestCargo,
   homeCareCost,
+  nextCargo,
   homeCaregiver,
   MEET_OPTIONS,
   offerSalary,
@@ -45,6 +47,7 @@ import { MemberStats } from '../member-stats'
 import {
   ageLabel,
   careerLine,
+  cargoLabel,
   extraHousingLabel,
   formationLabel,
   levelTitle,
@@ -206,7 +209,7 @@ function JobChoiceCard({
         <OptionButton
           active={selected === choice.offers.length}
           icon={<BookOpen size={17} />}
-          title="Estudar para concurso"
+          title={member.concurso ? 'Continuar estudando para concurso' : 'Estudar para concurso'}
           detail={concursoDetail(member)}
           value={formatRate(-BALANCE.concurso.fee)}
           expense
@@ -217,13 +220,17 @@ function JobChoiceCard({
   )
 }
 
-/** O concurso para a pessoa: as provas, sem salário, e o corte e o salário do cargo mais alto. */
+/**
+ * O concurso para a pessoa: sem salário, uma prova a cada três meses, e os
+ * cargos que a formação permite, do corte mais baixo ao mais alto, com o
+ * salário de cada um.
+ */
 function concursoDetail(member: Member): string {
-  const level = highestCargo(member)
-  const cargo = levelTitle(member, PUBLIC_CAREER, level)
-  const { cutoffs, maxExams } = BALANCE.concurso
-  const salary = formatMoney(careerLevel(PUBLIC_CAREER, level).salaryPerMonth)
-  return `${maxExams} provas sem salário · ${cargo}: nota ${cutoffs[level]}, ${salary}/mês`
+  const cargos = allowedCargos(member)
+  const first = cargos[0]
+  const last = cargos[cargos.length - 1]
+  const salary = (id: typeof first) => formatMoney(careerLevel(id, 0).salaryPerMonth)
+  return `Sem salário, prova a cada 3 meses · de ${cargoLabel(first)}, ${salary(first)}/mês, a ${cargoLabel(last)}, ${salary(last)}/mês`
 }
 
 /** Resultado do concurso: tomar posse, continuar estudando ou procurar outro emprego. */
@@ -253,7 +260,7 @@ function ConcursoChoiceCard({
           key={option.kind}
           active={index === selected}
           icon={option.kind === 'posse' ? <Landmark size={17} /> : <Briefcase size={17} />}
-          {...describeConcursoOption(member, option, index === choice.suggested)}
+          {...describeConcursoOption(member, option, choice.options, index === choice.suggested)}
           onSelect={() => onSelect(index)}
         />
       ))}
@@ -264,21 +271,27 @@ function ConcursoChoiceCard({
 function describeConcursoOption(
   member: Member,
   option: ConcursoOption,
+  options: readonly ConcursoOption[],
   suggested: boolean,
 ): { title: string; detail: string; value: string; expense?: boolean } {
   switch (option.kind) {
     case 'posse':
       return {
-        title: `Tomar posse como ${lowerFirst(levelTitle(member, PUBLIC_CAREER, option.level))}`,
-        detail: withSuggestion(careerLine(PUBLIC_CAREER, option.level), suggested),
-        value: formatRate(careerLevel(PUBLIC_CAREER, option.level).salaryPerMonth),
+        title: `Tomar posse como ${lowerFirst(levelTitle(member, option.careerId, 0))}`,
+        detail: withSuggestion(careerLine(option.careerId, 0), suggested),
+        value: formatRate(careerLevel(option.careerId, 0).salaryPerMonth),
       }
     case 'estudar': {
-      const level = highestCargo(member)
-      const cargo = lowerFirst(levelTitle(member, PUBLIC_CAREER, level))
+      const passed = options.find((other) => other.kind === 'posse')
+      const next = passed?.kind === 'posse' ? nextCargo(member, passed.careerId) : null
+      const target = next ?? highestCargo(member)
+      const salary = formatMoney(careerLevel(target, 0).salaryPerMonth)
       return {
-        title: `Continuar estudando para ${cargo}`,
-        detail: withSuggestion(`Nota ${BALANCE.concurso.cutoffs[level]}`, suggested),
+        title: `Continuar estudando para ${getCareer(target).name.toLowerCase()}`,
+        detail: withSuggestion(
+          `Nota ${concursoOf(target).cutoff} · ${salary}/mês · até ${cargoLabel(highestCargo(member))}`,
+          suggested,
+        ),
         value: formatRate(-BALANCE.concurso.fee),
         expense: true,
       }

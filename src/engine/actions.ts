@@ -6,8 +6,10 @@ import type { Network } from '../content/schools'
 import { applyPicks, checkPicks, type ChoicePick } from './choices'
 import { FAMILY_NAME_MAX_LENGTH } from './constants'
 import { draftOf } from './draft'
+import { familyRates } from './economy'
 import { checkChangeSchool } from './enrollment'
 import { refuse, type ActionError, type Refusal } from './errors'
+import { settleLoan } from './financing'
 import { recordEvents } from './log'
 import { addMember, ageOf, isAlive } from './members'
 import { claimReward, drawMissions, isMissionDone, trackMissions } from './missions'
@@ -36,8 +38,10 @@ export type Action =
   | { type: 'startCourse'; memberId: MemberId; dedicated: boolean }
   /** Para o curso em andamento. O que já foi pago não volta. */
   | { type: 'stopCourse'; memberId: MemberId }
-  /** Compra um imóvel do tipo, de um em um. */
-  | { type: 'buyProperty'; propertyId: PropertyId; lot?: number }
+  /** Compra um imóvel do tipo, de um em um, à vista ou financiado. */
+  | { type: 'buyProperty'; propertyId: PropertyId; lot?: number; financed?: boolean }
+  /** Quita um financiamento, pagando o saldo de uma vez. */
+  | { type: 'payOffLoan'; loanId: number }
   /**
    * Sorteia as missões do dia do aparelho, no formato AAAA-MM-DD. A data vem da
    * store, porque a engine não conhece o relógio do aparelho. As missões do dia
@@ -74,7 +78,9 @@ export function applyAction(state: GameState, action: Action): ActionResult {
     case 'stopCourse':
       return stopCourse(state, action.memberId)
     case 'buyProperty':
-      return buyProperty(state, action.propertyId, action.lot)
+      return buyProperty(state, action.propertyId, action.lot, action.financed ?? false)
+    case 'payOffLoan':
+      return payOffLoan(state, action.loanId)
     case 'drawMissions':
       return newMissions(state, action.date)
     case 'claimMission':
@@ -196,12 +202,29 @@ function stopCourse(state: GameState, memberId: MemberId): ActionResult {
   return done(draft)
 }
 
-function buyProperty(state: GameState, id: PropertyId, lot?: number): ActionResult {
-  const check = checkBuyProperty(state, id, lot)
+function buyProperty(
+  state: GameState,
+  id: PropertyId,
+  lot: number | undefined,
+  financed: boolean,
+): ActionResult {
+  const income = financed ? familyRates(state).income : 0
+  const check = checkBuyProperty(state, id, lot, financed, income)
   if (!check.ok) return check
 
   const draft = draftOf(state)
-  const events = [applyPurchase(draft, id, check.price, check.lot)]
+  const events = [applyPurchase(draft, id, check)]
+  recordEvents(draft, events)
+  return done(draft, events)
+}
+
+function payOffLoan(state: GameState, loanId: number): ActionResult {
+  const loan = state.loans.find((open) => open.id === loanId)
+  if (!loan) return refuse('loanNotFound')
+  if (state.money < loan.balance) return refuse('notEnoughMoney')
+
+  const draft = draftOf(state)
+  const events = [settleLoan(draft, loan)]
   recordEvents(draft, events)
   return done(draft, events)
 }

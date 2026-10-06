@@ -2,14 +2,14 @@
 
 import { GraduationCap } from 'lucide-react'
 import { BALANCE } from '@/content/balance'
-import { PUBLIC_CAREER } from '@/content/careers'
+import { concursoOf, getCareer } from '@/content/careers'
 import {
+  allowedCargos,
   calendarDate,
   courseCandidates,
   courseOffer,
   expectedConcursoScore,
   halfTimeCaregivers,
-  highestCargo,
   incomeOf,
   isRetired,
   livingMembers,
@@ -175,16 +175,18 @@ function ConcursoRow({ game, member }: { game: GameState; member: Member }) {
   if (!study) return null
   const exam = nextExamDay(game)
   const expected = expectedConcursoScore(member, exam)
-  const cutoff = BALANCE.concurso.cutoffs[highestCargo(member)]
-  const cargo = lowerFirst(levelTitle(member, PUBLIC_CAREER, highestCargo(member)))
   const month = formatMonthYear(calendarDate(game.startDate, exam))
-  const left = BALANCE.concurso.maxExams - study.exams
+  const left = Math.max(1, BALANCE.concurso.maxExams - study.exams)
+  // O próximo cargo que a nota esperada ainda não alcança, ou o mais alto que a formação permite.
+  const cargos = allowedCargos(member)
+  const target = cargos.find((id) => concursoOf(id).cutoff > expected) ?? cargos[cargos.length - 1]
+  const cargo = `${getCareer(target).name.toLowerCase()}: ${concursoOf(target).cutoff}`
   return (
     <PersonRow
       game={game}
       member={member}
       title={`Prova em ${month}`}
-      detail={`Nota ${expected} · ${cargo}: ${cutoff} · ${left === 1 ? 'última prova' : `${left} provas`}`}
+      detail={`Nota ${expected} · ${cargo} · ${left === 1 ? 'última prova' : `${left} provas`}`}
       value={formatRate(-BALANCE.concurso.fee)}
       expense
     />

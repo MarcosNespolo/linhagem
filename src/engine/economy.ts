@@ -1,10 +1,11 @@
 import { BALANCE } from '../content/balance'
-import { careerLevel, PUBLIC_CAREER } from '../content/careers'
-import { isBoosted } from './boost'
+import { careerLevel, isPublicCareer } from '../content/careers'
+import { boostFactor } from './boost'
+import { loanInstallments, payLoans } from './financing'
 import { ageOf, isAlive } from './members'
-import { housingCost, rentPerMonth } from './properties'
+import { housingCost, maintenanceCost, rentPerMonth } from './properties'
 import { halfTimeCaregivers, schoolFee } from './school'
-import type { GameState, Member, MemberId } from './types'
+import type { GameEvent, GameState, Member, MemberId } from './types'
 
 /** Salário por mês do nível atual da carreira, sem considerar idade. */
 export function salaryPerMonth(member: Pick<Member, 'career'>): number {
@@ -13,10 +14,10 @@ export function salaryPerMonth(member: Pick<Member, 'career'>): number {
 }
 
 /**
- * Renda por mês: salário para quem trabalha, pensão para aposentados e zero
- * para quem ainda não tem emprego ou foi demitido. Quem termina o médio e vai
- * trabalhar recebe desde janeiro, mesmo antes dos 18. A aposentadoria do
- * serviço público paga uma fração maior do último salário.
+ * Renda por mês, antes do imposto: salário para quem trabalha, pensão para
+ * aposentados e zero para quem ainda não tem emprego ou foi demitido. Quem
+ * termina o médio e vai trabalhar recebe desde janeiro, mesmo antes dos 18. A
+ * aposentadoria do serviço público paga uma fração maior do último salário.
  */
 export function memberIncome(member: Member, day: number): number {
   if (!isAlive(member) || !member.career) return 0
@@ -24,8 +25,7 @@ export function memberIncome(member: Member, day: number): number {
   if (ageOf(member, day) < BALANCE.retirementAge) {
     return isUnemployed(member, day) ? unemploymentPay(salary) : salary
   }
-  const ratio =
-    member.career.id === PUBLIC_CAREER ? BALANCE.publicPensionRatio : BALANCE.pensionRatio
+  const ratio = isPublicCareer(member.career.id) ? BALANCE.publicPensionRatio : BALANCE.pensionRatio
   return salary * ratio
 }
 
@@ -41,8 +41,8 @@ export function isUnemployed(member: Pick<Member, 'unemployedUntil'>, day: numbe
 }
 
 /**
- * Renda por mês na família de hoje: quem cuida de um filho pequeno em casa
- * trabalha meio período e ganha uma parte do salário.
+ * Renda por mês na família de hoje, antes do imposto: quem cuida de um filho
+ * pequeno em casa trabalha meio período e ganha uma parte do salário.
  */
 export function incomeOf(
   state: GameState,
@@ -54,19 +54,57 @@ export function incomeOf(
 }
 
 /**
- * Custo de vida por mês, sem a moradia. Criança: alimentação, roupas, saúde e
- * lazer, mais caros a cada ano. Adulto: mercado e contas, plano de saúde para
- * quem ganha a partir de `planFromSalary` (mais caro para idosos; os outros
- * usam o SUS) e transporte, de carro para quem ganha a partir de
- * `carFromSalary` e de ônibus para os outros.
+ * Imposto de renda e INSS sobre uma renda por mês, por faixas: cada alíquota
+ * vale só para a parte da renda que cai na faixa.
+ */
+export function incomeTax(income: number): number {
+  let tax = 0
+  let from = 0
+  for (const { upTo, rate } of BALANCE.tax.brackets) {
+    if (income <= from) break
+    tax += (Math.min(income, upTo) - from) * rate
+    from = upTo
+  }
+  return tax
+}
+
+/** O imposto da pessoa no mês, sobre a renda dela na família de hoje. */
+export function taxOf(
+  state: GameState,
+  member: Member,
+  caregivers: ReadonlySet<MemberId> = halfTimeCaregivers(state),
+): number {
+  return incomeTax(incomeOf(state, member, caregivers))
+}
+
+/**
+ * Padrão de vida de um adulto por mês: mercado e contas, ou uma parte da
+ * renda, o que for maior. Quem ganha mais gasta mais, então a sobra não cresce
+ * na mesma proporção que o salário.
+ */
+export function lifestyleCost(member: Member, day: number): number {
+  const { adult, lifestyleShare } = BALANCE.living
+  return Math.max(adult, lifestyleShare * memberIncome(member, day))
+}
+
+/**
+ * Custo de vida por mês, sem a moradia nem o imposto. Criança: alimentação,
+ * roupas, saúde e lazer, mais caros a cada ano. Adulto: o padrão de vida, o
+ * plano de saúde para quem ganha a partir de `planFromSalary` (mais caro para
+ * idosos; os outros usam o SUS) e o transporte, de carro para quem ganha a
+ * partir de `carFromSalary` e de ônibus para os outros.
  */
 export function livingCost(member: Member, day: number): number {
   const age = ageOf(member, day)
   if (age < BALANCE.adultAge) {
     return BALANCE.children.expenseBase + BALANCE.children.expensePerYear * age
   }
-  const { adult, transport } = BALANCE.living
-  return adult + healthPlanCost(member, day) + (hasCar(member, day) ? transport.car : transport.bus)
+  const { transport } = BALANCE.living
+  return (
+    lifestyleCost(member, day) +
+    healthPlanCost(member, day) +
+    (hasCar(member, day) ? transport.car : transport.bus)
+  )
 }
 
 /** Plano de saúde por mês: zero para quem usa o SUS, por ganhar menos que `planFromSalary`. */
@@ -82,54 +120,68 @@ export function hasCar(member: Member, day: number): boolean {
 }
 
 /**
- * Despesa por mês da pessoa: o custo de vida, a mensalidade da escola
- * particular, o professor particular, o cursinho de quem estuda para concurso e
- * o curso de promoção, que fica trancado, sem mensalidade, enquanto a pessoa
- * está demitida. A moradia é da família inteira (`housingCost`).
+ * Mensalidades da pessoa: a escola particular, o professor particular, o
+ * cursinho de quem estuda para concurso e o curso de promoção, que fica
+ * trancado, sem mensalidade, enquanto a pessoa está demitida.
  */
-export function memberExpense(member: Member, day: number): number {
-  if (!isAlive(member)) return 0
-  const fee =
+export function feesOf(member: Member, day: number): number {
+  return (
     schoolFee(member.education.school) +
     (member.education.tutorSince !== null ? BALANCE.school.tutor.fee : 0) +
     (member.concurso ? BALANCE.concurso.fee : 0) +
     (member.course && !isUnemployed(member, day) ? member.course.fee : 0)
-  return livingCost(member, day) + fee
+  )
+}
+
+/**
+ * Despesa por mês da pessoa, sem o imposto: o custo de vida e as mensalidades.
+ * A moradia é da família inteira (`housingCost`).
+ */
+export function memberExpense(member: Member, day: number): number {
+  if (!isAlive(member)) return 0
+  return livingCost(member, day) + feesOf(member, day)
 }
 
 export type Rates = {
-  /** Renda por mês do jogo, em reais: salários, pensões e aluguel. */
+  /** Renda por mês do jogo, em reais: salários, pensões e aluguel, antes do imposto. */
   income: number
-  /** A parte da renda que vem do aluguel dos imóveis. */
+  /** A parte da renda que vem do aluguel dos imóveis, já sem a manutenção. */
   rent: number
-  /** Despesa por mês do jogo, em reais. */
+  /** Despesa por mês do jogo, em reais, com o imposto, a moradia e as parcelas. */
   expense: number
+  /** A parte da despesa que é imposto de renda e INSS. */
+  tax: number
+  /** A parte da despesa que são as parcelas dos financiamentos. */
+  installments: number
   /** Renda menos despesa, por mês. */
   net: number
 }
 
 /**
  * Fecha o mês: na virada para o dia 1º, entram os salários, as pensões e os
- * aluguéis e saem as despesas, pelas taxas da família nesse momento, com a
- * renda em dobro se o bônus estiver valendo. O saldo pode ficar negativo: a
- * virada do dia confere a dívida. Altera o rascunho.
+ * aluguéis e saem as despesas, pelas taxas da família nesse momento, com o
+ * bônus das missões na renda se estiver valendo, e os bancos cobram as
+ * parcelas. O saldo pode ficar negativo: a virada do dia confere a dívida.
+ * Altera o rascunho e devolve os acontecimentos das últimas parcelas.
  */
 export function settleMonth(
   draft: GameState,
   members: readonly Member[] = Object.values(draft.members),
-): void {
-  const { income, expense, rent } = familyRates(draft, members)
-  draft.money += income - expense
+): GameEvent[] {
+  const { income, expense, rent, installments } = familyRates(draft, members)
+  draft.money += income - (expense - installments)
   draft.stats.totalEarned += income
-  draft.stats.totalSpent += expense
+  draft.stats.totalSpent += expense - installments
   draft.stats.rentEarned += rent
+  return payLoans(draft)
 }
 
 /**
  * Renda, despesa e saldo da família por mês. O aluguel dos imóveis entra na
- * renda, e a renda inteira dobra enquanto vale o bônus das missões. A despesa
- * soma o custo de cada pessoa e a moradia: o aluguel dos lugares de quem não
- * cabe nos imóveis da família e as contas dos imóveis em que ela mora.
+ * renda, e a renda inteira ganha o bônus enquanto ele vale. A despesa soma o
+ * custo de cada pessoa, o imposto de cada uma, a moradia (o aluguel dos
+ * lugares de quem não cabe nos imóveis da família e as contas dos imóveis em
+ * que ela mora ou que estão vazios) e as parcelas dos financiamentos.
  * `members` pode trazer só as pessoas vivas, para não passar pelos
  * antepassados.
  */
@@ -138,18 +190,23 @@ export function familyRates(
   members: readonly Member[] = Object.values(state.members),
 ): Rates {
   const caregivers = halfTimeCaregivers(state, members)
-  const factor = isBoosted(state) ? 2 : 1
+  const factor = boostFactor(state)
+  const day = state.clock.day
   let living = 0
   let income = 0
   let expense = 0
+  let tax = 0
   for (const member of members) {
     if (!isAlive(member)) continue
     living += 1
-    income += incomeOf(state, member, caregivers)
-    expense += memberExpense(member, state.clock.day)
+    const earned = incomeOf(state, member, caregivers)
+    income += earned
+    tax += incomeTax(earned)
+    expense += memberExpense(member, day)
   }
-  const rent = rentPerMonth(state, living) * factor
+  const rent = (rentPerMonth(state, living) - maintenanceCost(state, living)) * factor
   income = income * factor + rent
-  expense += housingCost(state, living)
-  return { income, rent, expense, net: income - expense }
+  const installments = loanInstallments(state)
+  expense += tax + housingCost(state, living) + installments
+  return { income, rent, expense, tax, installments, net: income - expense }
 }

@@ -8,7 +8,7 @@ import { ageInYears, lastDayOfYear } from './time'
 import type { GameState } from './types'
 
 /** Versão atual do formato do save. Sobe a cada migração nova. */
-export const CURRENT_SCHEMA_VERSION = 16
+export const CURRENT_SCHEMA_VERSION = 17
 
 export type SaveErrorCode = 'corrupt' | 'futureVersion' | 'missingMigration'
 
@@ -334,6 +334,87 @@ const toVersion16: Migration = (save) => {
   return { ...save, members: upgraded }
 }
 
+/** Carreira pública única das versões até a 16, trocada pelos cargos por faixa de concurso. */
+const OLD_PUBLIC_CAREER = 'publico'
+
+/**
+ * Carreira equivalente a um nível da antiga carreira pública: o técnico vira
+ * técnico federal, no primeiro nível; analista em diante vira analista
+ * federal, um nível abaixo, com o mesmo tempo no nível.
+ */
+function publicCareerOf(level: number): { id: string; level: number } {
+  if (level <= 0) return { id: 'tecnicoFederal', level: 0 }
+  return { id: 'analistaFederal', level: Math.min(level - 1, 4) }
+}
+
+function migrateCareer(career: unknown): unknown {
+  if (!isRecord(career) || career.id !== OLD_PUBLIC_CAREER) return career
+  const level = typeof career.level === 'number' ? career.level : 0
+  return { ...career, ...publicCareerOf(level) }
+}
+
+/** Quem é de fora da família, no namoro ou na escolha de conhecer alguém, com a carreira trocada. */
+function migrateSuitor(suitor: unknown): unknown {
+  if (!isRecord(suitor)) return suitor
+  return { ...suitor, career: migrateCareer(suitor.career) }
+}
+
+/**
+ * Versão 17: o serviço público ganha cinco carreiras, uma por faixa de
+ * concurso, e os imóveis ganham vacância e financiamento. Quem era servidor
+ * segue num cargo federal equivalente, as escolhas e o histórico apontam
+ * para as carreiras novas, nenhum imóvel está vazio e não há financiamento.
+ */
+const toVersion17: Migration = (save) => {
+  const members = isRecord(save.members) ? save.members : {}
+  const upgraded: RawSave = {}
+  for (const [id, member] of Object.entries(members)) {
+    if (!isRecord(member)) {
+      upgraded[id] = member
+      continue
+    }
+    const dating = isRecord(member.dating)
+      ? { ...member.dating, partner: migrateSuitor(member.dating.partner) }
+      : member.dating
+    upgraded[id] = { ...member, career: migrateCareer(member.career), dating }
+  }
+  const choices = Array.isArray(save.choices)
+    ? save.choices.map((choice: unknown) => {
+        if (!isRecord(choice)) return choice
+        if (choice.type === 'meet') return { ...choice, person: migrateSuitor(choice.person) }
+        if (choice.type === 'concurso' && Array.isArray(choice.options)) {
+          const options = choice.options.map((option: unknown) =>
+            isRecord(option) && option.kind === 'posse'
+              ? { ...option, careerId: publicCareerOf(Number(option.level ?? 0)).id }
+              : option,
+          )
+          return { ...choice, options }
+        }
+        return choice
+      })
+    : save.choices
+  const log = Array.isArray(save.log)
+    ? save.log.map((event: unknown) => {
+        if (!isRecord(event)) return event
+        if (event.type === 'concurso') {
+          const careerId = typeof event.level === 'number' ? publicCareerOf(event.level).id : null
+          return { ...event, careerId }
+        }
+        if (event.careerId === OLD_PUBLIC_CAREER) {
+          const level = typeof event.level === 'number' ? event.level : 0
+          return {
+            ...event,
+            careerId: publicCareerOf(level).id,
+            level: publicCareerOf(level).level,
+          }
+        }
+        return event
+      })
+    : save.log
+  const stats = isRecord(save.stats) ? { ...save.stats, interestPaid: 0 } : save.stats
+  return { ...save, members: upgraded, choices, log, stats, vacancies: {}, loans: [] }
+}
+
 /**
  * Migrações, indexadas pela versão de origem. São sempre aditivas: criam
  * campos novos com valores padrão e nunca apagam dados do jogador; uma troca
@@ -358,6 +439,7 @@ export const MIGRATIONS: Readonly<Record<number, Migration>> = {
   13: toVersion14,
   14: toVersion15,
   15: toVersion16,
+  16: toVersion17,
 }
 
 /** Valida um save lido de JSON e o leva até a versão atual. */
@@ -405,6 +487,8 @@ function assertGameState(save: RawSave): asserts save is RawSave & GameState {
     typeof save.nextMemberId === 'number' &&
     Array.isArray(save.choices) &&
     isRecord(save.properties) &&
+    isRecord(save.vacancies) &&
+    Array.isArray(save.loans) &&
     (save.missions === null || isRecord(save.missions)) &&
     isRecord(save.boosts) &&
     typeof save.boosts.incomeUntil === 'number' &&

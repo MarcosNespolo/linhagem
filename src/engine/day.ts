@@ -7,7 +7,7 @@ import { isEnrollmentDay, processEnrollment } from './enrollment'
 import { openFirstJobChoice } from './jobs'
 import { processMishaps } from './mishaps'
 import { processPromotions } from './promotions'
-import { processMarket } from './properties'
+import { processMarket, processVacancies } from './properties'
 import type { Rng } from './rng'
 import { halfTimeCaregivers } from './school'
 import { calendarDate } from './time'
@@ -16,8 +16,9 @@ import type { GameEvent, GameState, Member } from './types'
 /**
  * Processa a virada para o dia atual do relógio: aniversários, maioridade,
  * aposentadoria, morte, as matrículas e o arquivo da árvore de janeiro, as
- * promoções, os imprevistos, os imóveis comerciais que ficam à venda, as
- * provas de concurso, os namoros e o 13º salário. As escolhas abertas aqui
+ * promoções, os imprevistos, os imóveis comerciais que ficam à venda, os
+ * inquilinos que saem e voltam, as provas de concurso, os namoros e o 13º
+ * salário. As escolhas abertas aqui
  * (matrículas, depois do médio, primeiro emprego, resultado do concurso,
  * alguém que aparece, pedido de casamento) param o relógio. Altera o rascunho.
  * `living` são as pessoas vivas do rascunho; quem morre no meio pode continuar
@@ -69,6 +70,10 @@ export function processNewDay(
   processPromotions(draft, events, living)
   processMishaps(draft, events, living)
   processMarket(draft)
+  processVacancies(
+    draft,
+    living.reduce((count, member) => count + (member.deathDay === null ? 1 : 0), 0),
+  )
   takeExams(draft, rng, events)
   processDating(draft, rng, living)
   payThirteenth(draft, events, living)

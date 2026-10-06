@@ -80,10 +80,12 @@ export function applyPicks(draft: GameState, rng: Rng, picks: readonly ChoicePic
         break
       case 'firstJob': {
         if (pick.option === choice.offers.length) {
-          events.push(startConcurso(member, day))
+          events.push(...startConcurso(member, day))
           break
         }
         const { careerId, level } = choice.offers[pick.option]
+        // Quem estava estudando para concurso e vai trabalhar para de estudar.
+        member.concurso = null
         member.career = { id: careerId, level, levelSince: day }
         events.push({ type: 'firstJob', day, memberId: member.id, careerId, level })
         break
