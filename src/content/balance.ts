@@ -24,6 +24,12 @@ export const BALANCE = {
   /** Dinheiro no início da partida: a família começa do zero. */
   startingMoney: 0,
   /**
+   * Quem funda a família tem 18 anos e trabalha desde esta idade, como jovem
+   * aprendiz: já chega com tempo de casa para o primeiro curso. Enquanto está
+   * sozinho e solteiro, mora com os pais, sem aluguel.
+   */
+  founder: { workSinceAge: 16 },
+  /**
    * Falência: o saldo pode ficar negativo. O relógio para quando a família
    * entra no vermelho, e ela tem `graceDays` dias do jogo para voltar ao
    * azul; se não voltar, vai à falência e a partida acaba.
@@ -100,11 +106,12 @@ export const BALANCE = {
    * nos imóveis de moradia da família mora de aluguel, pago por lugar e sem
    * limite: ninguém sai da família por falta de lugar. Quem mora num imóvel da
    * família paga só as contas dele (condomínio, IPTU e manutenção, em
-   * `PROPERTY_TYPES`).
+   * `PROPERTY_TYPES`). Quem funda a família mora com os pais, sem aluguel,
+   * enquanto está sozinho e solteiro.
    */
   housing: {
     /** Aluguel por mês de cada um dos primeiros `basePlaces` lugares alugados. */
-    rentPerPlace: 600,
+    rentPerPlace: 1_000,
     basePlaces: 6,
     /**
      * Daí em diante, cada lugar alugado custa esta parte a mais que o anterior.
@@ -131,8 +138,8 @@ export const BALANCE = {
   },
 
   marriage: {
-    /** Festa e cartório: o custo de um casamento, sempre o mesmo. */
-    cost: 30_000,
+    /** Cartório e uma festa simples: o custo de um casamento, sempre o mesmo. */
+    cost: 10_000,
     /** Diferença máxima de idade, em anos, entre o membro e quem ele conhece. */
     maxAgeGapYears: 5,
     /**
@@ -156,6 +163,15 @@ export const BALANCE = {
   jobs: {
     /** Quantas vagas aparecem na escolha do primeiro emprego. */
     offersPerChoice: 3,
+    /**
+     * Propostas de emprego: enquanto a família tem até `maxFamily` pessoas
+     * vivas, cada pessoa que trabalha numa carreira de ensino médio tem
+     * `perYear` de chance por ano de receber uma proposta de outra carreira
+     * dessas, no mesmo nível, com salário pelo menos `minRaise` maior. A
+     * proposta vale por `validMonths` meses do jogo, sem parar o relógio;
+     * aceitar troca de carreira e zera o tempo no nível.
+     */
+    offers: { perYear: 0.2, maxFamily: 6, minRaise: 0.1, validMonths: 6 },
   },
 
   careers: {

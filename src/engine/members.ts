@@ -121,6 +121,7 @@ export function addMember(draft: GameState, rng: Rng, input: NewMember): Member 
     course: null,
     unemployedUntil: null,
     concurso: null,
+    jobOffer: null,
     lastChildDay: null,
     traits: [],
     appearance: input.appearance,

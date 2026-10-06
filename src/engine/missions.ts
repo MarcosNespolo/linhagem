@@ -1,7 +1,8 @@
 import { BALANCE } from '../content/balance'
+import { topLevel } from '../content/careers'
 import { MISSION_IDS, missionInfo, type MissionId } from '../content/missions'
 import { addBoost } from './boost'
-import { familyRates } from './economy'
+import { familyRates, isUnemployed } from './economy'
 import { ageOf, livingMembers } from './members'
 import { totalProperties } from './properties'
 import { createRng, hashString, type Rng } from './rng'
@@ -10,8 +11,10 @@ import type { GameEvent, GameState, MissionState } from './types'
 /**
  * A meta se ajusta ao momento da família: cada missão só aparece quando dá
  * para cumprir. Formatura pede alguém na faculdade ou no técnico; Investidor,
- * o primeiro imóvel; Chá de bebê, um casal na idade de ter filhos; e Casa
- * cheia, um casal assim ou alguém para casar.
+ * o primeiro imóvel; Chá de bebê, um casal na idade de ter filhos; Casório,
+ * dois solteiros; Casa cheia, um casal assim ou dois solteiros; Namoro,
+ * um solteiro adulto sem namoro; Promoção, alguém trabalhando abaixo do topo;
+ * e Reserva, a família ainda sem três meses de despesa guardados.
  */
 function isEligible(state: GameState, id: MissionId): boolean {
   const day = state.clock.day
@@ -25,8 +28,8 @@ function isEligible(state: GameState, id: MissionId): boolean {
         partner?.deathDay === null && fertile(ageOf(member, day)) && fertile(ageOf(partner, day))
       )
     })
-  const single = () =>
-    living.some(
+  const singles = () =>
+    living.filter(
       (member) =>
         member.partnerId === null &&
         member.origin !== 'married' &&
@@ -36,7 +39,23 @@ function isEligible(state: GameState, id: MissionId): boolean {
     case 'chaDeBebe':
       return couple()
     case 'casorio':
-      return single()
+      return singles().length >= missionInfo(id).goal
+    case 'namoro':
+      return singles().some(
+        (member) => member.dating === null && ageOf(member, day) >= BALANCE.adultAge,
+      )
+    case 'promocao':
+      return living.some(
+        (member) =>
+          member.career !== null &&
+          member.career.level < topLevel(member.career.id) &&
+          !isUnemployed(member, day) &&
+          ageOf(member, day) < BALANCE.retirementAge,
+      )
+    case 'reserva': {
+      const { expense } = familyRates(state)
+      return expense > 0 && state.money < missionInfo(id).goal * expense
+    }
     case 'carteira':
       return living.some((member) => {
         const age = ageOf(member, day)
@@ -60,7 +79,7 @@ function isEligible(state: GameState, id: MissionId): boolean {
     case 'investidor':
       return totalProperties(state) > 0
     case 'casaCheia':
-      return couple() || single()
+      return couple() || singles().length >= 2
     case 'peDeMeia':
       return familyRates(state).net > 0
   }
@@ -101,6 +120,11 @@ function startMission(state: GameState, id: MissionId): MissionState {
       const target = Math.max(1, Math.round(goal * familyRates(state).net))
       return { id, goal: target, progress: 0, base: state.money, claimed: false }
     }
+    case 'reserva': {
+      // Meses da despesa de hoje, em dinheiro no caixa.
+      const target = Math.max(1, Math.round(goal * familyRates(state).expense))
+      return { id, goal: target, progress: 0, base: 0, claimed: false }
+    }
     default:
       return { id, goal, progress: 0, base: 0, claimed: false }
   }
@@ -130,6 +154,12 @@ function countFor(id: MissionId, events: readonly GameEvent[]): number {
       case 'investidor':
         if (event.type === 'propertyBought') count += 1
         break
+      case 'promocao':
+        if (event.type === 'promoted') count += 1
+        break
+      case 'namoro':
+        if (event.type === 'datingStarted') count += 1
+        break
     }
   }
   return count
@@ -149,7 +179,7 @@ export function trackMissions(draft: GameState, events: readonly GameEvent[]): v
     if (mission.id === 'casaCheia') {
       living ??= livingMembers(draft).length
       progress = Math.max(progress, living - mission.base)
-    } else if (mission.id === 'peDeMeia') {
+    } else if (mission.id === 'peDeMeia' || mission.id === 'reserva') {
       progress = Math.max(progress, draft.money - mission.base)
     } else {
       progress += countFor(mission.id, events)

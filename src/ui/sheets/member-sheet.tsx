@@ -12,22 +12,28 @@ import {
 } from 'lucide-react'
 import { useState } from 'react'
 import { BALANCE } from '@/content/balance'
+import { careerLevel, concursoOf, getCareer } from '@/content/careers'
 import { isHigherStage, techCourseName, type Network } from '@/content/schools'
 import {
   agePoints,
   ageThisYear,
+  allowedCargos,
   aptitudeOf,
   canHaveTutor,
   calendarDate,
   checkHaveChild,
+  checkStudyForConcurso,
   childCost,
   childrenOf,
   courseOffer,
+  expectedConcursoScore,
+  feesOf,
+  halfTimeCaregivers,
+  hasJobOffer,
   incomeOf,
   isRetired,
   isUnemployed,
   livingCost,
-  memberExpense,
   nextExamDay,
   partnerOf,
   schoolFee,
@@ -54,6 +60,7 @@ import {
   formationLabel,
   levelTitle,
   livingCostLine,
+  lowerFirst,
   promotionStatus,
   relationLine,
   roleLabel,
@@ -73,7 +80,11 @@ export function MemberSheet({ game, member }: { game: GameState; member: Member 
   const partner = partnerOf(game, member)
   const parents = member.parentIds.map((id) => game.members[id]).filter(Boolean)
   const children = childrenOf(game, member.id)
-  const rate = incomeOf(game, member) - memberExpense(member, day) - taxOf(game, member)
+  const income = incomeOf(game, member)
+  const fees = feesOf(member, day)
+  const living = livingCost(member, day) + taxOf(game, member)
+  const rate = income - living - fees
+  const halfTime = halfTimeCaregivers(game).has(member.id)
   const school = member.education.school
   const formation = member.education.formation
   const choice = game.choices.find((open) => open.memberId === member.id)
@@ -103,22 +114,38 @@ export function MemberSheet({ game, member }: { game: GameState; member: Member 
       <p className="text-ink-soft mt-3 text-[15px]">{relationLine(game, member)}</p>
 
       <dl className="divide-line bg-canvas mt-4 divide-y rounded-2xl px-4 text-[15px]">
-        {alive ? (
-          <Fact label={rate < 0 ? 'Despesa' : 'Renda'}>
-            <span
-              className={`tabular font-bold ${rate < 0 ? 'text-expense' : rate > 0 ? 'text-income' : ''}`}
-            >
-              {rate === 0 ? 'Nenhuma' : formatRate(rate)}
-            </span>
+        {alive && income > 0 ? (
+          <Fact label={incomeLabel(member, day)}>
+            <span className="tabular text-income font-bold">{formatRate(income)}</span>
+            {halfTime ? (
+              <span className="text-ink-soft block text-[13px] font-normal">
+                Meio período, cuidando de um filho em casa
+              </span>
+            ) : null}
           </Fact>
         ) : null}
         {alive ? (
           <Fact label="Custo de vida">
-            <span className="tabular">
-              {formatMoney(livingCost(member, day) + taxOf(game, member))}/mês
-            </span>
+            <span className="tabular text-expense font-bold">{formatRate(-living)}</span>
             <span className="text-ink-soft block text-[13px] font-normal">
               {livingCostLine(game, member, day)}
+            </span>
+          </Fact>
+        ) : null}
+        {alive && fees > 0 ? (
+          <Fact label="Mensalidades">
+            <span className="tabular text-expense font-bold">{formatRate(-fees)}</span>
+            <span className="text-ink-soft block text-[13px] font-normal">
+              {feesLine(member, day)}
+            </span>
+          </Fact>
+        ) : null}
+        {alive && income > 0 ? (
+          <Fact label={rate < 0 ? 'Falta' : 'Sobra'}>
+            <span
+              className={`tabular font-bold ${rate < 0 ? 'text-expense' : rate > 0 ? 'text-income' : ''}`}
+            >
+              {formatRate(rate)}
             </span>
           </Fact>
         ) : null}
@@ -214,11 +241,127 @@ export function MemberSheet({ game, member }: { game: GameState; member: Member 
       </dl>
 
       {alive && choice ? <OpenChoice choice={choice} /> : null}
+      {working && !choice ? <JobOfferBlock game={game} member={member} /> : null}
       {working && !choice ? <CourseBlock game={game} member={member} /> : null}
+      {working && !choice ? <ConcursoBlock game={game} member={member} /> : null}
       {alive && school && !choice ? <SchoolChange member={member} school={school} /> : null}
       {alive && !choice && canHaveTutor(member) ? <Tutor game={game} member={member} /> : null}
       {alive ? <MemberActions game={game} member={member} partner={partner} /> : null}
     </Sheet>
+  )
+}
+
+/** O que a pessoa recebe: salário, aposentadoria ou seguro-desemprego. */
+function incomeLabel(member: Member, day: number): string {
+  if (isRetired(member, day)) return 'Aposentadoria'
+  if (isUnemployed(member, day)) return 'Seguro-desemprego'
+  return 'Salário'
+}
+
+/** As mensalidades da pessoa em partes: escola, professor particular, cursinho e curso. */
+function feesLine(member: Member, day: number): string {
+  const parts: string[] = []
+  const school = member.education.school
+  if (school && schoolFee(school) > 0) parts.push(`escola ${formatMoney(schoolFee(school))}`)
+  if (member.education.tutorSince !== null) {
+    parts.push(`professor particular ${formatMoney(BALANCE.school.tutor.fee)}`)
+  }
+  if (member.concurso) parts.push(`cursinho ${formatMoney(BALANCE.concurso.fee)}`)
+  if (member.course && !isUnemployed(member, day)) {
+    parts.push(`curso ${formatMoney(member.course.fee)}`)
+  }
+  return upperFirst(parts.join(' · '))
+}
+
+/** Proposta de outra empresa esperando resposta: a vaga, o salário novo e os botões. */
+function JobOfferBlock({ game, member }: { game: GameState; member: Member }) {
+  const dispatch = useGameStore((store) => store.dispatch)
+  const offer = member.jobOffer
+  const career = member.career
+  if (!offer || !career || !hasJobOffer(member, game.clock.day)) return null
+  const current = careerLevel(career.id, career.level).salaryPerMonth
+  const offered = careerLevel(offer.careerId, offer.level).salaryPerMonth
+  const until = formatMonthYear(calendarDate(game.startDate, offer.until), 'short')
+  const answer = (accept: boolean) =>
+    dispatch({ type: 'answerJobOffer', memberId: member.id, accept })
+  return (
+    <div className={`${card} mt-5 p-3`}>
+      <p className="text-[15px] font-bold">
+        Proposta: {lowerFirst(levelTitle(member, offer.careerId, offer.level))}
+      </p>
+      <p className="tabular text-ink-soft text-[14px]">
+        {careerLine(offer.careerId, offer.level)} · {formatRate(offered)}, hoje{' '}
+        {formatMoney(current)} · vale até {until} · recomeça o tempo no nível
+      </p>
+      <div className="mt-2 flex gap-2">
+        <button type="button" className={`${button.primary} flex-1`} onClick={() => answer(true)}>
+          <Briefcase size={18} />
+          Aceitar
+        </button>
+        <button type="button" className={button.quiet} onClick={() => answer(false)}>
+          Recusar
+        </button>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Largar o emprego para estudar para concurso: o botão pede confirmação, com
+ * a nota de hoje e o corte dos cargos que a formação permite, porque a pessoa
+ * fica sem salário e, se desistir, procura outro emprego do zero.
+ */
+function ConcursoBlock({ game, member }: { game: GameState; member: Member }) {
+  const dispatch = useGameStore((store) => store.dispatch)
+  const [confirming, setConfirming] = useState(false)
+  const check = checkStudyForConcurso(game, member.id)
+  if (!check.ok) return null
+  const day = game.clock.day
+  const score = expectedConcursoScore(member, day)
+  const cargos = allowedCargos(member)
+  const reach = cargos.filter((id) => concursoOf(id).cutoff <= score)
+  const target = reach[reach.length - 1]
+  const next = cargos.find((id) => concursoOf(id).cutoff > score)
+  if (!confirming) {
+    return (
+      <button
+        type="button"
+        className={`${button.quiet} mt-2 w-full`}
+        onClick={() => setConfirming(true)}
+      >
+        <Landmark size={18} />
+        Largar o emprego e estudar para concurso
+      </button>
+    )
+  }
+  return (
+    <div className={`${card} mt-3 p-3`}>
+      <p className="text-[15px] font-bold">Estudar para concurso</p>
+      <p className="tabular text-ink-soft text-[14px]">
+        Sem salário, cursinho de {formatMoney(BALANCE.concurso.fee)}/mês, prova a cada 3 meses. Nota
+        de hoje: {score}
+        {target
+          ? ` · passa para ${getCareer(target).name.toLowerCase()} (${concursoOf(target).cutoff})`
+          : ''}
+        {next
+          ? ` · ${getCareer(next).name.toLowerCase()} pede ${concursoOf(next).cutoff}, sobe ${BALANCE.concurso.pointsPerMonth} por mês de estudo`
+          : ''}
+        . Desistindo, procura outro emprego do zero.
+      </p>
+      <div className="mt-2 flex gap-2">
+        <button
+          type="button"
+          className={`${button.primary} flex-1`}
+          onClick={() => dispatch({ type: 'studyForConcurso', memberId: member.id })}
+        >
+          <Landmark size={18} />
+          Largar e estudar
+        </button>
+        <button type="button" className={button.quiet} onClick={() => setConfirming(false)}>
+          Voltar
+        </button>
+      </div>
+    </div>
   )
 }
 

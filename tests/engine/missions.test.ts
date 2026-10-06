@@ -23,6 +23,7 @@ import {
   expectSameState,
   founders,
   makeGame,
+  makeStart,
   lastMember,
   marryMember,
   play,
@@ -45,6 +46,15 @@ function mission(state: GameState, id: MissionId): MissionState {
   const found = state.missions?.list.find((candidate) => candidate.id === id)
   if (!found) throw new Error(`A missão ${id} não foi sorteada`)
   return found
+}
+
+/** Sorteia dia após dia, a partir de 4 de outubro, até a missão sair. */
+function drawUntil(state: GameState, id: MissionId): GameState {
+  for (let day = 4; day <= 31; day++) {
+    const drawn = draw(state, `2026-10-${String(day).padStart(2, '0')}`)
+    if (drawn.missions?.list.some((candidate) => candidate.id === id)) return drawn
+  }
+  throw new Error(`A missão ${id} não saiu em um mês de sorteios`)
 }
 
 /** Estado com uma missão já cumprida, para pegar a recompensa. */
@@ -77,22 +87,62 @@ describe('missões do dia', () => {
 
   it('são três, de tipos diferentes, e só as que a família consegue cumprir', () => {
     const state = makeGame(32)
+    // Só o casal fundador, trabalhando no primeiro nível: dá para ter filhos, encher a casa,
+    // subir de nível e juntar dinheiro; não dá para namorar, casar, formar ou investir.
+    const possible = ['casaCheia', 'chaDeBebe', 'peDeMeia', 'promocao', 'reserva']
+    const seen = new Set<string>()
     for (let day = 1; day <= 10; day++) {
       const drawn = draw(state, `2026-11-${String(day).padStart(2, '0')}`).missions!.list
       expect(drawn).toHaveLength(BALANCE.missions.perDay)
-      // Só o casal fundador: dá para ter filhos, encher a casa e juntar dinheiro.
-      expect(drawn.map((item) => item.id).sort()).toEqual(['casaCheia', 'chaDeBebe', 'peDeMeia'])
+      expect(new Set(drawn.map((item) => item.id)).size).toBe(drawn.length)
+      for (const item of drawn) {
+        expect(possible).toContain(item.id)
+        seen.add(item.id)
+      }
     }
+    expect(seen.size).toBeGreaterThan(BALANCE.missions.perDay)
+
     const owner = expectOk(
       applyAction(withMoney(state, 1e6), { type: 'buyProperty', propertyId: 'kitnet' }),
     ).state
-    const seen = new Set<string>()
+    const later = new Set<string>()
     for (let day = 1; day <= 20; day++) {
       const date = `2026-12-${String(day).padStart(2, '0')}`
-      for (const item of draw(owner, date).missions!.list) seen.add(item.id)
+      for (const item of draw(owner, date).missions!.list) later.add(item.id)
     }
-    expect(seen).toContain('investidor')
-    expect(seen).not.toContain('formatura')
+    expect(later).toContain('investidor')
+    expect(later).not.toContain('formatura')
+  })
+
+  it('para uma pessoa só, no começo, saem as missões que ela consegue cumprir', () => {
+    const alone = makeStart(32)
+    const possible = ['namoro', 'promocao', 'reserva', 'peDeMeia']
+    const seen = new Set<string>()
+    for (let day = 1; day <= 12; day++) {
+      const drawn = draw(alone, `2026-11-${String(day).padStart(2, '0')}`).missions!.list
+      for (const item of drawn) {
+        expect(possible).toContain(item.id)
+        seen.add(item.id)
+      }
+    }
+    expect(seen).toContain('namoro')
+    expect(seen).toContain('promocao')
+    // Casório pede dois solteiros; com um só, não sai.
+    expect(seen).not.toContain('casorio')
+
+    // Reserva: guardar três meses de despesa; Promoção: alguém subir de nível.
+    const drawn = drawUntil(alone, 'reserva')
+    const reserve = mission(drawn, 'reserva')
+    expect(reserve.goal).toBe(Math.round(3 * familyRates(alone).expense))
+    expect(reserve.base).toBe(0)
+    const saved = { ...drawn, money: reserve.goal }
+    const tracked = expectOk(applyAction(saved, { type: 'pause' })).state
+    expect(
+      mission(
+        advance({ ...tracked, clock: { ...tracked.clock, paused: false } }, days(1)).state,
+        'reserva',
+      ).progress,
+    ).toBe(reserve.goal)
   })
 
   it('não sorteia de novo no mesmo dia nem aceita data inválida', () => {
@@ -146,7 +196,7 @@ describe('missões do dia', () => {
   })
 
   it('não paga missão que não chegou à meta', () => {
-    const state = draw(makeGame(35))
+    const state = drawUntil(makeGame(35), 'chaDeBebe')
     expect(applyAction(state, { type: 'claimMission', missionId: 'chaDeBebe' })).toEqual({
       ok: false,
       error: 'missionNotDone',
@@ -158,7 +208,7 @@ describe('missões do dia', () => {
   })
 
   it('Pé-de-meia: juntar, depois do sorteio, um ano da renda daquele dia', () => {
-    const state = draw(makeGame(36))
+    const state = drawUntil(withMoney(makeGame(36), 1e6), 'peDeMeia')
     const piggy = mission(state, 'peDeMeia')
     expect(piggy.base).toBe(state.money)
     expect(piggy.goal).toBe(Math.round(missionInfo('peDeMeia').goal * familyRates(state).net))
@@ -176,7 +226,7 @@ describe('missões do dia', () => {
       children.push(lastMember(state).id)
       state = play(state, days(BALANCE.children.cooldownDays))
     }
-    state = draw(play(state, years(BALANCE.adultAge), undefined, singlePolicy))
+    state = drawUntil(play(state, years(BALANCE.adultAge), undefined, singlePolicy), 'casaCheia')
     const full = mission(state, 'casaCheia')
     expect(full.base).toBe(Object.values(state.members).filter((m) => m.deathDay === null).length)
     for (const childId of children) state = marryMember(state, childId)

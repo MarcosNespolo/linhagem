@@ -4,6 +4,8 @@ import { inheritAppearance } from './appearance'
 import type { PropertyId } from '../content/properties'
 import type { Network } from '../content/schools'
 import { applyPicks, checkPicks, type ChoicePick } from './choices'
+import { checkStudyForConcurso, quitToStudy } from './concurso'
+import { acceptJobOffer, hasJobOffer } from './jobs'
 import { FAMILY_NAME_MAX_LENGTH } from './constants'
 import { draftOf } from './draft'
 import { familyRates } from './economy'
@@ -52,6 +54,10 @@ export type Action =
   | { type: 'claimMission'; missionId: MissionId }
   /** Contrata ou dispensa o professor particular de quem está na escola ou no médio. */
   | { type: 'setTutor'; memberId: MemberId; active: boolean }
+  /** Larga o emprego para estudar para concurso. */
+  | { type: 'studyForConcurso'; memberId: MemberId }
+  /** Responde a proposta de outra empresa: aceita e troca de carreira, ou recusa. */
+  | { type: 'answerJobOffer'; memberId: MemberId; accept: boolean }
 
 export type ActionResult = { ok: true; state: GameState; events: GameEvent[] } | Refusal
 
@@ -87,6 +93,10 @@ export function applyAction(state: GameState, action: Action): ActionResult {
       return claimMission(state, action.missionId)
     case 'setTutor':
       return setTutor(state, action.memberId, action.active)
+    case 'studyForConcurso':
+      return studyForConcurso(state, action.memberId)
+    case 'answerJobOffer':
+      return answerJobOffer(state, action.memberId, action.accept)
   }
 }
 
@@ -260,6 +270,33 @@ function setTutor(state: GameState, memberId: MemberId, active: boolean): Action
   const draft = draftOf(state)
   applyTutor(draft.members[memberId], draft.clock.day, active)
   return done(draft)
+}
+
+function studyForConcurso(state: GameState, memberId: MemberId): ActionResult {
+  const check = checkStudyForConcurso(state, memberId)
+  if (!check.ok) return check
+
+  const draft = draftOf(state)
+  const events = quitToStudy(draft.members[memberId], draft.clock.day)
+  recordEvents(draft, events)
+  return done(draft, events)
+}
+
+function answerJobOffer(state: GameState, memberId: MemberId, accept: boolean): ActionResult {
+  const member = state.members[memberId]
+  if (!member) return refuse('memberNotFound')
+  if (!isAlive(member)) return refuse('memberDeceased')
+  if (!hasJobOffer(member, state.clock.day)) return refuse('noJobOffer')
+
+  const draft = draftOf(state)
+  const target = draft.members[memberId]
+  if (!accept) {
+    target.jobOffer = null
+    return done(draft)
+  }
+  const events = [acceptJobOffer(target, draft.clock.day)]
+  recordEvents(draft, events)
+  return done(draft, events)
 }
 
 function done(state: GameState, events: GameEvent[] = []): ActionResult {

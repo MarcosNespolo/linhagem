@@ -4,7 +4,7 @@ import { takeExams } from './concurso'
 import { incomeOf } from './economy'
 import { processDating } from './dating'
 import { isEnrollmentDay, processEnrollment } from './enrollment'
-import { openFirstJobChoice } from './jobs'
+import { openFirstJobChoice, processJobOffers } from './jobs'
 import { processMishaps } from './mishaps'
 import { processPromotions } from './promotions'
 import { processMarket, processVacancies } from './properties'
@@ -17,10 +17,10 @@ import type { GameEvent, GameState, Member } from './types'
  * Processa a virada para o dia atual do relógio: aniversários, maioridade,
  * aposentadoria, morte, as matrículas e o arquivo da árvore de janeiro, as
  * promoções, os imprevistos, os imóveis comerciais que ficam à venda, os
- * inquilinos que saem e voltam, as provas de concurso, os namoros e o 13º
- * salário. As escolhas abertas aqui
- * (matrículas, depois do médio, primeiro emprego, resultado do concurso,
- * alguém que aparece, pedido de casamento) param o relógio. Altera o rascunho.
+ * inquilinos que saem e voltam, as propostas de emprego, as provas de
+ * concurso, os namoros e o 13º salário. As escolhas abertas aqui (matrículas,
+ * depois do médio, primeiro emprego, resultado do concurso, alguém que
+ * aparece, pedido de casamento) param o relógio; a proposta de emprego não. Altera o rascunho.
  * `living` são as pessoas vivas do rascunho; quem morre no meio pode continuar
  * na lista.
  */
@@ -69,6 +69,7 @@ export function processNewDay(
   }
   processPromotions(draft, events, living)
   processMishaps(draft, events, living)
+  processJobOffers(draft, events, living)
   processMarket(draft)
   processVacancies(
     draft,

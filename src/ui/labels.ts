@@ -218,6 +218,17 @@ export function describeEvent(state: GameState, event: GameEvent): string {
     }
     case 'concursoStarted':
       return `${name} começou a estudar para concurso`
+    case 'quitJob':
+      return `${name} largou o emprego para estudar para concurso`
+    case 'jobOffered': {
+      const title = lowerFirst(levelTitle(member, event.careerId, event.level))
+      const salary = formatMoney(careerLevel(event.careerId, event.level).salaryPerMonth)
+      return `${name} recebeu uma proposta: ${title}, ${salary}/mês`
+    }
+    case 'changedJob': {
+      const title = lowerFirst(levelTitle(member, event.careerId, event.level))
+      return `${name} aceitou a proposta e trocou de emprego: ${title}`
+    }
     case 'concurso': {
       if (event.careerId === null) return `${name} não passou no concurso: nota ${event.score}`
       const title = lowerFirst(levelTitle(member, event.careerId, 0))

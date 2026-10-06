@@ -307,6 +307,8 @@ const QUIET_EVENTS = new Set<GameEvent['type']>([
   'firstJob',
   'promoted',
   'concursoStarted',
+  'quitJob',
+  'changedJob',
   'propertyBought',
   'retired',
   'rehired',

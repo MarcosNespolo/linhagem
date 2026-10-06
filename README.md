@@ -3,16 +3,17 @@
 Idle game de família para web e celular. Toda a progressão vem de jogar: sem anúncios, sem
 compras, sem moeda premium.
 
-O jogador começa com uma pessoa de 18 anos e nenhum dinheiro, que namora, casa e tem filhos, vê
-os filhos namorarem e casarem com quem aparece e vê a linhagem atravessar gerações enquanto o tempo
-passa, inclusive um pouco com o jogo fechado.
+O jogador começa com uma pessoa de 18 anos, na casa dos pais e sem dinheiro, que faz cursos, pode
+largar o emprego para estudar para concurso, namora, casa e tem filhos, vê os filhos namorarem e
+casarem com quem aparece e vê a linhagem atravessar gerações enquanto o tempo passa, inclusive um
+pouco com o jogo fechado.
 
 Jogue em [linhagem.vercel.app](https://linhagem.vercel.app).
 
 ## O que já dá para fazer
 
-- Começar uma família com uma pessoa sorteada, de 18 anos, com ensino médio, no primeiro emprego
-  e com R$ 0, e dar o sobrenome
+- Começar uma família com uma pessoa sorteada, de 18 anos, com ensino médio, trabalhando desde os
+  16 e com R$ 0, morando com os pais até casar, e dar o sobrenome
 - Ter filhos a partir dos 20 anos, com 2 anos entre um e outro; eles herdam o tom de pele, a cor
   do cabelo e dos olhos dos pais
 - Matricular os filhos todo janeiro: creche, escola e ensino médio, na rede pública, num colégio
@@ -25,7 +26,9 @@ Jogue em [linhagem.vercel.app](https://linhagem.vercel.app).
 - Tocar na foto de quem está numa escolha para ver a nota, de onde ela vem, o ENEM e a formação
 - Escolher o primeiro emprego entre três vagas das carreiras que a formação abre, ou estudar para
   concurso público, em cinco faixas de nota, da prefeitura à auditoria fiscal; o tempo para até a
-  escolha
+  escolha. Quem já trabalha pode largar o emprego para estudar, pela ficha da pessoa
+- Receber propostas de emprego enquanto a família é pequena: outra carreira de ensino médio, no
+  mesmo nível, pagando mais, para aceitar pela aba Trabalho ou deixar passar
 - Subir na carreira com cursos: cada nível pede um curso, depois de 2 anos no nível, pago por mês
   enquanto a pessoa trabalha, no ritmo normal ou com dedicação, que termina na metade do tempo,
   custa o dobro por mês e deixa a pessoa sem namoro nem filho até terminar; no serviço público, a
@@ -53,7 +56,7 @@ Jogue em [linhagem.vercel.app](https://linhagem.vercel.app).
   curtos
 - Entrar com e-mail, sem senha, para guardar a família na nuvem e continuar em outro aparelho
 
-A família começa com uma pessoa e R$ 0. Um filho custa R$ 15 mil e um casamento, R$ 30 mil. O que
+A família começa com uma pessoa e R$ 0. Um filho custa R$ 15 mil e um casamento, R$ 10 mil. O que
 limita a família é o dinheiro: quem ganha mais gasta mais (o padrão de vida e o imposto crescem
 com a renda), quem não cabe nos imóveis dela paga aluguel, que fica mais caro a cada lugar, e para
 ter mais filhos é preciso ganhar mais. Se o saldo fica negativo, o jogo para e avisa, e a família
@@ -196,11 +199,26 @@ a promoção vem só com o tempo, ninguém é demitido, e a aposentadoria paga 7
 em vez de 50%. As regras ficam em `src/engine/concurso.ts`, e os valores em `BALANCE.concurso` e
 em cada carreira.
 
-Quem funda a família, com 18 anos, começa no primeiro nível de uma carreira de ensino médio. Quem
-aparece para namorar chega com formação e emprego sorteados, com os níveis dos anos de trabalho,
-contados com os tempos do serviço público (3 anos no 1º nível), mas só até o 2º nível, e quem é
-servidor tem um cargo de nível médio: ninguém chega de fora ganhando muito mais que a família
-(`src/engine/jobs.ts`).
+Quem funda a família, com 18 anos, começa no primeiro nível de uma carreira de ensino médio, em que
+trabalha desde os 16 como jovem aprendiz (`BALANCE.founder`): já tem os 2 anos no nível, e o
+primeiro curso está liberado no primeiro minuto. Quem aparece para namorar chega com formação e
+emprego sorteados, com os níveis dos anos de trabalho, contados com os tempos do serviço público (3
+anos no 1º nível), mas só até o 2º nível, e quem é servidor tem um cargo de nível médio: ninguém
+chega de fora ganhando muito mais que a família (`src/engine/jobs.ts`).
+
+Enquanto a família tem até 6 pessoas vivas, quem trabalha numa carreira de ensino médio, sem curso
+em andamento, tem 20% de chance por ano de receber uma proposta de outra empresa
+(`processJobOffers`, com os valores em `BALANCE.jobs.offers`): outra carreira de ensino médio, no
+mesmo nível, pagando pelo menos 10% a mais. A proposta vale por 6 meses do jogo e não para o
+relógio: aparece como aviso, na aba Trabalho e na ficha da pessoa, com os botões de aceitar e
+recusar. Aceitar troca a carreira e zera o tempo no nível, então adia o próximo curso. O sorteio
+depende só da seed, do dia e da pessoa, como os imprevistos.
+
+Quem trabalha e tem pelo menos o ensino médio pode largar o emprego para estudar para concurso,
+pela ficha da pessoa (`checkStudyForConcurso`): fica sem salário, com o cursinho, e parte da nota
+de hoje; se desistir, procura outro emprego do zero. Com a nota alta, é a aposta mais forte do
+começo: na casa dos pais, sem aluguel, dá para passar para o Estado ou para técnico federal em
+meses.
 
 ## Namoro e casamento
 
@@ -210,12 +228,13 @@ de junho), cada solteiro vivo com 18 anos ou mais e sem outra escolha aberta tem
 conhecer alguém: uma pessoa de outro gênero, com até 5 anos de diferença, formação, emprego e
 aptidão. O relógio para, e o jogador decide se namora; quem diz agora não pode conhecer outra pessoa
 na próxima data. Um ano depois, na mesma data do calendário, vem o pedido de casamento, que também
-para o relógio: casar (R$ 30 mil), esperar mais um ano ou terminar. Casar só dá com o dinheiro do
-casamento; com vários pedidos no mesmo painel, os casamentos marcados saem do dinheiro um depois do
-outro, e marcar casar num deles passa os outros para esperar quando não cabe tudo. Quem casa traz o
-par para a família (`src/engine/marriage.ts`), que trabalha no emprego que tinha, ganha pelo menos
-dois anos de vida pela frente e mora com a família ou de aluguel. O namoro acaba se o membro morrer.
-Quem entrou na família casando, ou ficou viúvo, não casa de novo.
+para o relógio: casar (R$ 10 mil, cartório e uma festa simples), esperar mais um ano ou terminar.
+Casar só dá com o dinheiro do casamento; com vários pedidos no mesmo painel, os casamentos marcados
+saem do dinheiro um depois do outro, e marcar casar num deles passa os outros para esperar quando
+não cabe tudo. Quem casa traz o par para a família (`src/engine/marriage.ts`), que trabalha no
+emprego que tinha, ganha pelo menos dois anos de vida pela frente e mora com a família ou de
+aluguel. O namoro acaba se o membro morrer. Quem entrou na família casando, ou ficou viúvo, não
+casa de novo.
 
 ## Custo de vida, imposto e imprevistos
 
@@ -228,9 +247,10 @@ que for maior (quem ganha mais gasta mais), o plano de saúde, com médico e den
 paga plano. Cada renda paga imposto de renda e INSS por faixas (`incomeTax`, com as faixas em
 `BALANCE.tax`): isento até R$ 2.500, 10% até R$ 5 mil, 20% até R$ 10 mil, 27,5% até R$ 20 mil e 35%
 acima, cada alíquota só sobre a parte da renda que cai na faixa. Assim, de um salário de R$ 1.900
-sobra metade; de um de R$ 12 mil, 40%; de um de R$ 35 mil, 35%. Sozinha, a pessoa que começa a
-família ganha de R$ 1.700 a R$ 2.400 e gasta R$ 1.500 com o aluguel, então sobram de R$ 200 a R$
-900 por mês. A moradia é da família inteira (veja Moradia e imóveis).
+sobra metade; de um de R$ 12 mil, 40%; de um de R$ 35 mil, 35%. Sozinha, na casa dos pais, a pessoa
+que começa a família ganha de R$ 1.700 a R$ 2.400 e gasta R$ 900, então sobram de R$ 800 a R$ 1.500
+por mês, e o primeiro curso custa mais do que sobra: a primeira decisão é começar já, ficando uns
+meses no vermelho, ou juntar antes. A moradia é da família inteira (veja Moradia e imóveis).
 
 Imprevistos acontecem com uma chance pequena por ano (`src/engine/mishaps.ts`, com os valores em
 `BALANCE.mishaps`). Quem trabalha fora do serviço público pode ser demitido (3% ao ano) e fica de 3
@@ -269,12 +289,16 @@ continuam cobrando só o que cabe no caixa, para a falência vir das escolhas, e
 ## Moradia e imóveis
 
 Cada pessoa da família precisa de um lugar em casa. Kitnet tem 2 lugares, apartamento 4 e casa 6,
-e o bairro tem 10 de cada, a partir de R$ 80 mil, R$ 400 mil e R$ 1,2 milhão: cada um que a família
+e o bairro tem 10 de cada, a partir de R$ 160 mil, R$ 400 mil e R$ 1,2 milhão: cada um que a família
 compra deixa o próximo do tipo 10% mais caro (`propertyPrice`), e toda compra paga 3% de ITBI. Quem
 não cabe nos imóveis da família mora de aluguel, sem limite de lugares: ninguém sai da família por
-falta de lugar. Os 6 primeiros lugares alugados custam R$ 600 por mês cada, e cada lugar a mais custa 40% a
-mais que o anterior (`placeRent`): o 10º sai por cerca de R$ 2.300, e o 20º, por cerca de R$ 67 mil.
-Com 120 lugares nas casas do bairro, é esse preço que segura o tamanho da família. A aba Imóveis
+falta de lugar. Os 6 primeiros lugares alugados custam R$ 1.000 por mês cada (um casal paga R$ 2
+mil, como num apartamento pequeno de verdade), e cada lugar a mais custa 40% a mais que o anterior
+(`placeRent`): o 10º sai por cerca de R$ 3.800, e o 20º, por cerca de R$ 111 mil. Com 120 lugares
+nas casas do bairro, é esse preço que segura o tamanho da família. Quem funda a família mora com os
+pais, sem aluguel, enquanto está sozinho e solteiro (`livesWithParents`); os imóveis que comprar
+nesse tempo ficam alugados. Casar é sair de casa: o aluguel de dois lugares, que empurra o casal
+para financiar o primeiro kitnet. A aba Imóveis
 mostra quanto custa o lugar de mais uma pessoa, e ter um filho e o pedido de casamento mostram a
 moradia a mais (`extraHousingCost`). A família mora primeiro nos imóveis que rendem menos aluguel por
 lugar (kitnets, depois apartamentos e casas) e paga as contas deles, de condomínio, IPTU e
@@ -323,16 +347,19 @@ valores em `BALANCE.housing` e `BALANCE.properties`.
 
 ## Missões e bônus
 
-Todo dia o jogo sorteia três missões de tipos diferentes, entre oito (`src/content/missions.ts`),
+Todo dia o jogo sorteia três missões de tipos diferentes, entre onze (`src/content/missions.ts`),
 que valem até a meia-noite do aparelho. O sorteio usa a seed da família e a data, e não o gerador
 do jogo, então o mesmo dia dá as mesmas missões em qualquer aparelho com o mesmo save. A data vem
 da store, porque a engine não conhece o relógio do aparelho, e o sorteio acontece depois de
 simular o tempo fora, para que o jogo fechado não cumpra missões sozinho.
 
 Cada missão só aparece quando a família consegue cumpri-la, como Formatura, que pede alguém na
-faculdade ou no técnico, ou Chá de bebê, que pede lugar livre em casa, e conta só o que acontece
-depois que aparece. A recompensa vale de 1 a 3 meses da renda líquida na hora de pegar, ou a renda
-com 50% a mais por 1 ano do jogo; outro bônus soma 1 ano ao que falta. As recompensas são pequenas
+faculdade ou no técnico, Chá de bebê, que pede um casal na idade de ter filhos, ou Casório, que pede
+dois solteiros, e conta só o que acontece depois que aparece. Promoção (alguém subir de nível),
+Namoro (começar a namorar) e Reserva (guardar três meses de despesa) cabem numa família de uma
+pessoa só, para o começo ter o que cumprir. A recompensa vale de 1 a 3 meses da renda líquida na
+hora de pegar, ou a renda com 50% a mais por 1 ano do jogo; outro bônus soma 1 ano ao que falta. As
+recompensas são pequenas
 de propósito: ajudam, mas não substituem a renda. O bônus conta o tempo de jogo andando, então para
 nas pausas e nas escolhas, e o fim dele é um ponto de corte do relógio, como a virada do dia.
 Recompensas não pegas somem com as missões quando o dia vira. As regras ficam em
@@ -344,12 +371,15 @@ Os números ficam em `src/content/balance.ts` e foram ajustados com uma simulaç
 jogo (`npm run sim`). Um jogador automático (`src/sim/autoplay.ts`) namora quem aparece, casa no
 pedido quando o casamento cabe no dinheiro e tem até 4 filhos por casal; põe os filhos no colégio
 particular quando sobra renda depois de guardar um quarto dela, tenta a federal e paga a faculdade
-particular quando não passa; escolhe a vaga de maior salário, começa os cursos no ritmo normal
-quando a mensalidade cabe em 80% do salário da pessoa e deixa folga de R$ 500 na renda ou, com a
-renda curta, quando o dinheiro guardado paga a diferença até o fim do curso, para o curso mais caro
-quando a família entra no vermelho, e pega as recompensas das missões. Filhos e casamentos vêm
-primeiro, mas a estratégia guarda 3 meses de despesa e só tem mais um filho com folga de R$ 1 mil
-na renda, para não ir à falência; um casal sem filhos a 8 anos da idade limite não espera a folga.
+particular quando não passa; escolhe a vaga de maior salário, ou estuda para o concurso quando a
+nota esperada passa o corte do cargo mais alto que a formação permite, aceita toda proposta de
+emprego, e a pessoa sozinha na casa dos pais larga o emprego pelo concurso com a mesma nota;
+começa os cursos no ritmo normal quando a mensalidade cabe em 80% do salário da pessoa e deixa
+folga de R$ 500 na renda ou, com a renda curta, quando o dinheiro guardado paga a diferença até o
+fim do curso, para o curso mais caro quando a família entra no vermelho, e pega as recompensas das
+missões. Filhos e casamentos vêm primeiro, mas a estratégia guarda 3 meses de despesa e só tem mais
+um filho com folga de R$ 1 mil na renda, para não ir à falência; um casal sem filhos a 8 anos da
+idade limite não espera a folga.
 Enquanto mora de aluguel, financia uma moradia quando a parcela cabe no aluguel que deixa de
 pagar, e quita o financiamento antes de investir, porque os juros passam do que qualquer aluguel
 rende. O resto vai para o imóvel que se paga mais rápido, à vista; os de moradia contam o aluguel
@@ -357,9 +387,10 @@ que a família deixa de pagar morando neles. O dia das missões vira a cada hora
 hora por dia.
 
 Como o aluguel sobe a cada lugar, a estratégia também olha a moradia a mais. Ela casa quando o
-lugar de quem chega custa até um quarto da renda, ou o salário dessa pessoa. Mais um filho só vem
-quando o lugar dele e o de quem um dia vai casar com ele custam até 2% da renda, a metade disso a
-cada filho que o casal já tem, e esses lugares contam depois dos de quem ainda vai casar na
+lugar de quem chega custa até um quarto da renda, ou o salário dessa pessoa, e nunca com o saldo do
+mês no vermelho; sair da casa dos pais vale sempre, porque é o começo da família. Mais um filho só
+vem quando o lugar dele e o de quem um dia vai casar com ele custam até 1% da renda, a metade disso
+a cada filho que o casal já tem, e esses lugares contam depois dos de quem ainda vai casar na
 família. Os casais com menos filhos vêm primeiro, e entre eles os mais velhos. Sem isso, uma
 geração que nasce toda de uma vez ocupa os lugares, os filhos dela passam da idade de ter filhos
 esperando lugar para casar, e a família acaba em poucas horas.
@@ -369,7 +400,7 @@ A simulação confere nove limites (`src/sim/limits.ts`) e sai com erro se algum
 | Limite        | Valor                                                                        |
 | ------------- | ---------------------------------------------------------------------------- |
 | Números       | dinheiro e renda finitos e abaixo de 10^15                                   |
-| 1º imóvel     | a família compra o primeiro imóvel entre 6 e 20 minutos de jogo              |
+| 1º imóvel     | a família compra o primeiro imóvel entre 3 e 20 minutos de jogo              |
 | 10 imóveis    | chega a 10 imóveis entre 40 minutos e 2 horas                                |
 | 1º comercial  | compra o primeiro comercial depois de 1 hora e 10 minutos                    |
 | Crescimento   | a renda por mês no fim de cada hora fica entre 0,75 e 30 vezes a da anterior |
@@ -379,19 +410,20 @@ A simulação confere nove limites (`src/sim/limits.ts`) e sai com erro se algum
 | Volta ao jogo | 1 ano fora do jogo, o máximo, em menos de 200 ms                             |
 
 Os marcos substituem o antigo limite de ritmo (nunca mais de 2 minutos sem nada para comprar),
-que puxava o jogo para o fácil. O começo é apertado de propósito: uma pessoa só, que sobra de R$
-200 a R$ 900 por mês, junta um ano para o primeiro curso, que custa mais do que sobra, casa entre
-6 e 12 minutos de jogo e financia o primeiro kitnet logo depois, entre 6 e 14 minutos, quando o
-aluguel de duas pessoas passa da parcela. O primeiro filho vem perto dos 18 minutos, muitas vezes
-com o saldo do mês no vermelho por um tempo. Com as seeds de 1 a 4, a família tem de 10 a 25
-pessoas vivas e de R$ 80 mil a R$ 150 mil de renda por mês no fim da primeira hora, chega a 10
-imóveis entre 44 e 50 minutos e ao primeiro comercial entre 1 h 25 e 1 h 40, passa de 100 pessoas
-e de R$ 2 milhões por mês na segunda hora, e fica entre 95 e 120 depois das 3 horas, subindo e
-descendo à medida que as gerações nascem e morrem. O salto da renda entre a primeira e a segunda
-hora fica entre 20 e 27 vezes, porque a família sai de uma dezena para uma centena de pessoas; daí
-em diante a renda oscila. O save fica perto de 200 KB, cada segundo de jogo custa cerca de 1,3 ms,
-e o máximo de 1 ano fora do jogo, cerca de 25 ms. O CI roda uma versão de 1 hora com duas seeds
-(`tests/sim/balance.test.ts`), com os limites que já valem nesse tempo.
+que puxava o jogo para o fácil. O começo tem decisões desde o primeiro minuto: uma pessoa só, na
+casa dos pais, com o primeiro curso liberado, que custa mais do que sobra, e a aposta de largar o
+emprego para o concurso quando a nota é alta. Ela casa aos 3 ou 4 minutos de jogo, sai da casa dos
+pais e financia o primeiro kitnet logo depois, entre 4 e 12 minutos, quando o aluguel de duas
+pessoas passa da parcela. O primeiro filho vem entre 14 e 18 minutos, muitas vezes com o saldo do
+mês no vermelho por um tempo. Com as seeds de 1 a 4, a família tem de 11 a 19 pessoas vivas e de
+R$ 78 mil a R$ 157 mil de renda por mês no fim da primeira hora, chega a 10 imóveis entre 44 e 50
+minutos, passa de 100 pessoas e de R$ 1,4 milhão por mês na segunda hora, e fica entre 100 e 120
+depois das 3 horas, subindo e descendo à medida que as gerações nascem e morrem. O salto da renda
+entre a primeira e a segunda hora fica entre 15 e 23 vezes, porque a família sai de uma dezena
+para uma centena de pessoas; daí em diante a renda oscila. O save fica perto de 180 KB, cada
+segundo de jogo custa de 1 a 2 ms, e o máximo de 1 ano fora do jogo, de 20 a 40 ms. O CI roda uma
+versão de 1 hora com duas seeds (`tests/sim/balance.test.ts`), com os limites que já valem nesse
+tempo.
 
 ## Avatares
 

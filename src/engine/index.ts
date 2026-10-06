@@ -21,6 +21,7 @@ export { optionCount, suggestedPicks, type ChoicePick } from './choices'
 export { rollEnem } from './college'
 export {
   allowedCargos,
+  checkStudyForConcurso,
   concursoBase,
   expectedConcursoScore,
   highestCargo,
@@ -65,8 +66,11 @@ export {
 export {
   areaOffer,
   bestOffer,
+  betterCareers,
   canStudyForConcurso,
   formationCareer,
+  hasJobOffer,
+  membersWithJobOffer,
   offerSalary,
   rollJobOffers,
 } from './jobs'
@@ -104,6 +108,7 @@ export {
   initialMarket,
   isPropertyUnlocked,
   isRenting,
+  livesWithParents,
   lotsForSale,
   maintenanceCost,
   netRent,

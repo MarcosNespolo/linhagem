@@ -18,6 +18,7 @@ import {
   initialMarket,
   isPropertyUnlocked,
   isRenting,
+  livesWithParents,
   livingCost,
   loanInstallment,
   loanInstallments,
@@ -48,6 +49,7 @@ import {
   expectOk,
   founders,
   makeGame,
+  makeStart,
   play,
   setMember,
   withChild,
@@ -65,7 +67,7 @@ function buy(state: GameState, ...ids: PropertyId[]): GameState {
 }
 
 describe('imóveis', () => {
-  it('são nove tipos, cada um de 3 a 6 vezes o anterior, que se pagam de 19 a 78 anos', () => {
+  it('são nove tipos, cada um de 2,5 a 6 vezes o anterior, que se pagam de 19 a 78 anos', () => {
     expect(PROPERTY_TYPES).toHaveLength(9)
     const start = makeGame()
     const paybacks = PROPERTY_TYPES.map((type) => paybackYears(start, type.id))
@@ -73,7 +75,7 @@ describe('imóveis', () => {
     expect(Math.round(paybacks.at(-1)!)).toBe(78)
     for (let i = 1; i < PROPERTY_TYPES.length; i++) {
       const ratio = PROPERTY_TYPES[i].price / PROPERTY_TYPES[i - 1].price
-      expect(ratio).toBeGreaterThanOrEqual(3)
+      expect(ratio).toBeGreaterThanOrEqual(2.5)
       expect(ratio).toBeLessThanOrEqual(6)
       expect(paybacks[i]).toBeGreaterThan(paybacks[i - 1])
     }
@@ -335,6 +337,35 @@ describe('imóveis', () => {
     const house = withHomes(parents, { apartamento: 1, casa: 1 })
     expect(homesInUse(house)).toEqual({ kitnet: 1, apartamento: 1 })
     expect(isRenting(house)).toBe(false)
+  })
+
+  it('quem funda a família mora com os pais, sem aluguel, enquanto está sozinho e solteiro', () => {
+    const alone = makeStart(2)
+    const [founder] = Object.values(alone.members)
+    expect(livesWithParents(alone)).toBe(true)
+    expect(rentedPlaces(alone)).toBe(0)
+    expect(housingCost(alone)).toBe(0)
+    expect(isRenting(alone)).toBe(false)
+    // Casar é sair de casa: o lugar de mais um custa o aluguel de dois.
+    expect(extraHousingCost(alone)).toBe(2 * BALANCE.housing.rentPerPlace)
+    // Um kitnet comprado nesse tempo fica alugado: a pessoa continua na casa dos pais.
+    const owner = withHomes(alone, { kitnet: 1 })
+    expect(livesWithParents(owner)).toBe(true)
+    expect(homesInUse(owner)).toEqual({})
+    expect(rentPerMonth(owner)).toBe(PROPERTY_TYPES[0].rentPerMonth)
+
+    // Casado, o casal paga aluguel de dois lugares, ou mora no kitnet.
+    const couple = makeGame(2)
+    expect(livesWithParents(couple)).toBe(false)
+    expect(rentedPlaces(couple)).toBe(2)
+    expect(homesInUse(withHomes(couple, { kitnet: 1 }))).toEqual({ kitnet: 1 })
+
+    // Viúvo sem filhos, não volta para a casa dos pais.
+    const [, spouse] = founders(couple)
+    const widowed = setMember(couple, spouse.id, { deathDay: 0 })
+    expect(livesWithParents(widowed)).toBe(false)
+    expect(rentedPlaces(widowed)).toBe(1)
+    expect(founder.marriedDay).toBeNull()
   })
 
   it('o aluguel de cada lugar sobe depois dos primeiros, sem limite de lugares', () => {

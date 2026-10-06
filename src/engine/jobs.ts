@@ -8,8 +8,10 @@ import {
   type CareerRequirement,
 } from '../content/careers'
 import { DEGREES, degree, TECH_COURSES, techCourse } from '../content/schools'
-import type { Rng } from './rng'
-import type { CareerState, Formation, GameState, JobOffer, Member } from './types'
+import { isUnemployed } from './economy'
+import { ageOf } from './members'
+import { hashUnit, type Rng } from './rng'
+import type { CareerState, Formation, GameEvent, GameState, JobOffer, Member } from './types'
 
 const FORMATION_RANK: Record<Formation['level'], number> = { medio: 0, tecnico: 1, superior: 2 }
 const REQUIREMENT_RANK: Record<CareerRequirement, number> = {
@@ -55,6 +57,87 @@ export function rollJobOffers(rng: Rng, formation: Formation | null): JobOffer[]
   return offers
 }
 
+/** Sorteios da proposta por pessoa e dia: o de chegar uma e o de qual carreira. */
+const OFFER_ROLL = { day: 11, career: 12 }
+
+/**
+ * Carreiras de ensino médio que pagariam mais à pessoa no nível em que ela
+ * está, com a folga mínima. Vazio para quem não trabalha numa carreira dessas.
+ */
+export function betterCareers(member: Member): CareerId[] {
+  const career = member.career
+  if (!career || !MEDIO_CAREERS.includes(career.id)) return []
+  const current = careerLevel(career.id, career.level).salaryPerMonth
+  const floor = current * (1 + BALANCE.jobs.offers.minRaise)
+  return MEDIO_CAREERS.filter(
+    (id) => id !== career.id && careerLevel(id, career.level).salaryPerMonth >= floor,
+  )
+}
+
+/** A proposta ainda vale no dia. */
+export function hasJobOffer(member: Pick<Member, 'jobOffer'>, day: number): boolean {
+  return member.jobOffer !== null && day < member.jobOffer.until
+}
+
+/**
+ * Propostas do dia: enquanto a família é pequena, quem trabalha numa carreira
+ * de ensino médio, sem curso em andamento e sem proposta valendo, pode
+ * receber uma proposta de outra carreira dessas, no mesmo nível, com salário
+ * maior. O sorteio depende só da seed, do dia e da pessoa, sem gastar o
+ * gerador do jogo. A proposta fica esperando resposta por alguns meses, sem
+ * parar o relógio; quem não responde deixa passar. Altera o rascunho.
+ */
+export function processJobOffers(
+  draft: GameState,
+  events: GameEvent[],
+  living: readonly Member[],
+): void {
+  const { perYear, maxFamily, validMonths } = BALANCE.jobs.offers
+  const day = draft.clock.day
+  let alive = 0
+  for (const member of living) if (member.deathDay === null) alive += 1
+  for (const member of living) {
+    if (member.deathDay !== null) continue
+    if (member.jobOffer && day >= member.jobOffer.until) member.jobOffer = null
+    if (alive > maxFamily || member.jobOffer) continue
+    if (!member.career || member.course || isUnemployed(member, day)) continue
+    const age = ageOf(member, day)
+    if (age < BALANCE.adultAge || age >= BALANCE.retirementAge) continue
+    const id = Number(member.id.slice(1))
+    if (hashUnit(draft.seed, day, id, OFFER_ROLL.day) >= perYear / BALANCE.daysPerYear) continue
+    const options = betterCareers(member)
+    if (options.length === 0) continue
+    const pick = Math.floor(hashUnit(draft.seed, day, id, OFFER_ROLL.career) * options.length)
+    const careerId = options[pick]
+    const level = member.career.level
+    member.jobOffer = {
+      careerId,
+      level,
+      until: day + Math.round((validMonths * BALANCE.daysPerYear) / 12),
+    }
+    events.push({ type: 'jobOffered', day, memberId: member.id, careerId, level })
+  }
+}
+
+/** Quem tem proposta de emprego valendo hoje. */
+export function membersWithJobOffer(state: GameState): Member[] {
+  const day = state.clock.day
+  return Object.values(state.members).filter(
+    (member) => member.deathDay === null && hasJobOffer(member, day),
+  )
+}
+
+/** Aceita a proposta: troca a carreira, no mesmo nível, e zera o tempo nele. Altera o rascunho. */
+export function acceptJobOffer(member: Member, day: number): GameEvent {
+  const offer = member.jobOffer
+  if (!offer) throw new Error('Sem proposta para aceitar')
+  const { careerId, level } = offer
+  member.career = { id: careerId, level, levelSince: day }
+  member.jobOffer = null
+  member.course = null
+  return { type: 'changedJob', day, memberId: member.id, careerId, level }
+}
+
 /** Salário por mês de uma vaga, no nível de entrada. */
 export function offerSalary(offer: JobOffer): number {
   return careerLevel(offer.careerId, offer.level).salaryPerMonth
@@ -98,10 +181,13 @@ export function openFirstJobChoice(
 
 /**
  * Carreira de quem funda a família: uma das que pedem ensino médio, com os
- * anos de trabalho desde os 18 e as promoções que vêm só com o tempo.
+ * anos de trabalho desde jovem aprendiz (`founder.workSinceAge`) e as
+ * promoções que vêm só com o tempo. Aos 18, já tem tempo de casa para o
+ * primeiro curso.
  */
 export function rollFounderCareer(rng: Rng, birthDay: number, day: number): CareerState {
-  const yearsWorked = Math.max(0, (day - birthDay) / BALANCE.daysPerYear - BALANCE.adultAge)
+  const age = (day - birthDay) / BALANCE.daysPerYear
+  const yearsWorked = Math.max(0, age - BALANCE.founder.workSinceAge)
   return experiencedCareer({ careerId: rng.pick(MEDIO_CAREERS), level: 0 }, yearsWorked, day)
 }
 

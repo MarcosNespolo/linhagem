@@ -2,7 +2,7 @@
 
 import { Check, Gift, Zap } from 'lucide-react'
 import { BALANCE } from '@/content/balance'
-import { missionInfo } from '@/content/missions'
+import { missionInfo, MONEY_MISSIONS } from '@/content/missions'
 import {
   boostTicksLeft,
   incomeReward,
@@ -51,10 +51,9 @@ function MissionCard({ game, mission }: { game: GameState; mission: MissionState
   const info = missionInfo(mission.id)
   const done = isMissionDone(mission)
   const share = mission.goal > 0 ? Math.min(1, mission.progress / mission.goal) : 1
-  const progress =
-    mission.id === 'peDeMeia'
-      ? `${formatMoney(mission.progress)} de ${formatMoney(mission.goal)}`
-      : `${mission.progress} de ${mission.goal}`
+  const progress = MONEY_MISSIONS.includes(mission.id)
+    ? `${formatMoney(mission.progress)} de ${formatMoney(mission.goal)}`
+    : `${mission.progress} de ${mission.goal}`
   const reward =
     info.reward.kind === 'boost'
       ? `Renda ${boostLabel()} por ${formatGameSpan(BALANCE.missions.boost.years * BALANCE.daysPerYear, BALANCE.daysPerYear)} do jogo`

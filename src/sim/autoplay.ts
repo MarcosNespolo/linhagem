@@ -23,7 +23,7 @@
  * balanceamento usam.
  */
 import { BALANCE } from '../content/balance'
-import { careerLevel } from '../content/careers'
+import { careerLevel, concursoOf } from '../content/careers'
 import { type PropertyId, type PropertyType } from '../content/properties'
 import { degree } from '../content/schools'
 import {
@@ -35,10 +35,14 @@ import {
   claimableMissions,
   courseCandidates,
   courseOffer,
+  expectedConcursoScore,
   extraHousingCost,
   familyRates,
+  hasJobOffer,
+  highestCargo,
   incomeOf,
   isPropertyUnlocked,
+  livesWithParents,
   livingMembers,
   msToTicks,
   netRent,
@@ -227,14 +231,23 @@ function pick(choice: Choice, budget: Budget): number {
       if (chosen.path === 'faculdade') budget.left -= degree(chosen.degree).fee
       return best
     }
-    case 'firstJob':
+    case 'firstJob': {
+      // Com nota alta, o concurso vale mais que qualquer primeira vaga.
+      const member = budget.state.members[choice.memberId]
+      if (choice.concurso && member && worthStudying(member, budget.state.clock.day)) {
+        return choice.offers.length
+      }
+      return choice.suggested
+    }
     case 'concurso':
     case 'meet':
       return choice.suggested
     case 'propose': {
       // Casa quando o casamento cabe no dinheiro e o lugar de quem chega não
-      // custa mais que o salário dessa pessoa ou a parte da renda que a
-      // estratégia aceita pagar; senão, espera mais um ano.
+      // custa mais que o salário dessa pessoa nem que a parte da renda que a
+      // estratégia aceita pagar; senão, espera mais um ano. Perto do fim dos
+      // lugares do bairro, o aluguel de um lugar passa de qualquer salário, e
+      // é isso que segura a família.
       const { state } = budget
       const partner = state.members[choice.memberId]?.dating?.partner
       const salary = partner
@@ -242,7 +255,13 @@ function pick(choice: Choice, budget: Budget): number {
         : 0
       const extra =
         extraHousingCost(state, budget.joining + 1) - extraHousingCost(state, budget.joining)
-      if (budget.money < weddingCost() || extra > Math.max(salary, budget.housing)) {
+      // Sair da casa dos pais custa o aluguel do casal, e vale sempre: é o começo da família.
+      // No vermelho, ninguém casa: a família precisa primeiro voltar ao azul.
+      const leavingParents = livesWithParents(state)
+      if (
+        budget.money < weddingCost() ||
+        (!leavingParents && (budget.left < 0 || extra > Math.min(salary, budget.housing)))
+      ) {
         return PROPOSE_OPTIONS.wait
       }
       budget.money -= weddingCost()
@@ -250,6 +269,17 @@ function pick(choice: Choice, budget: Budget): number {
       return PROPOSE_OPTIONS.marry
     }
   }
+}
+
+/**
+ * Estudar para concurso compensa quando a nota esperada passa do corte do
+ * cargo mais alto que a formação permite mesmo com o sorteio contra: técnico
+ * federal para quem tem o médio, auditoria para quem tem faculdade. Esses
+ * cargos pagam mais que qualquer primeira vaga.
+ */
+function worthStudying(member: Member, day: number): boolean {
+  const target = highestCargo(member)
+  return expectedConcursoScore(member, day) >= concursoOf(target).cutoff + BALANCE.concurso.spread
 }
 
 /** Meses de despesa que a estratégia guarda antes de gastar, para não ir ao vermelho. */
@@ -279,7 +309,7 @@ const COURSE_INCOME_SHARE = 0.8
  * segundo: cada filho a mais do casal aceita a metade.
  */
 const MARRIAGE_SHARE = 0.25
-const CHILD_SHARE = 0.02
+const CHILD_SHARE = 0.01
 
 /**
  * Gasta o dinheiro na ordem da estratégia: recompensas das missões, cursos,
@@ -294,6 +324,22 @@ export function spend(play: Autoplay): void {
   if (play.state.missions?.date !== date) act(play, { type: 'drawMissions', date })
   for (const mission of claimableMissions(play.state)) {
     if (act(play, { type: 'claimMission', missionId: mission.id })) play.counters.rewards += 1
+  }
+
+  // Proposta de emprego: aceita, porque paga mais no mesmo nível.
+  for (const member of livingMembers(play.state)) {
+    if (hasJobOffer(member, play.state.clock.day)) {
+      act(play, { type: 'answerJobOffer', memberId: member.id, accept: true })
+    }
+  }
+
+  // Sozinho na casa dos pais, com nota alta, quem funda a família larga o emprego e estuda.
+  const alone = livingMembers(play.state)
+  if (alone.length === 1 && livesWithParents(play.state, 1)) {
+    const [founder] = alone
+    if (founder.career && worthStudying(founder, play.state.clock.day)) {
+      act(play, { type: 'studyForConcurso', memberId: founder.id })
+    }
   }
 
   const reserve = () => RESERVE_MONTHS * familyRates(play.state).expense

@@ -1,0 +1,609 @@
+{
+  "schemaVersion": 18,
+  "seed": 20261003,
+  "rngState": 4051887211,
+  "familyName": "Exemplo",
+  "startDate": "2026-10-03",
+  "clock": {
+    "day": 8288,
+    "tickOfDay": 0,
+    "paused": false
+  },
+  "lastSimulatedAt": 1760000000000,
+  "money": 16174761.865733515,
+  "debtSince": null,
+  "bankruptDay": null,
+  "nextMemberId": 5,
+  "choices": [
+    {
+      "type": "propose",
+      "memberId": "m3",
+      "day": 8288,
+      "suggested": 0
+    }
+  ],
+  "properties": {
+    "kitnet": 5,
+    "apartamento": 1
+  },
+  "market": {
+    "sala": 2,
+    "loja": 2,
+    "galpao": 2,
+    "predio": 2,
+    "fazenda": 2,
+    "shopping": 2
+  },
+  "lots": {
+    "kitnet": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "apartamento": [
+      0
+    ]
+  },
+  "vacancies": {
+    "kitnet": [
+      8337
+    ]
+  },
+  "loans": [
+    {
+      "id": 1,
+      "propertyId": "kitnet",
+      "balance": 125615.28033699394,
+      "installment": 1409.3902509691004,
+      "monthsLeft": 223,
+      "since": 7760
+    }
+  ],
+  "missions": {
+    "date": "2026-10-04",
+    "list": [
+      {
+        "id": "promocao",
+        "goal": 1,
+        "progress": 0,
+        "base": 0,
+        "claimed": false
+      },
+      {
+        "id": "investidor",
+        "goal": 3,
+        "progress": 3,
+        "base": 0,
+        "claimed": true
+      },
+      {
+        "id": "carteira",
+        "goal": 2,
+        "progress": 1,
+        "base": 0,
+        "claimed": false
+      }
+    ]
+  },
+  "boosts": {
+    "incomeUntil": 10189200000
+  },
+  "stats": {
+    "simulatedMs": 1362411.3150684931,
+    "totalEarned": 1641432.5,
+    "totalSpent": 3466670.6342664766,
+    "rentEarned": 28282.5,
+    "interestPaid": 21574.914603468565,
+    "archived": 0
+  },
+  "log": [
+    {
+      "type": "datingStarted",
+      "day": 135,
+      "memberId": "m1",
+      "partnerName": "Camila"
+    },
+    {
+      "type": "promoted",
+      "day": 365,
+      "memberId": "m1",
+      "careerId": "construcao",
+      "level": 1
+    },
+    {
+      "type": "married",
+      "day": 500,
+      "memberId": "m1",
+      "partnerId": "m2"
+    },
+    {
+      "type": "jobOffered",
+      "day": 503,
+      "memberId": "m2",
+      "careerId": "transporte",
+      "level": 0
+    },
+    {
+      "type": "born",
+      "day": 1095,
+      "memberId": "m3"
+    },
+    {
+      "type": "schoolStarted",
+      "day": 1186,
+      "memberId": "m3",
+      "stage": "creche",
+      "network": "casa"
+    },
+    {
+      "type": "promoted",
+      "day": 1460,
+      "memberId": "m2",
+      "careerId": "gastronomia",
+      "level": 1
+    },
+    {
+      "type": "jobOffered",
+      "day": 1586,
+      "memberId": "m1",
+      "careerId": "transporte",
+      "level": 1
+    },
+    {
+      "type": "born",
+      "day": 1825,
+      "memberId": "m4"
+    },
+    {
+      "type": "schoolStarted",
+      "day": 1916,
+      "memberId": "m4",
+      "stage": "creche",
+      "network": "casa"
+    },
+    {
+      "type": "schoolStarted",
+      "day": 2282,
+      "memberId": "m3",
+      "stage": "escola",
+      "network": "publica"
+    },
+    {
+      "type": "schoolStarted",
+      "day": 3012,
+      "memberId": "m4",
+      "stage": "escola",
+      "network": "publica"
+    },
+    {
+      "type": "jobOffered",
+      "day": 3596,
+      "memberId": "m2",
+      "careerId": "construcao",
+      "level": 1
+    },
+    {
+      "type": "jobOffered",
+      "day": 3631,
+      "memberId": "m1",
+      "careerId": "transporte",
+      "level": 1
+    },
+    {
+      "type": "jobOffered",
+      "day": 4587,
+      "memberId": "m1",
+      "careerId": "transporte",
+      "level": 1
+    },
+    {
+      "type": "jobOffered",
+      "day": 5129,
+      "memberId": "m2",
+      "careerId": "construcao",
+      "level": 1
+    },
+    {
+      "type": "mishap",
+      "day": 5133,
+      "memberId": "m1",
+      "kind": "surgery",
+      "cost": 41700
+    },
+    {
+      "type": "schoolStarted",
+      "day": 6299,
+      "memberId": "m3",
+      "stage": "medio",
+      "network": "federal",
+      "course": "informatica"
+    },
+    {
+      "type": "jobOffered",
+      "day": 6602,
+      "memberId": "m1",
+      "careerId": "transporte",
+      "level": 1
+    },
+    {
+      "type": "schoolStarted",
+      "day": 7030,
+      "memberId": "m4",
+      "stage": "medio",
+      "network": "federal",
+      "course": "enfermagem"
+    },
+    {
+      "type": "jobOffered",
+      "day": 7102,
+      "memberId": "m2",
+      "careerId": "construcao",
+      "level": 1
+    },
+    {
+      "type": "schoolFinished",
+      "day": 7395,
+      "memberId": "m3",
+      "formation": {
+        "level": "tecnico",
+        "course": "informatica"
+      }
+    },
+    {
+      "type": "enem",
+      "day": 7395,
+      "memberId": "m3",
+      "score": 680
+    },
+    {
+      "type": "schoolStarted",
+      "day": 7395,
+      "memberId": "m3",
+      "stage": "faculdade",
+      "network": "particular",
+      "degree": "direito"
+    },
+    {
+      "type": "jobOffered",
+      "day": 7652,
+      "memberId": "m1",
+      "careerId": "transporte",
+      "level": 1
+    },
+    {
+      "type": "becameAdult",
+      "day": 7665,
+      "memberId": "m3"
+    },
+    {
+      "type": "propertyBought",
+      "day": 7760,
+      "propertyId": "kitnet",
+      "count": 1,
+      "financed": true
+    },
+    {
+      "type": "datingStarted",
+      "day": 7923,
+      "memberId": "m3",
+      "partnerName": "Diego"
+    },
+    {
+      "type": "schoolFinished",
+      "day": 8126,
+      "memberId": "m4",
+      "formation": {
+        "level": "tecnico",
+        "course": "enfermagem"
+      }
+    },
+    {
+      "type": "enem",
+      "day": 8126,
+      "memberId": "m4",
+      "score": 616
+    },
+    {
+      "type": "concursoStarted",
+      "day": 8126,
+      "memberId": "m4"
+    },
+    {
+      "type": "propertyBought",
+      "day": 8126,
+      "propertyId": "kitnet",
+      "count": 2
+    },
+    {
+      "type": "propertyBought",
+      "day": 8126,
+      "propertyId": "apartamento",
+      "count": 1
+    },
+    {
+      "type": "propertyBought",
+      "day": 8126,
+      "propertyId": "kitnet",
+      "count": 3
+    },
+    {
+      "type": "propertyBought",
+      "day": 8126,
+      "propertyId": "kitnet",
+      "count": 4
+    },
+    {
+      "type": "propertyBought",
+      "day": 8126,
+      "propertyId": "kitnet",
+      "count": 5
+    },
+    {
+      "type": "concurso",
+      "day": 8199,
+      "memberId": "m4",
+      "score": 660,
+      "careerId": "estado"
+    },
+    {
+      "type": "firstJob",
+      "day": 8199,
+      "memberId": "m4",
+      "careerId": "estado",
+      "level": 0
+    }
+  ],
+  "members": {
+    "m1": {
+      "id": "m1",
+      "firstName": "Levi",
+      "gender": "m",
+      "birthDay": -6808,
+      "deathDay": null,
+      "lifespan": 75,
+      "generation": 0,
+      "origin": "founder",
+      "parentIds": [],
+      "partnerId": "m2",
+      "marriedDay": 500,
+      "dating": null,
+      "career": {
+        "id": "construcao",
+        "level": 1,
+        "levelSince": 365
+      },
+      "course": {
+        "since": 8126,
+        "until": 8856,
+        "dedicated": false,
+        "fee": 2100
+      },
+      "unemployedUntil": null,
+      "concurso": null,
+      "jobOffer": null,
+      "lastChildDay": 1825,
+      "traits": [],
+      "appearance": {
+        "skin": 5,
+        "hair": 1,
+        "eyes": 1,
+        "curl": 1,
+        "style": 640,
+        "freckles": false,
+        "glassesFrom": 25,
+        "beard": false,
+        "balding": false
+      },
+      "avatarSeed": "jaz8qh",
+      "education": {
+        "school": null,
+        "points": 0,
+        "past": {},
+        "formation": {
+          "level": "medio"
+        },
+        "enem": null,
+        "tutorSince": null
+      },
+      "aptitude": 569
+    },
+    "m2": {
+      "id": "m2",
+      "firstName": "Camila",
+      "gender": "f",
+      "birthDay": -7446,
+      "deathDay": null,
+      "lifespan": 77,
+      "generation": 0,
+      "origin": "married",
+      "parentIds": [],
+      "partnerId": "m1",
+      "marriedDay": 500,
+      "dating": null,
+      "career": {
+        "id": "gastronomia",
+        "level": 1,
+        "levelSince": 1460
+      },
+      "course": {
+        "since": 8288,
+        "until": 8653,
+        "dedicated": true,
+        "fee": 3800
+      },
+      "unemployedUntil": null,
+      "concurso": null,
+      "jobOffer": null,
+      "lastChildDay": 1825,
+      "traits": [],
+      "appearance": {
+        "skin": 7,
+        "hair": 1,
+        "eyes": 1,
+        "curl": 2,
+        "style": 39,
+        "freckles": false,
+        "glassesFrom": 41,
+        "beard": false,
+        "balding": false
+      },
+      "avatarSeed": "8jncex",
+      "education": {
+        "school": null,
+        "points": 0,
+        "past": {},
+        "formation": {
+          "level": "medio"
+        },
+        "enem": null,
+        "tutorSince": null
+      },
+      "aptitude": 525
+    },
+    "m3": {
+      "id": "m3",
+      "firstName": "Olívia",
+      "gender": "f",
+      "birthDay": 1095,
+      "deathDay": null,
+      "lifespan": 88,
+      "generation": 1,
+      "origin": "born",
+      "parentIds": [
+        "m1",
+        "m2"
+      ],
+      "partnerId": null,
+      "marriedDay": null,
+      "dating": {
+        "partner": {
+          "firstName": "Diego",
+          "gender": "m",
+          "birthDay": 1065,
+          "lifespan": 91,
+          "formation": {
+            "level": "medio"
+          },
+          "career": {
+            "id": "tecnicoFederal",
+            "level": 0,
+            "levelSince": 7635
+          },
+          "aptitude": 482,
+          "appearance": {
+            "skin": 3,
+            "hair": 0,
+            "eyes": 0,
+            "curl": 2,
+            "style": 763,
+            "freckles": false,
+            "glassesFrom": 19,
+            "beard": true,
+            "balding": true
+          },
+          "avatarSeed": "z2ska4"
+        },
+        "since": 7923,
+        "askDay": 8288
+      },
+      "career": null,
+      "course": null,
+      "unemployedUntil": null,
+      "concurso": null,
+      "jobOffer": null,
+      "lastChildDay": null,
+      "traits": [],
+      "appearance": {
+        "skin": 7,
+        "hair": 1,
+        "eyes": 1,
+        "curl": 1,
+        "style": 790,
+        "freckles": false,
+        "glassesFrom": 27,
+        "beard": false,
+        "balding": false
+      },
+      "avatarSeed": "bilw2w",
+      "education": {
+        "school": {
+          "stage": "faculdade",
+          "network": "particular",
+          "degree": "direito",
+          "yearsLeft": 3
+        },
+        "points": 75,
+        "past": {
+          "creche": "casa",
+          "escola": "publica",
+          "medio": "federal"
+        },
+        "formation": {
+          "level": "tecnico",
+          "course": "informatica"
+        },
+        "enem": 680,
+        "tutorSince": null
+      },
+      "aptitude": 559
+    },
+    "m4": {
+      "id": "m4",
+      "firstName": "Natália",
+      "gender": "f",
+      "birthDay": 1825,
+      "deathDay": null,
+      "lifespan": 79,
+      "generation": 1,
+      "origin": "born",
+      "parentIds": [
+        "m1",
+        "m2"
+      ],
+      "partnerId": null,
+      "marriedDay": null,
+      "dating": null,
+      "career": {
+        "id": "estado",
+        "level": 0,
+        "levelSince": 8199
+      },
+      "course": null,
+      "unemployedUntil": null,
+      "concurso": null,
+      "jobOffer": null,
+      "lastChildDay": null,
+      "traits": [],
+      "appearance": {
+        "skin": 5,
+        "hair": 1,
+        "eyes": 1,
+        "curl": 1,
+        "style": 450,
+        "freckles": false,
+        "glassesFrom": null,
+        "beard": false,
+        "balding": false
+      },
+      "avatarSeed": "mfh4it",
+      "education": {
+        "school": null,
+        "points": 85.01369863013699,
+        "past": {
+          "creche": "casa",
+          "escola": "publica",
+          "medio": "federal"
+        },
+        "formation": {
+          "level": "tecnico",
+          "course": "enfermagem"
+        },
+        "enem": 616,
+        "tutorSince": null
+      },
+      "aptitude": 528
+    }
+  }
+}
