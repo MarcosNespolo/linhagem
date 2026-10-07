@@ -324,5 +324,11 @@ export const BALANCE = {
     technical: { years: 2, fee: 600 },
     /** Cursinho: um ano, com mensalidade, e pontos que somam na nota do ENEM seguinte. */
     prep: { years: 1, fee: 800, points: 30 },
+    /**
+     * Quem já trabalha estuda à noite, sem largar o emprego, só nas
+     * particulares (as federais são em tempo integral): a faculdade e o técnico
+     * noturnos duram `extraYears` a mais.
+     */
+    night: { extraYears: 1 },
   },
 } as const

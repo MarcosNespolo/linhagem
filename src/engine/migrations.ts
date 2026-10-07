@@ -8,7 +8,7 @@ import { ageInYears, lastDayOfYear } from './time'
 import type { GameState } from './types'
 
 /** Versão atual do formato do save. Sobe a cada migração nova. */
-export const CURRENT_SCHEMA_VERSION = 18
+export const CURRENT_SCHEMA_VERSION = 19
 
 export type SaveErrorCode = 'corrupt' | 'futureVersion' | 'missingMigration'
 
@@ -449,6 +449,14 @@ const toVersion18: Migration = (save) => {
 }
 
 /**
+ * Versão 19: o jogador escolhe onde a família mora, e todos os imóveis de
+ * moradia começam no automático, como antes. Voltar a estudar trabalhando,
+ * mudar de carreira e a escolha de quem se forma são regras do jogo, sem
+ * campo novo no save.
+ */
+const toVersion19: Migration = (save) => ({ ...save, homes: { live: {}, rent: {} } })
+
+/**
  * Migrações, indexadas pela versão de origem. São sempre aditivas: criam
  * campos novos com valores padrão e nunca apagam dados do jogador; uma troca
  * de unidade, como a do dinheiro na versão 3, converte o valor sem perder
@@ -474,6 +482,7 @@ export const MIGRATIONS: Readonly<Record<number, Migration>> = {
   15: toVersion16,
   16: toVersion17,
   17: toVersion18,
+  18: toVersion19,
 }
 
 /** Valida um save lido de JSON e o leva até a versão atual. */
@@ -522,6 +531,9 @@ function assertGameState(save: RawSave): asserts save is RawSave & GameState {
     Array.isArray(save.choices) &&
     isRecord(save.properties) &&
     isRecord(save.vacancies) &&
+    isRecord(save.homes) &&
+    isRecord(save.homes.live) &&
+    isRecord(save.homes.rent) &&
     Array.isArray(save.loans) &&
     (save.missions === null || isRecord(save.missions)) &&
     isRecord(save.boosts) &&

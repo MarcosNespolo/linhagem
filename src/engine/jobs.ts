@@ -4,14 +4,27 @@ import {
   getCareer,
   MEDIO_CAREERS,
   PUBLIC_MEDIO_CAREERS,
+  topLevel,
   type CareerId,
   type CareerRequirement,
 } from '../content/careers'
 import { DEGREES, degree, TECH_COURSES, techCourse } from '../content/schools'
-import { isUnemployed } from './economy'
-import { ageOf } from './members'
+import { isUnemployed, salaryPerMonth } from './economy'
+import { refuse, type Refusal } from './errors'
+import { ageOf, isAlive } from './members'
 import { hashUnit, type Rng } from './rng'
-import type { CareerState, Formation, GameEvent, GameState, JobOffer, Member } from './types'
+import type {
+  CareerState,
+  Choice,
+  Formation,
+  GameEvent,
+  GameState,
+  JobOffer,
+  Member,
+  MemberId,
+} from './types'
+
+type GraduationChoice = Extract<Choice, { type: 'graduation' }>
 
 const FORMATION_RANK: Record<Formation['level'], number> = { medio: 0, tecnico: 1, superior: 2 }
 const REQUIREMENT_RANK: Record<CareerRequirement, number> = {
@@ -136,6 +149,107 @@ export function acceptJobOffer(member: Member, day: number): GameEvent {
   member.jobOffer = null
   member.course = null
   return { type: 'changedJob', day, memberId: member.id, careerId, level }
+}
+
+/**
+ * Começa do zero numa vaga: a carreira nova, no nível de entrada, com o tempo
+ * no nível contando de hoje. O curso em andamento para, a proposta que
+ * esperava resposta cai e quem estava desempregado volta a trabalhar. Na
+ * mesma carreira, um nível acima, é uma promoção. Altera o rascunho.
+ */
+export function startCareer(member: Member, offer: JobOffer, day: number): GameEvent {
+  const same = member.career?.id === offer.careerId
+  const { careerId, level } = offer
+  member.career = { id: careerId, level, levelSince: day }
+  member.course = null
+  member.jobOffer = null
+  member.unemployedUntil = null
+  return same
+    ? { type: 'promoted', day, memberId: member.id, careerId, level }
+    : { type: 'startedOver', day, memberId: member.id, careerId, level }
+}
+
+/** Salário por mês do topo da carreira. */
+export function topSalary(careerId: CareerId): number {
+  return careerLevel(careerId, topLevel(careerId)).salaryPerMonth
+}
+
+/**
+ * Carreiras em que a pessoa pode recomeçar do zero: as de ensino médio, para
+ * qualquer formação, e a da área da formação, um nível acima quando a
+ * formação passa da que a carreira pede. Fica de fora a carreira de hoje; as
+ * do serviço público pedem concurso. Da que paga mais no topo à que paga
+ * menos.
+ */
+export function careerOptions(member: Pick<Member, 'career' | 'education'>): JobOffer[] {
+  const area = areaOffer(member.education.formation)
+  const offers: JobOffer[] = area ? [area] : []
+  for (const careerId of MEDIO_CAREERS) {
+    if (careerId !== area?.careerId) offers.push({ careerId, level: 0 })
+  }
+  return offers
+    .filter((offer) => offer.careerId !== member.career?.id)
+    .sort(
+      (a, b) => topSalary(b.careerId) - topSalary(a.careerId) || offerSalary(b) - offerSalary(a),
+    )
+}
+
+export type CareerChangeCheck = { ok: true; offer: JobOffer } | Refusal
+
+/**
+ * Diz se a pessoa pode mudar para a carreira e em que vaga entra: viva,
+ * trabalhando (antes da aposentadoria), sem escolha aberta e numa carreira
+ * que a formação permite. Quem estuda à noite continua estudando.
+ */
+export function checkChangeCareer(
+  state: GameState,
+  memberId: MemberId,
+  careerId: CareerId,
+): CareerChangeCheck {
+  const member = state.members[memberId]
+  if (!member) return refuse('memberNotFound')
+  if (!isAlive(member)) return refuse('memberDeceased')
+  if (!member.career || ageOf(member, state.clock.day) >= BALANCE.retirementAge) {
+    return refuse('notWorking')
+  }
+  if (state.choices.some((choice) => choice.memberId === memberId)) return refuse('choiceOpen')
+  const offer = careerOptions(member).find((option) => option.careerId === careerId)
+  if (!offer) return refuse('careerNotAllowed')
+  return { ok: true, offer }
+}
+
+/** Opções da escolha de quem se forma trabalhando. */
+export const GRADUATION_OPTIONS = { stay: 0, start: 1 } as const
+
+/**
+ * Quem trabalha e se formou estudando à noite ganha a escolha de continuar no
+ * emprego ou começar do zero na carreira da área do curso que terminou
+ * (`formation`), quando ela é outra carreira ou a mesma num nível acima do de
+ * hoje. A sugestão é a que paga mais agora. Altera o rascunho.
+ */
+export function openGraduationChoice(draft: GameState, member: Member, formation: Formation): void {
+  const career = member.career
+  const offer = areaOffer(formation)
+  if (!career || !offer || ageOf(member, draft.clock.day) >= BALANCE.retirementAge) return
+  if (offer.careerId === career.id && offer.level <= career.level) return
+  const start = offerSalary(offer) > salaryPerMonth(member)
+  draft.choices.push({
+    type: 'graduation',
+    memberId: member.id,
+    day: draft.clock.day,
+    offer,
+    suggested: start ? GRADUATION_OPTIONS.start : GRADUATION_OPTIONS.stay,
+  })
+}
+
+/** Aplica no rascunho a resposta de quem se formou: começar na área ou continuar no emprego. */
+export function applyGraduationPick(
+  draft: GameState,
+  choice: GraduationChoice,
+  option: number,
+): GameEvent[] {
+  if (option !== GRADUATION_OPTIONS.start) return []
+  return [startCareer(draft.members[choice.memberId], choice.offer, draft.clock.day)]
 }
 
 /** Salário por mês de uma vaga, no nível de entrada. */

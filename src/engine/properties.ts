@@ -10,7 +10,7 @@ import { refuse, type Refusal } from './errors'
 import { installmentCap, loanInstallment, loanInstallments, openLoan } from './financing'
 import { livingCount } from './members'
 import { hashUnit } from './rng'
-import type { GameEvent, GameState } from './types'
+import type { GameEvent, GameState, HomeChoice, HomeUse } from './types'
 
 const { priceGrowth, transferTax, maintenanceShare, vacancy, financing } = BALANCE.properties
 
@@ -232,15 +232,48 @@ function placesNeeded(state: GameState, living: number): number {
   return livesWithParents(state, living) ? 0 : living
 }
 
-/** A família ainda mora de aluguel: os imóveis dela não têm lugar para todos. */
+/** A família ainda mora de aluguel: os imóveis em que ela mora não têm lugar para todos. */
 export function isRenting(state: GameState, living: number = livingCount(state)): boolean {
-  return ownedPlaces(state) < placesNeeded(state, living)
+  return rentedPlaces(state, living) > 0
+}
+
+/** A escolha de moradia de quem ainda não tirou nenhum imóvel do automático. */
+export function emptyHomeChoice(): HomeChoice {
+  return { live: {}, rent: {} }
+}
+
+/** Uso que o jogador escolheu para o lote de moradia: morar sempre, automático ou alugar sempre. */
+export function homeUse(state: GameState, id: PropertyId, lot: number): HomeUse {
+  if (state.homes.live[id]?.includes(lot)) return 'live'
+  if (state.homes.rent[id]?.includes(lot)) return 'rent'
+  return 'auto'
+}
+
+/** A escolha de moradia com o lote no uso pedido. Não altera a original. */
+export function withHomeUse(
+  homes: HomeChoice,
+  id: PropertyId,
+  lot: number,
+  use: HomeUse,
+): HomeChoice {
+  const without = (lists: HomeChoice['live'], add: boolean) => {
+    const lots = (lists[id] ?? []).filter((other) => other !== lot)
+    if (add) lots.push(lot)
+    const next = { ...lists }
+    if (lots.length > 0) next[id] = lots.sort((a, b) => a - b)
+    else delete next[id]
+    return next
+  }
+  return { live: without(homes.live, use === 'live'), rent: without(homes.rent, use === 'rent') }
 }
 
 /**
- * Imóveis de moradia em que a família mora, por tipo: os que perdem menos
- * aluguel por lugar primeiro (kitnets, depois apartamentos e casas), até caber
- * todo mundo. Os outros ficam alugados e rendem.
+ * Imóveis de moradia em que a família mora, por tipo. Primeiro os que o
+ * jogador escolheu para morar, todos, enquanto alguém precisa de lugar;
+ * depois, se ainda falta lugar, os do automático, a começar pelos que perdem
+ * menos aluguel por lugar (kitnets, depois apartamentos e casas), até caber
+ * todo mundo. Os que o jogador escolheu alugar e os que sobram ficam alugados
+ * e rendem.
  */
 export function homesInUse(
   state: GameState,
@@ -248,19 +281,69 @@ export function homesInUse(
 ): Partial<Record<PropertyId, number>> {
   const used: Partial<Record<PropertyId, number>> = {}
   let need = placesNeeded(state, living)
+  if (need <= 0) return used
+  const { live, rent } = state.homes
+  for (const type of HOME_TYPES) {
+    const chosen = live[type.id]?.length ?? 0
+    if (chosen === 0) continue
+    used[type.id] = chosen
+    need -= chosen * type.home!.places
+  }
   for (const type of HOME_TYPES) {
     if (need <= 0) break
-    const units = Math.min(ownedCount(state, type.id), Math.ceil(need / type.home!.places))
-    if (units === 0) continue
-    used[type.id] = units
+    const free =
+      ownedCount(state, type.id) - (live[type.id]?.length ?? 0) - (rent[type.id]?.length ?? 0)
+    const units = Math.min(free, Math.ceil(need / type.home!.places))
+    if (units <= 0) continue
+    used[type.id] = (used[type.id] ?? 0) + units
     need -= units * type.home!.places
   }
   return used
 }
 
-/** Lugares alugados: os de quem não cabe nos imóveis de moradia da família, sem limite. */
+/**
+ * Lotes do tipo em que a família mora: os que o jogador escolheu para morar e,
+ * do automático, os primeiros que ela tem.
+ */
+export function homeLots(
+  state: GameState,
+  id: PropertyId,
+  living: number = livingCount(state),
+): number[] {
+  const units = homesInUse(state, living)[id] ?? 0
+  if (units === 0) return []
+  const live = state.homes.live[id] ?? []
+  const rent = state.homes.rent[id] ?? []
+  const auto = ownedLots(state, id).filter((lot) => !live.includes(lot) && !rent.includes(lot))
+  return [...live, ...auto.slice(0, units - live.length)].sort((a, b) => a - b)
+}
+
+/** Lugares nos imóveis em que a família mora. */
+export function placesInUse(state: GameState, living: number = livingCount(state)): number {
+  const used = homesInUse(state, living)
+  let places = 0
+  for (const type of HOME_TYPES) places += (used[type.id] ?? 0) * type.home!.places
+  return places
+}
+
+/** Lugares alugados: os de quem não cabe nos imóveis em que a família mora, sem limite. */
 export function rentedPlaces(state: GameState, living: number = livingCount(state)): number {
-  return Math.max(0, placesNeeded(state, living) - ownedPlaces(state))
+  const need = placesNeeded(state, living)
+  if (need <= 0) return 0
+  return Math.max(0, need - placesInUse(state, living))
+}
+
+/** Diz se o jogador pode escolher o uso do lote: um imóvel de moradia da família. */
+export function checkHomeUse(
+  state: GameState,
+  id: PropertyId,
+  lot: number,
+): { ok: true } | Refusal {
+  if (!(PROPERTY_IDS as readonly string[]).includes(id) || !propertyType(id).home) {
+    return refuse('propertyNotFound')
+  }
+  if (!ownedLots(state, id).includes(lot)) return refuse('lotNotOwned')
+  return { ok: true }
 }
 
 /**

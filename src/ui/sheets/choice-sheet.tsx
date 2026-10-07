@@ -15,11 +15,13 @@ import {
 } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { BALANCE } from '@/content/balance'
-import { careerLevel, concursoOf, getCareer } from '@/content/careers'
+import { careerLevel, concursoOf, getCareer, isPublicCareer, topLevel } from '@/content/careers'
 import { degree, DEGREES, techCourseName } from '@/content/schools'
 import {
   allowedCargos,
   calendarDate,
+  classesStartDay,
+  GRADUATION_OPTIONS,
   highestCargo,
   homeCareCost,
   homeCaregiver,
@@ -28,6 +30,8 @@ import {
   offerSalary,
   PROPOSE_OPTIONS,
   retiredGrandparents,
+  salaryPerMonth,
+  topSalary,
   schoolScore,
   stageFee,
   stagePoints,
@@ -63,6 +67,7 @@ type PathChoice = Extract<Choice, { type: 'afterSchool' }>
 type ConcursoChoice = Extract<Choice, { type: 'concurso' }>
 type MeetChoice = Extract<Choice, { type: 'meet' }>
 type ProposeChoice = Extract<Choice, { type: 'propose' }>
+type GraduationChoice = Extract<Choice, { type: 'graduation' }>
 
 /** Uma escolha por tipo e pessoa: trabalhar depois do médio abre a do emprego para a mesma pessoa. */
 const keyOf = (choice: Choice) => `${choice.type}:${choice.memberId}`
@@ -111,6 +116,8 @@ export function ChoiceSheet({ game, onHide }: { game: GameState; onHide: () => v
               return <MeetChoiceCard key={key} {...common} choice={choice} />
             case 'propose':
               return <ProposeChoiceCard key={key} {...common} choice={choice} />
+            case 'graduation':
+              return <GraduationChoiceCard key={key} {...common} choice={choice} />
           }
         })}
       </div>
@@ -160,7 +167,11 @@ function sheetTitle(game: GameState): string {
   const love = count('meet') + count('propose')
   if (love === choices.length) return count('meet') === 0 ? 'Pedido de casamento' : 'Namoro'
   const jobs = count('firstJob')
-  if (count('afterSchool') === choices.length) return 'Depois do ensino médio'
+  if (count('graduation') === choices.length) return 'Formatura'
+  if (count('afterSchool') === choices.length) {
+    const returning = choices.every((choice) => game.members[choice.memberId]?.career)
+    return returning ? 'Voltar a estudar' : 'Depois do ensino médio'
+  }
   if (count('concurso') === choices.length) return 'Resultado do concurso'
   if (count('school') + count('afterSchool') === choices.length) {
     return `Matrículas de ${calendarDate(game.startDate, game.clock.day).slice(0, 4)}`
@@ -404,6 +415,9 @@ function describeOption(
 
 type PathGroup = 'federal' | 'particular' | 'tecnico' | 'cursinho' | 'trabalho'
 
+/** Anos a mais da faculdade e do técnico à noite. */
+const night = BALANCE.college.night.extraYears
+
 const PATH_GROUPS: PathGroup[] = ['federal', 'particular', 'tecnico', 'cursinho', 'trabalho']
 
 function groupOf(option: PathOption): PathGroup {
@@ -427,13 +441,26 @@ function PathChoiceCard({
   if (!member) return null
   const current = choice.options[selected]
   const currentGroup = current ? groupOf(current) : null
+  // Quem já trabalha estuda à noite, sem largar o emprego, e as aulas começam em janeiro.
+  const returning = member.career !== null
+  const start = formatMonthYear(calendarDate(game.startDate, classesStartDay(game)), 'short')
   return (
     <ChoiceCard
       game={game}
       member={member}
-      heading={`${member.firstName} terminou ${member.education.past.cursinho ? 'o cursinho' : 'o ensino médio'}`}
-      question={`ENEM ${choice.enem}`}
-      label={`Depois do médio de ${member.firstName}`}
+      heading={
+        returning
+          ? `${member.firstName} quer voltar a estudar`
+          : `${member.firstName} terminou ${member.education.past.cursinho ? 'o cursinho' : 'o ensino médio'}`
+      }
+      question={
+        returning
+          ? `ENEM ${choice.enem} · à noite, sem largar o emprego · aulas a partir de ${start}`
+          : `ENEM ${choice.enem}`
+      }
+      label={
+        returning ? `Estudos de ${member.firstName}` : `Depois do médio de ${member.firstName}`
+      }
     >
       {PATH_GROUPS.map((group) => {
         const entries = choice.options
@@ -447,6 +474,7 @@ function PathChoiceCard({
           entries.map(({ option }) => option),
           choice,
           active ? current : undefined,
+          returning,
         )
         return (
           <div key={group}>
@@ -474,6 +502,7 @@ function PathChoiceCard({
                   <CourseChip
                     key={index}
                     option={option}
+                    extraYears={returning ? night : 0}
                     active={index === selected}
                     onSelect={() => onSelect(index)}
                   />
@@ -512,6 +541,7 @@ function describeGroup(
   options: PathOption[],
   choice: PathChoice,
   selected?: PathOption,
+  returning = false,
 ): { title: string; detail: string; value: string; note?: string; expense?: boolean } {
   switch (group) {
     case 'federal': {
@@ -519,8 +549,9 @@ function describeGroup(
       const lowest = Math.min(...DEGREES.map((course) => course.cutoff))
       return {
         title: 'Universidade federal',
-        detail:
-          passed > 0
+        detail: returning
+          ? 'Só em tempo integral, sem trabalhar'
+          : passed > 0
             ? `${passed === 1 ? '1 curso' : `${passed} cursos`} pela nota`
             : `Corte a partir de ${lowest}`,
         value: 'Gratuita',
@@ -541,12 +572,14 @@ function describeGroup(
       const federal = options.some(
         (option) => option.path === 'tecnico' && option.network === 'federal',
       )
-      const years = BALANCE.college.technical.years
+      const years = BALANCE.college.technical.years + (returning ? night : 0)
       return {
         title: 'Curso técnico',
         detail: federal
           ? `${years} anos · instituto federal`
-          : `${years} anos · federal: corte ${BALANCE.college.federalTechCutoff}`,
+          : returning
+            ? `${years} anos · particular, à noite`
+            : `${years} anos · federal: corte ${BALANCE.college.federalTechCutoff}`,
         value: federal ? 'Gratuito' : `${formatMoney(BALANCE.college.technical.fee)}/mês`,
         expense: !federal,
       }
@@ -559,20 +592,25 @@ function describeGroup(
         expense: true,
       }
     case 'trabalho':
-      return {
-        title: 'Trabalhar agora',
-        detail: `${BALANCE.jobs.offersPerChoice} vagas`,
-        value: 'Salário',
-      }
+      return returning
+        ? { title: 'Não estudar agora', detail: 'Continua só no emprego', value: '' }
+        : {
+            title: 'Trabalhar agora',
+            detail: `${BALANCE.jobs.offersPerChoice} vagas`,
+            value: 'Salário',
+          }
   }
 }
 
 function CourseChip({
   option,
+  extraYears,
   active,
   onSelect,
 }: {
   option: PathOption
+  /** Anos a mais do curso à noite, para quem já trabalha. */
+  extraYears: number
   active: boolean
   onSelect: () => void
 }) {
@@ -583,7 +621,7 @@ function CourseChip({
     label = course.name
     note =
       option.network === 'federal' ? `corte ${course.cutoff}` : `${formatMoney(course.fee)}/mês`
-    note = `${note} · ${course.years} anos`
+    note = `${note} · ${course.years + extraYears} anos`
   } else if (option.path === 'tecnico') {
     label = techCourseName(option.course)
   }
@@ -607,6 +645,63 @@ function CourseChip({
         </span>
       ) : null}
     </button>
+  )
+}
+
+/**
+ * Quem trabalha e se formou estudando à noite: continuar no emprego ou
+ * começar do zero na carreira da área, com o salário de cada um e o do topo
+ * da carreira nova.
+ */
+function GraduationChoiceCard({
+  game,
+  choice,
+  selected,
+  onSelect,
+}: {
+  game: GameState
+  choice: GraduationChoice
+  selected: number
+  onSelect: (option: number) => void
+}) {
+  const member = game.members[choice.memberId]
+  const career = member?.career
+  const formation = member?.education.formation
+  if (!member || !career || !formation) return null
+  const { offer } = choice
+  const top = levelTitle(member, offer.careerId, topLevel(offer.careerId))
+  const leavesService = isPublicCareer(career.id) && !isPublicCareer(offer.careerId)
+  return (
+    <ChoiceCard
+      game={game}
+      member={member}
+      heading={`${member.firstName} se formou`}
+      question={formationLabel(member, formation)}
+      label={`Formatura de ${member.firstName}`}
+    >
+      <OptionButton
+        active={selected === GRADUATION_OPTIONS.stay}
+        icon={<Briefcase size={17} />}
+        title={`Continuar como ${lowerFirst(levelTitle(member, career.id, career.level))}`}
+        detail={withSuggestion(
+          careerLine(career.id, career.level),
+          choice.suggested === GRADUATION_OPTIONS.stay,
+        )}
+        value={formatRate(salaryPerMonth(member))}
+        onSelect={() => onSelect(GRADUATION_OPTIONS.stay)}
+      />
+      <OptionButton
+        active={selected === GRADUATION_OPTIONS.start}
+        icon={<GraduationCap size={17} />}
+        title={`Começar como ${lowerFirst(levelTitle(member, offer.careerId, offer.level))}`}
+        detail={withSuggestion(
+          `${careerLine(offer.careerId, offer.level)} · chega a ${lowerFirst(top)}, ${formatMoney(topSalary(offer.careerId))}/mês${leavesService ? ' · sai do serviço público' : ''}`,
+          choice.suggested === GRADUATION_OPTIONS.start,
+        )}
+        value={formatRate(offerSalary(offer))}
+        onSelect={() => onSelect(GRADUATION_OPTIONS.start)}
+      />
+    </ChoiceCard>
   )
 }
 

@@ -5,7 +5,7 @@ import { FAMILY_NAME_MAX_LENGTH } from './constants'
 import { rollFounderCareer } from './jobs'
 import { addMember } from './members'
 import { CURRENT_SCHEMA_VERSION } from './migrations'
-import { initialMarket } from './properties'
+import { emptyHomeChoice, initialMarket } from './properties'
 import { createRng, type Rng } from './rng'
 import { newEducation } from './school'
 import type { GameState, Gender, Member } from './types'
@@ -46,6 +46,7 @@ export function newGame({ seed, now, startDate, familyName }: NewGameOptions): G
     properties: {},
     market: initialMarket(),
     lots: {},
+    homes: emptyHomeChoice(),
     vacancies: {},
     loans: [],
     missions: null,

@@ -1,11 +1,12 @@
 import { BALANCE } from '../content/balance'
 import { careerLevel, isPublicCareer } from '../content/careers'
+import type { PropertyId } from '../content/properties'
 import { boostFactor } from './boost'
 import { loanInstallments, payLoans } from './financing'
-import { ageOf, isAlive } from './members'
-import { housingCost, maintenanceCost, rentPerMonth } from './properties'
-import { halfTimeCaregivers, schoolFee } from './school'
-import type { GameEvent, GameState, Member, MemberId } from './types'
+import { ageOf, isAlive, livingCount } from './members'
+import { housingCost, maintenanceCost, rentPerMonth, withHomeUse } from './properties'
+import { halfTimeCaregivers, paidSchoolFee } from './school'
+import type { GameEvent, GameState, HomeUse, Member, MemberId } from './types'
 
 /** Salário por mês do nível atual da carreira, sem considerar idade. */
 export function salaryPerMonth(member: Pick<Member, 'career'>): number {
@@ -120,13 +121,15 @@ export function hasCar(member: Member, day: number): boolean {
 }
 
 /**
- * Mensalidades da pessoa: a escola particular, o professor particular, o
- * cursinho de quem estuda para concurso e o curso de promoção, que fica
- * trancado, sem mensalidade, enquanto a pessoa está demitida.
+ * Mensalidades da pessoa: a escola, o técnico ou a faculdade particular (para
+ * quem se matriculou no meio do ano, só depois que as aulas começam), o
+ * professor particular, o cursinho de quem estuda para concurso e o curso de
+ * promoção, que fica trancado, sem mensalidade, enquanto a pessoa está
+ * demitida.
  */
 export function feesOf(member: Member, day: number): number {
   return (
-    schoolFee(member.education.school) +
+    paidSchoolFee(member.education.school, day) +
     (member.education.tutorSince !== null ? BALANCE.school.tutor.fee : 0) +
     (member.concurso ? BALANCE.concurso.fee : 0) +
     (member.course && !isUnemployed(member, day) ? member.course.fee : 0)
@@ -209,4 +212,24 @@ export function familyRates(
   const installments = loanInstallments(state)
   expense += tax + housingCost(state, living) + installments
   return { income, rent, expense, tax, installments, net: income - expense }
+}
+
+/**
+ * A parte do saldo por mês que depende de onde a família mora: o aluguel que
+ * os imóveis rendem, sem a manutenção e com o bônus, menos a moradia.
+ */
+function homeBalance(state: GameState, living: number): number {
+  const rent = (rentPerMonth(state, living) - maintenanceCost(state, living)) * boostFactor(state)
+  return rent - housingCost(state, living)
+}
+
+/**
+ * Quanto o saldo da família muda por mês se o lote de moradia passar ao uso
+ * pedido: o aluguel que ele deixa de render ou passa a render, o aluguel de
+ * fora que a família passa a pagar ou deixa de pagar e as contas.
+ */
+export function homeUseEffect(state: GameState, id: PropertyId, lot: number, use: HomeUse): number {
+  const living = livingCount(state)
+  const next = { ...state, homes: withHomeUse(state.homes, id, lot, use) }
+  return homeBalance(next, living) - homeBalance(state, living)
 }

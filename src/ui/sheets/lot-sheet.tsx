@@ -10,6 +10,7 @@ import {
   checkBuyProperty,
   familyRates,
   financingTerms,
+  livesWithParents,
   lotsForSale,
   netRent,
   nextListingDay,
@@ -26,6 +27,7 @@ import { COLORS } from '../neighborhood/buildings'
 import { cachedNeighborhoodLayout, type MapLot } from '../neighborhood/layout'
 import { button } from '../styles'
 import { useUiStore } from '../ui-store'
+import { HomeUseControl } from './homes-sheet'
 import { Sheet } from './sheet'
 
 /**
@@ -69,10 +71,13 @@ function LotStatus({ game, type, lot }: { game: GameState; type: PropertyType; l
   switch (lot.state) {
     case 'home':
       return (
-        <Status
-          title="A família mora aqui"
-          line={`${type.home?.places} lugares · contas de ${formatMoney(type.billsPerMonth)} por mês`}
-        />
+        <>
+          <Status
+            title="A família mora aqui"
+            line={`${type.home?.places} lugares · contas de ${formatMoney(type.billsPerMonth)} por mês`}
+          />
+          <HomeUse game={game} type={type} lot={lot.lot} />
+        </>
       )
     case 'rented':
       return lot.count ? (
@@ -84,10 +89,13 @@ function LotStatus({ game, type, lot }: { game: GameState; type: PropertyType; l
           <BuyElsewhere game={game} type={type} />
         </>
       ) : (
-        <Status
-          title={`É da família e está ${type.gender === 'f' ? 'alugada' : 'alugado'}`}
-          line={`Rende ${rent} por mês, já sem a manutenção`}
-        />
+        <>
+          <Status
+            title={`É da família e está ${type.gender === 'f' ? 'alugada' : 'alugado'}`}
+            line={`Rende ${rent} por mês, já sem a manutenção`}
+          />
+          {type.home ? <HomeUse game={game} type={type} lot={lot.lot} /> : null}
+        </>
       )
     case 'forSale':
       return (
@@ -108,6 +116,24 @@ function LotStatus({ game, type, lot }: { game: GameState; type: PropertyType; l
     case 'locked':
       return <Status title="Em obras" line={lockedLine(game, type)} />
   }
+}
+
+/**
+ * Uso do imóvel de moradia: morar sempre, automático ou alugar sempre, com o
+ * saldo do mês em cada um, e o que o uso escolhido quer dizer.
+ */
+function HomeUse({ game, type, lot }: { game: GameState; type: PropertyType; lot: number }) {
+  return (
+    <div className="mt-4">
+      <p className="text-ink-soft mb-1.5 text-[13px] font-semibold">
+        Uso deste imóvel · saldo do mês com cada um
+      </p>
+      <HomeUseControl game={game} propertyId={type.id} lot={lot} />
+      {livesWithParents(game) ? (
+        <p className="text-ink-soft mt-1.5 text-[13px]">Vale depois de sair da casa dos pais</p>
+      ) : null}
+    </div>
+  )
 }
 
 function Status({ title, line }: { title: string; line: string }) {

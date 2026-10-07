@@ -7,6 +7,7 @@ import {
   GraduationCap,
   Heart,
   Landmark,
+  Repeat,
   School,
   UserRoundCheck,
 } from 'lucide-react'
@@ -21,7 +22,10 @@ import {
   aptitudeOf,
   canHaveTutor,
   calendarDate,
+  careerOptions,
   checkHaveChild,
+  checkLeaveSchool,
+  checkReturnToSchool,
   checkStudyForConcurso,
   childCost,
   childrenOf,
@@ -35,6 +39,7 @@ import {
   isUnemployed,
   livingCost,
   nextExamDay,
+  paidSchoolFee,
   partnerOf,
   schoolFee,
   schoolScore,
@@ -49,15 +54,18 @@ import {
 import { useGameStore } from '@/game/store'
 import { formatMoney, formatMonthYear, formatRate } from '@/lib/format'
 import { PersonAvatar } from '../avatar/person-avatar'
-import { showCourse, showMember } from '../flows'
+import { showCareer, showCourse, showMember } from '../flows'
 import {
   ageLabel,
   byGender,
   careerLine,
   careerTitle,
   childStatus,
+  classesPending,
   courseName,
   formationLabel,
+  higherCourseName,
+  higherStudyLine,
   levelTitle,
   livingCostLine,
   lowerFirst,
@@ -151,11 +159,19 @@ export function MemberSheet({ game, member }: { game: GameState; member: Member 
         ) : null}
         {alive && school ? (
           <>
-            <Fact label="Estuda">
+            <Fact label={school.night ? 'Estuda à noite' : 'Estuda'}>
               {schoolName(school.stage, school.network)}
-              {school.course ? ` · ${techCourseName(school.course)}` : ''}
+              {isHigherStage(school.stage)
+                ? higherCourseName(school)
+                  ? ` · ${higherCourseName(school)}`
+                  : ''
+                : school.course
+                  ? ` · ${techCourseName(school.course)}`
+                  : ''}
               <span className="text-ink-soft block text-[13px] font-normal">
-                {schoolYearLabel(school, ageThisYear(member, game.startDate, day))}
+                {isHigherStage(school.stage)
+                  ? higherStudyLine(game, school)
+                  : schoolYearLabel(school, ageThisYear(member, game.startDate, day))}
                 {schoolFee(school) > 0 ? ` · ${formatMoney(schoolFee(school))}/mês` : ' · gratuita'}
               </span>
             </Fact>
@@ -240,9 +256,11 @@ export function MemberSheet({ game, member }: { game: GameState; member: Member 
         ) : null}
       </dl>
 
-      {alive && choice ? <OpenChoice choice={choice} /> : null}
+      {alive && choice ? <OpenChoice choice={choice} member={member} /> : null}
       {working && !choice ? <JobOfferBlock game={game} member={member} /> : null}
       {working && !choice ? <CourseBlock game={game} member={member} /> : null}
+      {working && !choice ? <StudyBlock game={game} member={member} /> : null}
+      {working && !choice ? <CareerBlock game={game} member={member} /> : null}
       {working && !choice ? <ConcursoBlock game={game} member={member} /> : null}
       {alive && school && !choice ? <SchoolChange member={member} school={school} /> : null}
       {alive && !choice && canHaveTutor(member) ? <Tutor game={game} member={member} /> : null}
@@ -258,11 +276,18 @@ function incomeLabel(member: Member, day: number): string {
   return 'Salário'
 }
 
+/** Nome da matrícula nas mensalidades: escola, cursinho, técnico ou faculdade. */
+const FEE_NAMES = { cursinho: 'cursinho', tecnico: 'técnico', faculdade: 'faculdade' } as const
+
 /** As mensalidades da pessoa em partes: escola, professor particular, cursinho e curso. */
 function feesLine(member: Member, day: number): string {
   const parts: string[] = []
   const school = member.education.school
-  if (school && schoolFee(school) > 0) parts.push(`escola ${formatMoney(schoolFee(school))}`)
+  const fee = paidSchoolFee(school, day)
+  if (school && fee > 0) {
+    const name = isHigherStage(school.stage) ? FEE_NAMES[school.stage] : 'escola'
+    parts.push(`${name} ${formatMoney(fee)}`)
+  }
   if (member.education.tutorSince !== null) {
     parts.push(`professor particular ${formatMoney(BALANCE.school.tutor.fee)}`)
   }
@@ -373,16 +398,93 @@ const OPEN_CHOICES = {
   concurso: { icon: <Landmark size={18} />, action: 'Ver o resultado do concurso' },
   meet: { icon: <Heart size={18} />, action: 'Ver quem apareceu' },
   propose: { icon: <Heart size={18} />, action: 'Ver o pedido de casamento' },
+  graduation: { icon: <GraduationCap size={18} />, action: 'Escolher depois da formatura' },
 } satisfies Record<Choice['type'], unknown>
 
 /** A pessoa tem uma escolha esperando, com o relógio parado. */
-function OpenChoice({ choice }: { choice: Choice }) {
+function OpenChoice({ choice, member }: { choice: Choice; member: Member }) {
   const showChoices = useUiStore((store) => store.showChoices)
   const { icon, action } = OPEN_CHOICES[choice.type]
+  const returning = choice.type === 'afterSchool' && member.career !== null
   return (
     <button type="button" className={`${button.primary} mt-5 w-full`} onClick={showChoices}>
       {icon}
-      {action}
+      {returning ? 'Escolher o que estudar' : action}
+    </button>
+  )
+}
+
+/**
+ * Estudar à noite, sem largar o emprego: o botão de voltar a estudar, que abre
+ * a escolha do que estudar, ou, para quem já estuda, o de parar, com
+ * confirmação, porque a formação só vem no fim do curso.
+ */
+function StudyBlock({ game, member }: { game: GameState; member: Member }) {
+  const dispatch = useGameStore((store) => store.dispatch)
+  const showChoices = useUiStore((store) => store.showChoices)
+  const [stopping, setStopping] = useState(false)
+  const school = member.education.school
+  if (school && checkLeaveSchool(game, member.id).ok) {
+    const pending = classesPending(game, school)
+    if (!stopping) {
+      return (
+        <button
+          type="button"
+          className={`${button.quiet} mt-2 w-full`}
+          onClick={() => setStopping(true)}
+        >
+          <GraduationCap size={18} />
+          {pending ? 'Cancelar a matrícula' : 'Parar de estudar'}
+        </button>
+      )
+    }
+    return (
+      <div className={`${card} mt-3 p-3`}>
+        <p className="text-[15px] font-bold">
+          {pending ? 'Cancelar a matrícula?' : 'Parar de estudar?'}
+        </p>
+        <p className="tabular text-ink-soft text-[14px]">
+          {pending ? 'Nada pago ainda' : 'Sem a formação, e o que foi pago não volta'}
+        </p>
+        <div className="mt-2 flex gap-2">
+          <button
+            type="button"
+            className={`${button.danger} flex-1`}
+            onClick={() => dispatch({ type: 'leaveSchool', memberId: member.id })}
+          >
+            {pending ? 'Cancelar' : 'Parar de estudar'}
+          </button>
+          <button type="button" className={button.quiet} onClick={() => setStopping(false)}>
+            Voltar
+          </button>
+        </div>
+      </div>
+    )
+  }
+  if (!checkReturnToSchool(game, member.id).ok) return null
+  const start = () => {
+    if (dispatch({ type: 'returnToSchool', memberId: member.id }).ok) showChoices()
+  }
+  return (
+    <button type="button" className={`${button.quiet} mt-2 w-full`} onClick={start}>
+      <GraduationCap size={18} />
+      Voltar a estudar, à noite
+    </button>
+  )
+}
+
+/** Mudar de carreira: abre a escolha das carreiras em que a pessoa pode recomeçar. */
+function CareerBlock({ game, member }: { game: GameState; member: Member }) {
+  if (!member.career || careerOptions(member).length === 0) return null
+  if (game.choices.some((open) => open.memberId === member.id)) return null
+  return (
+    <button
+      type="button"
+      className={`${button.quiet} mt-2 w-full`}
+      onClick={() => showCareer(member.id)}
+    >
+      <Repeat size={18} />
+      Mudar de carreira
     </button>
   )
 }

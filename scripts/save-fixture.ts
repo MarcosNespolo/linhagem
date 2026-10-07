@@ -18,6 +18,9 @@
  * e um apartamento, e as missões do dia sorteadas: cumpriu a Investidor, com
  * três kitnets a mais, e está com o bônus na renda. Nos anos do exemplo, a
  * família passa pelos imprevistos que a seed sorteia, e algum inquilino sai.
+ * No fim, quem fundou a família muda de carreira e volta a estudar à noite,
+ * com as aulas começando em janeiro, e a família escolhe onde mora: o
+ * apartamento para morar e o último kitnet para alugar.
  */
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { BALANCE } from '../src/content/balance'
@@ -148,6 +151,34 @@ if (state.choices.length !== 1 || state.choices[0].type !== 'propose') {
 }
 // Com o pedido aberto, o par de quem fundou a família começa o curso dele com dedicação.
 state = act(state, { type: 'startCourse', memberId: 'm2', dedicated: true })
+// Quem fundou a família recomeça numa carreira de topo mais alto e volta a estudar à noite,
+// numa faculdade particular de Licenciatura: as aulas começam no janeiro seguinte.
+const careers = state.members.m1?.career?.id
+const other = ['transporte', 'construcao', 'comercio'].find((id) => id !== careers)
+if (!other) throw new Error('O exemplo devia ter outra carreira para quem fundou a família')
+state = act(state, { type: 'changeCareer', memberId: 'm1', careerId: other as 'transporte' })
+state = act(state, { type: 'returnToSchool', memberId: 'm1' })
+const study = state.choices.find((choice) => choice.memberId === 'm1')
+if (study?.type !== 'afterSchool') throw new Error('O exemplo devia abrir a escolha do que estudar')
+const teaching = study.options.findIndex(
+  (option) =>
+    option.path === 'faculdade' &&
+    option.network === 'particular' &&
+    option.degree === 'licenciatura',
+)
+state = act(state, { type: 'choose', picks: [{ memberId: 'm1', option: teaching }] })
+if (state.members.m1?.education.school?.startsOn === undefined) {
+  throw new Error('O exemplo devia ter as aulas de quem voltou a estudar começando em janeiro')
+}
+// A família escolhe morar no apartamento e deixar o último kitnet sempre alugado.
+const kitnets = state.lots.kitnet ?? []
+state = act(state, { type: 'setHomeUse', propertyId: 'apartamento', lot: 0, use: 'live' })
+state = act(state, {
+  type: 'setHomeUse',
+  propertyId: 'kitnet',
+  lot: kitnets[kitnets.length - 1],
+  use: 'rent',
+})
 
 mkdirSync('tests/fixtures', { recursive: true })
 writeFileSync(path, `${JSON.stringify(state, null, 2)}\n`)

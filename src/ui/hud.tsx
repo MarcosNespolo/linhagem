@@ -169,7 +169,9 @@ function waitingText(game: GameState): string | null {
     case 'school':
       return `Tempo parado: matrícula de ${name}`
     case 'afterSchool':
-      return `Tempo parado: ${name} terminou o médio`
+      return game.members[first.memberId]?.career
+        ? `Tempo parado: ${name} quer voltar a estudar`
+        : `Tempo parado: ${name} terminou o médio`
     case 'firstJob':
       return `Tempo parado: primeiro emprego de ${name}`
     case 'concurso':
@@ -178,5 +180,7 @@ function waitingText(game: GameState): string | null {
       return `Tempo parado: ${name} conheceu alguém`
     case 'propose':
       return `Tempo parado: pedido de casamento de ${name}`
+    case 'graduation':
+      return `Tempo parado: ${name} se formou`
   }
 }

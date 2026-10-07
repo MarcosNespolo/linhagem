@@ -19,11 +19,17 @@ export type ActionError =
   | 'notWorking'
   | 'inCourse'
   | 'choiceOpen'
+  /** Voltar a estudar ou estudar para concurso: quem já estuda termina antes. */
+  | 'alreadyStudying'
+  /** Mudar de carreira: só para as carreiras que a formação permite, sem concurso. */
+  | 'careerNotAllowed'
   | 'noJobOffer'
   | 'propertyNotFound'
   | 'propertyLocked'
   | 'soldOut'
   | 'lotNotForSale'
+  /** Escolher onde morar: só nos imóveis de moradia que são da família. */
+  | 'lotNotOwned'
   /** As parcelas, com a nova, passariam do teto da renda da família. */
   | 'loanTooBig'
   | 'loanNotFound'

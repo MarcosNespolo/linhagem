@@ -25,13 +25,15 @@
 import { BALANCE } from '../content/balance'
 import { careerLevel, concursoOf } from '../content/careers'
 import { type PropertyId, type PropertyType } from '../content/properties'
-import { degree } from '../content/schools'
+import { degree, DEGREES } from '../content/schools'
 import {
   ageOf,
   advance,
   applyAction,
+  boostFactor,
   checkBuyProperty,
   checkHaveChild,
+  checkReturnToSchool,
   claimableMissions,
   courseCandidates,
   courseOffer,
@@ -47,12 +49,14 @@ import {
   msToTicks,
   netRent,
   newGame,
+  paidSchoolFee,
   PROPOSE_OPTIONS,
   propertiesLeft,
   propertyPrice,
   purchaseCost,
   rentedPlaces,
   rentFor,
+  schoolFee,
   stageFee,
   TICKS_PER_DAY,
   TICKS_PER_MS,
@@ -87,6 +91,8 @@ export type AutoplayCounters = {
   bankrupt: boolean
   deaths: number
   courses: number
+  /** Vezes que alguém voltou a estudar à noite. */
+  studies: number
   properties: number
   /** Imóveis financiados. */
   loans: number
@@ -121,6 +127,7 @@ export function createAutoplay(options: AutoplayOptions): Autoplay {
       bankrupt: false,
       deaths: 0,
       courses: 0,
+      studies: 0,
       properties: 0,
       loans: 0,
       rewards: 0,
@@ -149,6 +156,9 @@ export function runClock(play: Autoplay, ms: number): void {
       if (!result.ok) break
       play.state = result.state
       play.counters.weddings += count(result.events, 'married')
+      play.counters.studies += result.events.filter(
+        (event) => event.type === 'schoolStarted' && play.state.members[event.memberId]?.career,
+      ).length
     } else break
   }
   play.elapsedMs += ms
@@ -165,9 +175,9 @@ const SAVINGS_SHARE = 0.25
  * gastar a reserva, também um depois do outro.
  */
 export function strategyPicks(state: GameState): ChoicePick[] {
-  const { net, income, expense } = familyRates(state)
+  const { net, income, expense } = steadyRates(state)
   const budget: Budget = {
-    left: net - SAVINGS_SHARE * income,
+    left: net - SAVINGS_SHARE * income - pendingFees(state),
     money: state.money - RESERVE_MONTHS * expense,
     housing: MARRIAGE_SHARE * income,
     joining: 0,
@@ -241,6 +251,7 @@ function pick(choice: Choice, budget: Budget): number {
     }
     case 'concurso':
     case 'meet':
+    case 'graduation':
       return choice.suggested
     case 'propose': {
       // Casa quando o casamento cabe no dinheiro e o lugar de quem chega não
@@ -284,6 +295,12 @@ function worthStudying(member: Member, day: number): boolean {
 
 /** Meses de despesa que a estratégia guarda antes de gastar, para não ir ao vermelho. */
 const RESERVE_MONTHS = 3
+
+/** Até esta idade, quem tem só o médio tenta a federal à noite. */
+const NIGHT_STUDY_MAX_AGE = 30
+
+/** A mensalidade da faculdade particular mais barata. */
+const CHEAPEST_DEGREE_FEE = Math.min(...DEGREES.map((course) => course.fee))
 
 /** Folga na renda líquida por mês que a estratégia pede antes de mais um filho. */
 const CHILD_MARGIN = 1_000
@@ -342,15 +359,38 @@ export function spend(play: Autoplay): void {
     }
   }
 
+  // À noite, sem largar o emprego: quem tem só o médio e é jovem faz uma faculdade particular
+  // quando a mensalidade da mais barata cabe no que sobra da renda depois de guardar uma parte,
+  // contando as mensalidades de quem já se matriculou e só começa as aulas em janeiro.
+  for (const member of livingMembers(play.state)) {
+    if (member.education.formation?.level !== 'medio') continue
+    if (ageOf(member, play.state.clock.day) >= NIGHT_STUDY_MAX_AGE) continue
+    const { net, income } = steadyRates(play.state)
+    if (net - SAVINGS_SHARE * income - pendingFees(play.state) < CHEAPEST_DEGREE_FEE) break
+    if (!checkReturnToSchool(play.state, member.id).ok) continue
+    act(play, { type: 'returnToSchool', memberId: member.id })
+  }
+
   const reserve = () => RESERVE_MONTHS * familyRates(play.state).expense
 
-  // No vermelho, para o curso mais caro, como o jogador faria ao ver o aviso.
+  // No vermelho, para o curso mais caro, como o jogador faria ao ver o aviso: o de promoção ou a
+  // faculdade à noite, o que tiver a mensalidade maior.
   if (play.state.money < 0 && familyRates(play.state).net < 0) {
-    const studying = livingMembers(play.state)
-      .filter((member) => member.course)
-      .sort((a, b) => (b.course?.fee ?? 0) - (a.course?.fee ?? 0))
-    const [priciest] = studying
-    if (priciest) act(play, { type: 'stopCourse', memberId: priciest.id })
+    const day = play.state.clock.day
+    const fees = livingMembers(play.state)
+      .map((member) => ({
+        member,
+        course: member.course?.fee ?? 0,
+        school: member.career ? paidSchoolFee(member.education.school, day) : 0,
+      }))
+      .filter(({ course, school }) => course > 0 || school > 0)
+      .sort((a, b) => Math.max(b.course, b.school) - Math.max(a.course, a.school))
+    const [priciest] = fees
+    if (priciest && priciest.course >= priciest.school) {
+      act(play, { type: 'stopCourse', memberId: priciest.member.id })
+    } else if (priciest) {
+      act(play, { type: 'leaveSchool', memberId: priciest.member.id })
+    }
   }
 
   // Cursos no ritmo normal: a mensalidade cabe no salário da pessoa, com folga na renda
@@ -383,7 +423,7 @@ export function spend(play: Autoplay): void {
     })
     .sort((a, b) => a.kids - b.kids || b.age - a.age)
   for (const { member, kids: count, age } of parents) {
-    const { net, income } = familyRates(play.state)
+    const { net, income } = steadyRates(play.state)
     // O filho precisa de um lugar agora e, quando casar, de outro para quem chegar.
     // Os lugares de quem ainda vai casar ficam guardados antes deles.
     const reserved = futurePartners(play.state)
@@ -392,7 +432,8 @@ export function spend(play: Autoplay): void {
     const hurry = count === 0 && age >= BALANCE.children.maxParentAge - HURRY_YEARS
     const margin = hurry ? 0 : CHILD_MARGIN
     if (net - extraHousingCost(play.state) < margin) break
-    if (!hurry && later > (CHILD_SHARE / 2 ** count) * income) break
+    // Com pressa, o casal só não tem o filho quando os dois lugares futuros passam do saldo inteiro.
+    if (hurry ? later > net : later > (CHILD_SHARE / 2 ** count) * income) break
     const check = checkHaveChild(play.state, member.id)
     if (!check.ok || play.state.money < check.cost + reserve()) continue
     if (act(play, { type: 'haveChild', parentId: member.id })) play.counters.births += 1
@@ -443,6 +484,28 @@ function homeToFinance(state: GameState, budget: number): PropertyId | null {
     if (!best || gain > best.gain) best = { id: type.id, gain }
   }
   return best?.id ?? null
+}
+
+/**
+ * A renda e o saldo da família sem o bônus das missões, que acaba: casamentos,
+ * filhos e estudos ficam, então a estratégia não conta com ele para decidi-los.
+ */
+function steadyRates(state: GameState): { net: number; income: number; expense: number } {
+  const rates = familyRates(state)
+  const bonus = rates.income * (1 - 1 / boostFactor(state))
+  return { net: rates.net - bonus, income: rates.income - bonus, expense: rates.expense }
+}
+
+/** Mensalidades de quem se matriculou à noite e só começa as aulas em janeiro. */
+function pendingFees(state: GameState): number {
+  let fees = 0
+  for (const member of livingMembers(state)) {
+    const school = member.education.school
+    if (school?.startsOn !== undefined && school.startsOn > state.clock.day) {
+      fees += schoolFee(school)
+    }
+  }
+  return fees
 }
 
 /**

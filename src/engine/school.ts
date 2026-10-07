@@ -61,6 +61,15 @@ export function schoolFee(school: Enrollment | null): number {
   }
 }
 
+/**
+ * Mensalidade que a matrícula cobra no dia: a da rede, depois que as aulas
+ * começam. Quem se matriculou no meio do ano só paga a partir de janeiro.
+ */
+export function paidSchoolFee(school: Enrollment | null, day: number): number {
+  if (!school || (school.startsOn !== undefined && day < school.startsOn)) return 0
+  return schoolFee(school)
+}
+
 /** Vida escolar de quem nasce ou chega à família sem ter estudado no jogo. */
 export function newEducation(formation: Education['formation'] = null): Education {
   return { school: null, points: 0, past: {}, formation, enem: null, tutorSince: null }

@@ -46,12 +46,13 @@ export function courseAvailableDay(career: CareerState): number {
 
 /**
  * O curso que a pessoa pode começar agora: quem trabalha fora do serviço
- * público, há `minYearsInLevel` anos no nível, sem outro curso e antes do
- * topo da carreira. Com dedicação, dura a metade e a mensalidade dobra. Para
- * os outros, null.
+ * público, há `minYearsInLevel` anos no nível, sem outro curso, sem estar
+ * estudando à noite e antes do topo da carreira. Com dedicação, dura a metade
+ * e a mensalidade dobra. Para os outros, null.
  */
 export function courseOffer(member: Member, day: number, dedicated: boolean): CourseOffer | null {
-  if (!isWorker(member, day) || member.course || promotesByTime(member.career)) return null
+  if (!isWorker(member, day) || member.course || member.education.school) return null
+  if (promotesByTime(member.career)) return null
   const { id, level } = member.career
   if (level >= topLevel(id) || day < courseAvailableDay(member.career)) return null
   const raise = careerLevel(id, level + 1).salaryPerMonth - careerLevel(id, level).salaryPerMonth

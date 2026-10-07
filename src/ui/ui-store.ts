@@ -14,6 +14,8 @@ export type PropertiesView = 'map' | 'list'
 export type Sheet =
   | { kind: 'member'; memberId: MemberId }
   | { kind: 'course'; memberId: MemberId }
+  | { kind: 'career'; memberId: MemberId }
+  | { kind: 'homes' }
   | { kind: 'howToPlay' }
   | { kind: 'rename' }
   | { kind: 'confirmNewFamily' }

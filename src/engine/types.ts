@@ -52,6 +52,14 @@ export type Enrollment = {
   degree?: DegreeId
   /** Anos que faltam, contando o atual, no cursinho, no técnico e na faculdade. */
   yearsLeft?: number
+  /**
+   * Dia do jogo em que as aulas começam, para quem se matriculou fora de
+   * janeiro, como quem volta a estudar trabalhando. Até lá, não paga a
+   * mensalidade e os anos não contam.
+   */
+  startsOn?: number
+  /** Curso à noite, de quem estuda sem largar o emprego: dura mais (`college.night`). */
+  night?: boolean
   /** Quem trabalha meio período para cuidar da criança em casa. */
   caregiverId?: MemberId
   /** Troca de rede pedida para a próxima matrícula, dentro da mesma etapa. */
@@ -171,13 +179,30 @@ export type Choice =
       suggested: number
     }
   | {
-      /** O que fazer depois do ensino médio, em janeiro, com a nota do ENEM. */
+      /**
+       * O que fazer depois do ensino médio, em janeiro, com a nota do ENEM. Quem
+       * já trabalha e volta a estudar ganha a mesma escolha: estuda à noite, sem
+       * largar o emprego, e trabalhar é não estudar agora.
+       */
       type: 'afterSchool'
       memberId: MemberId
       day: number
       enem: number
       options: PathOption[]
       /** Índice do caminho sugerido: a federal que a nota alcança, o técnico federal ou trabalhar. */
+      suggested: number
+    }
+  | {
+      /**
+       * Quem trabalha e se formou estudando à noite: continuar no emprego (0) ou
+       * começar na carreira da área da formação, do zero (1).
+       */
+      type: 'graduation'
+      memberId: MemberId
+      day: number
+      /** A vaga da área da formação, no nível de entrada. */
+      offer: JobOffer
+      /** Começar na área quando ela paga mais que o emprego de hoje; senão, continuar. */
       suggested: number
     }
 
@@ -297,6 +322,24 @@ export type Loan = {
   since: number
 }
 
+/**
+ * Uso de um imóvel de moradia da família, escolhido pelo jogador: morar nele
+ * sempre, deixar no automático ou deixá-lo sempre alugado.
+ */
+export type HomeUse = 'live' | 'auto' | 'rent'
+
+/**
+ * Onde a família mora, pela escolha do jogador: os lotes de moradia em que
+ * ela mora sempre, enquanto alguém precisa de lugar, e os que ficam sempre
+ * alugados, mesmo com gente pagando aluguel. Os outros ficam no automático: a
+ * família mora neles quando precisa de lugar, a começar pelos tipos que rendem
+ * menos por lugar.
+ */
+export type HomeChoice = {
+  live: Partial<Record<PropertyId, number[]>>
+  rent: Partial<Record<PropertyId, number[]>>
+}
+
 export type GameStats = {
   /** Milissegundos reais simulados, sem contar pausas. Decide conflitos de save entre aparelhos. */
   simulatedMs: number
@@ -369,6 +412,8 @@ export type GameState = {
    * família pode ter mais imóveis do que lotes, e os outros ficam fora da rua.
    */
   lots: Partial<Record<PropertyId, number[]>>
+  /** Onde a família mora: os imóveis de moradia que o jogador tirou do automático. */
+  homes: HomeChoice
   /** Missões do dia, ou null antes do primeiro sorteio. */
   missions: Missions | null
   boosts: {
@@ -397,6 +442,8 @@ export type MemberEvent =
   | { type: 'jobOffered'; day: number; memberId: MemberId; careerId: CareerId; level: number }
   /** Aceitou a proposta de outra empresa e trocou de carreira, no mesmo nível. */
   | { type: 'changedJob'; day: number; memberId: MemberId; careerId: CareerId; level: number }
+  /** Recomeçou do zero em outra carreira: mudou de carreira ou foi para a área em que se formou. */
+  | { type: 'startedOver'; day: number; memberId: MemberId; careerId: CareerId; level: number }
   | { type: 'concursoStarted'; day: number; memberId: MemberId }
   /** Largou o emprego para estudar para concurso. */
   | { type: 'quitJob'; day: number; memberId: MemberId }

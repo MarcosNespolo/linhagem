@@ -29,7 +29,8 @@ export type ConcursoCheck = { ok: true } | Refusal
 /**
  * Diz se a pessoa pode largar o emprego para estudar para concurso: viva,
  * adulta, trabalhando (antes da aposentadoria), com pelo menos o ensino
- * médio, sem curso de promoção em andamento e sem escolha aberta.
+ * médio, fora da faculdade, do técnico e do cursinho, sem curso de promoção em
+ * andamento e sem escolha aberta.
  */
 export function checkStudyForConcurso(state: GameState, memberId: string): ConcursoCheck {
   const member = state.members[memberId]
@@ -38,6 +39,7 @@ export function checkStudyForConcurso(state: GameState, memberId: string): Concu
   const day = state.clock.day
   if (!member.career || ageOf(member, day) >= BALANCE.retirementAge) return refuse('notWorking')
   if (!canStudyForConcurso(member)) return refuse('notStudying')
+  if (member.education.school) return refuse('alreadyStudying')
   if (member.course) return refuse('inCourse')
   if (state.choices.some((choice) => choice.memberId === memberId)) return refuse('choiceOpen')
   return { ok: true }

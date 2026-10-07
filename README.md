@@ -4,9 +4,9 @@ Idle game de família para web e celular. Toda a progressão vem de jogar: sem a
 compras, sem moeda premium.
 
 O jogador começa com uma pessoa de 18 anos, na casa dos pais e sem dinheiro, que faz cursos, pode
-largar o emprego para estudar para concurso, namora, casa e tem filhos, vê os filhos namorarem e
-casarem com quem aparece e vê a linhagem atravessar gerações enquanto o tempo passa, inclusive um
-pouco com o jogo fechado.
+voltar a estudar à noite, mudar de carreira ou largar o emprego para estudar para concurso, namora,
+casa e tem filhos, escolhe onde a família mora, vê os filhos namorarem e casarem com quem aparece e
+vê a linhagem atravessar gerações enquanto o tempo passa, inclusive um pouco com o jogo fechado.
 
 Jogue em [linhagem.vercel.app](https://linhagem.vercel.app).
 
@@ -29,6 +29,11 @@ Jogue em [linhagem.vercel.app](https://linhagem.vercel.app).
   escolha. Quem já trabalha pode largar o emprego para estudar, pela ficha da pessoa
 - Receber propostas de emprego enquanto a família é pequena: outra carreira de ensino médio, no
   mesmo nível, pagando mais, para aceitar pela aba Trabalho ou deixar passar
+- Voltar a estudar à noite, sem largar o emprego, pela ficha da pessoa: faculdade ou técnico numa
+  particular, um ano mais longos que de dia, com as aulas começando em janeiro; formado, escolher
+  entre continuar no emprego e começar na carreira da área
+- Mudar de carreira pela ficha: recomeçar do nível de entrada numa carreira que a formação permite,
+  pelo teto mais alto; quem é servidor deixa o serviço público
 - Subir na carreira com cursos: cada nível pede um curso, depois de 2 anos no nível, pago por mês
   enquanto a pessoa trabalha, no ritmo normal ou com dedicação, que termina na metade do tempo,
   custa o dobro por mês e deixa a pessoa sem namoro nem filho até terminar; no serviço público, a
@@ -40,6 +45,8 @@ Jogue em [linhagem.vercel.app](https://linhagem.vercel.app).
 - Comprar imóveis na aba Imóveis, que mostra o bairro desenhado, à vista ou financiados: kitnets,
   apartamentos e casas dão lugar para a família morar, e os que ela não usa, como os comerciais,
   rendem aluguel todo mês, menos a manutenção e os meses em que ficam vazios
+- Escolher onde a família mora: cada moradia dela fica para morar, no automático ou para alugar,
+  com o quanto o saldo do mês muda em cada opção
 - Cumprir as três missões do dia, que valem até a meia-noite, e pegar a recompensa: alguns meses
   de renda ou a renda com 50% a mais por 1 ano do jogo
 - Acompanhar o dinheiro em reais, a partir do zero, que fecha no dia 1º de cada mês: salários,
@@ -164,6 +171,17 @@ formação fica registrada e abre a escolha do emprego. Os cursos ficam em `src/
 as regras em `src/engine/college.ts` e os valores em `BALANCE.college`. Quem chega aos 18 sem
 estudar nem trabalhar, como quem veio de um save antigo, escolhe o emprego no aniversário.
 
+Quem já trabalha pode voltar a estudar, pela ficha da pessoa (`checkReturnToSchool` e
+`openReturnToSchool`): abre a mesma escolha de quem termina o médio, com o ENEM que a pessoa tem
+(quem nunca fez, como quem funda a família, faz na hora), mas à noite e sem largar o emprego. A
+federal e o instituto federal são em tempo integral e aparecem fechados; ficam a faculdade e o
+técnico particulares, que duram um ano a mais à noite (`BALANCE.college.night`), e o cursinho. Quem
+se matricula no meio do ano começa as aulas no janeiro seguinte (`Enrollment.startsOn`): até lá
+não paga a mensalidade, e os anos do curso contam a partir dali. O salário continua, mas o curso de
+promoção espera a formatura. Dá para parar quando quiser, sem a formação. Formado, a pessoa escolhe
+entre continuar no emprego e começar do zero na carreira da área do curso (`openGraduationChoice`),
+na vaga de entrada que a formação dá; na mesma carreira, um nível acima, é uma promoção.
+
 ## Carreiras e concurso
 
 São 16 carreiras, com 5 níveis cada (`src/content/careers.ts`): 11 privadas e 5 do serviço
@@ -218,7 +236,13 @@ Quem trabalha e tem pelo menos o ensino médio pode largar o emprego para estuda
 pela ficha da pessoa (`checkStudyForConcurso`): fica sem salário, com o cursinho, e parte da nota
 de hoje; se desistir, procura outro emprego do zero. Com a nota alta, é a aposta mais forte do
 começo: na casa dos pais, sem aluguel, dá para passar para o Estado ou para técnico federal em
-meses.
+meses. Quem estuda à noite termina o curso antes.
+
+Também pela ficha, dá para mudar de carreira (`careerOptions` e `checkChangeCareer`): as de ensino
+médio e a da área da formação, da que paga mais no topo à que paga menos, cada uma com a vaga de
+entrada. A pessoa recomeça ali, com o tempo no nível contando de novo; o curso em andamento para,
+quem estava desempregado volta a trabalhar e quem é servidor deixa o serviço público, com a
+estabilidade e a aposentadoria maior. As carreiras públicas continuam pedindo concurso.
 
 ## Namoro e casamento
 
@@ -300,10 +324,20 @@ pais, sem aluguel, enquanto está sozinho e solteiro (`livesWithParents`); os im
 nesse tempo ficam alugados. Casar é sair de casa: o aluguel de dois lugares, que empurra o casal
 para financiar o primeiro kitnet. A aba Imóveis
 mostra quanto custa o lugar de mais uma pessoa, e ter um filho e o pedido de casamento mostram a
-moradia a mais (`extraHousingCost`). A família mora primeiro nos imóveis que rendem menos aluguel por
-lugar (kitnets, depois apartamentos e casas) e paga as contas deles, de condomínio, IPTU e
-manutenção; os outros ficam alugados. Em saves antigos, quem tinha saído de casa por falta de
-lugar volta para a família.
+moradia a mais (`extraHousingCost`). No automático, a família mora primeiro nos imóveis que rendem
+menos aluguel por lugar (kitnets, depois apartamentos e casas) e paga as contas deles, de
+condomínio, IPTU e manutenção; os outros ficam alugados. Em saves antigos, quem tinha saído de casa
+por falta de lugar volta para a família.
+
+O jogador escolhe onde a família mora (`homes` no save, com as regras em `homesInUse`): cada
+moradia dela fica para morar, no automático ou para alugar, pelo painel do lote no bairro ou pelo
+cartão Moradia, que abre a lista de todas. Para morar, a família mora nela sempre, mesmo sobrando
+lugar; o automático completa o que falta, a começar pelos tipos que rendem menos por lugar; para
+alugar, ela fica alugada mesmo com gente pagando aluguel. Cada opção mostra quanto o saldo do mês
+muda com ela (`homeUseEffect`), e a escolha é uma conta de verdade: um casal sozinho numa casa de 6
+lugares deixa de receber R$ 5.220 de aluguel e paga R$ 700 de contas, e sai mais barato alugar a
+casa e pagar o aluguel de dois lugares. Enquanto quem funda a família mora com os pais, a escolha
+espera.
 
 Os comerciais, da sala comercial ao shopping, têm preço fixo, mas ficam à venda poucos de cada
 vez: até 2 de cada tipo, e um novo aparece num calendário fixo, a cada 2 anos do jogo na sala
@@ -376,10 +410,15 @@ nota esperada passa o corte do cargo mais alto que a formação permite, aceita 
 emprego, e a pessoa sozinha na casa dos pais larga o emprego pelo concurso com a mesma nota;
 começa os cursos no ritmo normal quando a mensalidade cabe em 80% do salário da pessoa e deixa
 folga de R$ 500 na renda ou, com a renda curta, quando o dinheiro guardado paga a diferença até o
-fim do curso, para o curso mais caro quando a família entra no vermelho, e pega as recompensas das
-missões. Filhos e casamentos vêm primeiro, mas a estratégia guarda 3 meses de despesa e só tem mais
-um filho com folga de R$ 1 mil na renda, para não ir à falência; um casal sem filhos a 8 anos da
-idade limite não espera a folga.
+fim do curso, e pega as recompensas das missões. Quem tem só o médio e menos de 30 anos volta a
+estudar à noite quando a mensalidade da faculdade particular mais barata cabe no que sobra da renda
+depois de guardar um quarto dela, contando as de quem só começa as aulas em janeiro, e faz a de
+carreira mais bem paga que o orçamento cobre; formado, fica com a sugestão. No vermelho, para a
+mensalidade mais cara, do curso de promoção ou da faculdade à noite. Filhos e casamentos vêm
+primeiro, mas a estratégia guarda 3 meses de despesa e só tem mais um filho com folga de R$ 1 mil
+na renda, para não ir à falência; um casal sem filhos a 8 anos da idade limite não espera a folga,
+mas também não tem o filho quando os dois lugares que ele vai ocupar passam do saldo inteiro. Para
+casar, ter filhos e estudar, a estratégia não conta com o bônus das missões, que acaba.
 Enquanto mora de aluguel, financia uma moradia quando a parcela cabe no aluguel que deixa de
 pagar, e quita o financiamento antes de investir, porque os juros passam do que qualquer aluguel
 rende. O resto vai para o imóvel que se paga mais rápido, à vista; os de moradia contam o aluguel
@@ -412,18 +451,19 @@ A simulação confere nove limites (`src/sim/limits.ts`) e sai com erro se algum
 Os marcos substituem o antigo limite de ritmo (nunca mais de 2 minutos sem nada para comprar),
 que puxava o jogo para o fácil. O começo tem decisões desde o primeiro minuto: uma pessoa só, na
 casa dos pais, com o primeiro curso liberado, que custa mais do que sobra, e a aposta de largar o
-emprego para o concurso quando a nota é alta. Ela casa aos 3 ou 4 minutos de jogo, sai da casa dos
-pais e financia o primeiro kitnet logo depois, entre 4 e 12 minutos, quando o aluguel de duas
-pessoas passa da parcela. O primeiro filho vem entre 14 e 18 minutos, muitas vezes com o saldo do
-mês no vermelho por um tempo. Com as seeds de 1 a 4, a família tem de 11 a 19 pessoas vivas e de
-R$ 78 mil a R$ 157 mil de renda por mês no fim da primeira hora, chega a 10 imóveis entre 44 e 50
-minutos, passa de 100 pessoas e de R$ 1,4 milhão por mês na segunda hora, e fica entre 100 e 120
-depois das 3 horas, subindo e descendo à medida que as gerações nascem e morrem. O salto da renda
-entre a primeira e a segunda hora fica entre 15 e 23 vezes, porque a família sai de uma dezena
-para uma centena de pessoas; daí em diante a renda oscila. O save fica perto de 180 KB, cada
-segundo de jogo custa de 1 a 2 ms, e o máximo de 1 ano fora do jogo, de 20 a 40 ms. O CI roda uma
-versão de 1 hora com duas seeds (`tests/sim/balance.test.ts`), com os limites que já valem nesse
-tempo.
+emprego para o concurso quando a nota é alta. Ela casa entre 2 e 4 minutos de jogo, sai da casa
+dos pais e financia o primeiro kitnet logo depois, entre 4 e 12 minutos, quando o aluguel de duas
+pessoas passa da parcela. O primeiro filho vem entre 14 e 20 minutos, muitas vezes com o saldo do
+mês no vermelho por um tempo. Com as seeds de 1 a 8, a família tem de 8 a 33 pessoas vivas e de
+R$ 86 mil a R$ 253 mil de renda por mês no fim da primeira hora, chega a 10 imóveis entre 46 e 57
+minutos e ao primeiro comercial entre 1 h 16 e 1 h 33, passa de 100 pessoas e de R$ 1,3 milhão
+por mês na segunda hora, e fica entre 96 e 121 depois das 3 horas, subindo e descendo à medida que
+as gerações nascem e morrem. O salto da renda entre a primeira e a segunda hora fica entre 13 e 24
+vezes, porque a família sai de uma dezena para uma centena de pessoas; daí em diante a renda
+oscila. Estudar à noite deixa a renda da primeira hora, em média, cerca de 20% maior que sem ele:
+é a recompensa de quem planeja. O save fica perto de 190 KB, cada segundo de jogo custa menos de 1
+ms, e o máximo de 1 ano fora do jogo, cerca de 10 ms. O CI roda uma versão de 1 hora com duas seeds
+(`tests/sim/balance.test.ts`), com os limites que já valem nesse tempo.
 
 ## Avatares
 

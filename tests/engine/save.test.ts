@@ -181,6 +181,18 @@ describe('save', () => {
     }
   })
 
+  it('a versão 18 começa com todas as moradias no automático, e o resto como estava', () => {
+    const json = readFileSync(new URL('save-v18.json', FIXTURES), 'utf8')
+    const v18 = JSON.parse(json) as GameState
+    const state = deserialize(json)
+    expect(state.homes).toEqual({ live: {}, rent: {} })
+    expect(state.members).toEqual(v18.members)
+    expect(state.properties).toEqual(v18.properties)
+    expect(state.lots).toEqual(v18.lots)
+    expect(state.choices).toEqual(v18.choices)
+    expect(state.money).toBe(v18.money)
+  })
+
   it('a versão 15 começa sem cursos, com as carreiras e os namoros como estavam', () => {
     const json = readFileSync(new URL('save-v15.json', FIXTURES), 'utf8')
     const v15 = JSON.parse(json) as GameState
