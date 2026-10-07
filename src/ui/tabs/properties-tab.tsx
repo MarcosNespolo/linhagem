@@ -4,6 +4,7 @@ import {
   Briefcase,
   Building,
   Building2,
+  ChevronRight,
   DoorOpen,
   House,
   Landmark,
@@ -29,8 +30,8 @@ import {
   loanInstallments,
   maintenanceCost,
   ownedCount,
-  ownedPlaces,
   paybackYears,
+  placesInUse,
   propertiesLeft,
   propertyPrice,
   purchaseCost,
@@ -46,7 +47,7 @@ import {
 } from '@/engine'
 import { useGameStore } from '@/game/store'
 import { formatGameSpan, formatMoney, formatSignedMoney } from '@/lib/format'
-import { showLot } from '../flows'
+import { showHomes, showLot } from '../flows'
 import { marketLine, paybackLabel } from '../labels'
 import { Pin } from '../neighborhood/buildings'
 import { cachedNeighborhoodLayout } from '../neighborhood/layout'
@@ -103,13 +104,20 @@ function Summary({ game, compact = false }: { game: GameState; compact?: boolean
   const total = totalProperties(game)
   const vacant = totalVacant(game, living)
   const installments = loanInstallments(game)
+  const ownsHome = PROPERTY_TYPES.some((type) => type.home && ownedCount(game, type.id) > 0)
   const pad = compact ? 'p-3' : 'p-4'
   const label = compact ? 'text-[13px]' : 'text-[14px]'
   const small = compact ? 'text-[13px]' : 'text-[14px]'
   return (
     <div className={compact ? 'space-y-3' : 'space-y-5'}>
       <div className="grid grid-cols-2 gap-3">
-        <section className={`${card} min-w-0 ${pad}`}>
+        <button
+          type="button"
+          disabled={!ownsHome}
+          onClick={showHomes}
+          aria-label="Escolher onde a família mora"
+          className={`${card} min-w-0 text-left transition enabled:active:scale-[0.99] ${pad}`}
+        >
           <p className={`text-ink-soft font-semibold ${label}`}>Moradia</p>
           <Amount
             value={-housing}
@@ -117,7 +125,13 @@ function Summary({ game, compact = false }: { game: GameState; compact?: boolean
           />
           <p className={`tabular text-ink-soft ${small}`}>{rentersLine(game, living)}</p>
           <p className={`tabular text-ink-soft ${small}`}>{nextPlaceLine(game, living)}</p>
-        </section>
+          {ownsHome ? (
+            <p className={`text-leaf-strong flex items-center font-bold ${small}`}>
+              Escolher onde morar
+              <ChevronRight size={15} aria-hidden="true" />
+            </p>
+          ) : null}
+        </button>
         <section className={`${card} min-w-0 ${pad}`}>
           <p className={`text-ink-soft font-semibold ${label}`}>Aluguel</p>
           <Amount value={rent} none={total === 0 ? 'Nenhum ainda' : 'Nenhum'} />
@@ -376,7 +390,7 @@ function rentersLine(game: GameState, living: number): string {
   if (livesWithParents(game, living)) return 'Mora com os pais'
   const rented = rentedPlaces(game, living)
   if (rented > 0) return rented === 1 ? '1 pessoa de aluguel' : `${rented} pessoas de aluguel`
-  const free = ownedPlaces(game) - living
+  const free = placesInUse(game, living) - living
   if (free <= 0) return 'Todos em imóveis da família'
   return free === 1 ? '1 lugar livre em casa' : `${free} lugares livres em casa`
 }

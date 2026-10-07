@@ -3,6 +3,7 @@ import { applyConcursoPick, startConcurso } from './concurso'
 import { applyMeetPick, applyProposePick, isProposeOptionAvailable, proposeCost } from './dating'
 import { applySchoolPick } from './enrollment'
 import { refuse, type Refusal } from './errors'
+import { applyGraduationPick } from './jobs'
 import type { Rng } from './rng'
 import type { Choice, GameEvent, GameState, MemberId } from './types'
 
@@ -20,7 +21,7 @@ export function suggestedPicks(state: GameState): ChoicePick[] {
  */
 export function optionCount(choice: Choice): number {
   if (choice.type === 'firstJob') return choice.offers.length + (choice.concurso ? 1 : 0)
-  if (choice.type === 'meet') return 2
+  if (choice.type === 'meet' || choice.type === 'graduation') return 2
   if (choice.type === 'propose') return 3
   return choice.options.length
 }
@@ -98,6 +99,9 @@ export function applyPicks(draft: GameState, rng: Rng, picks: readonly ChoicePic
         break
       case 'propose':
         events.push(...applyProposePick(draft, rng, choice, pick.option))
+        break
+      case 'graduation':
+        events.push(...applyGraduationPick(draft, choice, pick.option))
         break
     }
   }

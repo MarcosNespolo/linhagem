@@ -62,6 +62,18 @@ describe('bairro da aba Imóveis', () => {
     ])
   })
 
+  it('a família mora no lote que o jogador escolheu, e os outros rendem', () => {
+    const state = withHomes(makeGame(1), { kitnet: 3 })
+    const chosen = expectOk(
+      applyAction(state, { type: 'setHomeUse', propertyId: 'kitnet', lot: 2, use: 'live' }),
+    ).state
+    const kitnets = lotsOf(neighborhoodLayout(chosen), 'kitnet')
+    expect(kitnets.slice(0, 3).map((lot) => lot.state)).toEqual(['rented', 'rented', 'home'])
+    // O desenho guardado acompanha a escolha.
+    expect(lotsOf(cachedNeighborhoodLayout(state), 'kitnet')[0].state).toBe('home')
+    expect(lotsOf(cachedNeighborhoodLayout(chosen), 'kitnet')[2].state).toBe('home')
+  })
+
   it('o lote comprado é exatamente o que a família escolheu', () => {
     const state = withMoney(makeGame(1), 1_000_000)
     const bought = expectOk(

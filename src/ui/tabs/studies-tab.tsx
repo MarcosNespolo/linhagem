@@ -6,6 +6,7 @@ import {
   ageOf,
   ageThisYear,
   livingMembers,
+  paidSchoolFee,
   schoolFee,
   schoolScore,
   type GameState,
@@ -14,7 +15,13 @@ import {
 import { formatAge, formatMoney } from '@/lib/format'
 import { PersonAvatar } from '../avatar/person-avatar'
 import { showMember } from '../flows'
-import { schoolName, schoolYearLabel } from '../labels'
+import {
+  higherCourseName,
+  higherStudyLine,
+  lowerFirst,
+  schoolName,
+  schoolYearLabel,
+} from '../labels'
 import { card } from '../styles'
 
 const SECTIONS: { stage: Stage; title: string }[] = [
@@ -32,12 +39,18 @@ function studyFee(member: Member): number {
   return schoolFee(member.education.school) + tutor
 }
 
+/** O que a família paga hoje: sem a mensalidade de quem só começa as aulas em janeiro. */
+function paidStudyFee(member: Member, day: number): number {
+  const tutor = member.education.tutorSince !== null ? BALANCE.school.tutor.fee : 0
+  return paidSchoolFee(member.education.school, day) + tutor
+}
+
 /** Aba Estudos: quem estuda, onde, quanto custa e a nota de cada um. */
 export function StudiesTab({ game }: { game: GameState }) {
   const students = livingMembers(game)
     .filter((member) => member.education.school !== null)
     .sort((a, b) => a.birthDay - b.birthDay)
-  const fees = students.reduce((sum, member) => sum + studyFee(member), 0)
+  const fees = students.reduce((sum, member) => sum + paidStudyFee(member, game.clock.day), 0)
 
   if (students.length === 0) {
     return (
@@ -84,11 +97,16 @@ function StudentRow({ game, member }: { game: GameState; member: Member }) {
   const day = game.clock.day
   const fee = studyFee(member)
   const tutor = member.education.tutorSince !== null
-  const grade = schoolYearLabel(school, ageThisYear(member, game.startDate, day))
   const higher = isHigherStage(school.stage)
-  // No técnico e na faculdade, o curso já está no ano ("3º ano de Direito").
-  const place =
-    school.course && !higher
+  const grade = higher
+    ? lowerFirst(higherStudyLine(game, school))
+    : schoolYearLabel(school, ageThisYear(member, game.startDate, day))
+  // No técnico e na faculdade, a seção já diz a etapa: fica o curso e a rede ("Direito,
+  // federal"). No médio, o curso do integrado vai junto com a escola.
+  const course = higher ? higherCourseName(school) : null
+  const place = course
+    ? `${course}, ${school.network === 'federal' ? 'federal' : 'particular'}`
+    : school.course
       ? `${schoolName(school.stage, school.network)} · ${techCourseName(school.course)}`
       : schoolName(school.stage, school.network)
 
@@ -102,13 +120,18 @@ function StudentRow({ game, member }: { game: GameState; member: Member }) {
         <PersonAvatar person={member} day={day} size={48} className="shrink-0 rounded-full" />
         <span className="min-w-0 flex-1">
           <span className="block truncate text-[16px] font-bold">{member.firstName}</span>
-          <span className="text-ink-soft block truncate text-[13px]">
+          <span className="text-ink-soft block text-[13px]">
             {formatAge(ageOf(member, day))} · {grade}
           </span>
-          <span className="block truncate text-[14px] font-semibold">{place}</span>
+          <span className="block text-[14px] font-semibold">{place}</span>
           {tutor ? (
             <span className="text-leaf-strong block text-[12px] font-bold">
               Com professor particular
+            </span>
+          ) : null}
+          {school.night ? (
+            <span className="text-leaf-strong block text-[12px] font-bold">
+              À noite, sem largar o emprego
             </span>
           ) : null}
         </span>

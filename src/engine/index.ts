@@ -18,7 +18,13 @@ export { inheritAppearance, rollAppearance } from './appearance'
 export { archiveMembers } from './archive'
 export { boostFactor, boostTicksLeft, clockPosition, isBoosted } from './boost'
 export { optionCount, suggestedPicks, type ChoicePick } from './choices'
-export { rollEnem } from './college'
+export {
+  checkLeaveSchool,
+  checkReturnToSchool,
+  classesStartDay,
+  rollEnem,
+  type StudyCheck,
+} from './college'
 export {
   allowedCargos,
   checkStudyForConcurso,
@@ -41,6 +47,7 @@ export {
   isUnemployed,
   unemploymentPay,
   healthPlanCost,
+  homeUseEffect,
   lifestyleCost,
   livingCost,
   memberExpense,
@@ -68,11 +75,16 @@ export {
   bestOffer,
   betterCareers,
   canStudyForConcurso,
+  careerOptions,
+  checkChangeCareer,
   formationCareer,
+  GRADUATION_OPTIONS,
   hasJobOffer,
   membersWithJobOffer,
   offerSalary,
   rollJobOffers,
+  topSalary,
+  type CareerChangeCheck,
 } from './jobs'
 export { isLogEvent, isMemberEvent, LOG_LIMIT } from './log'
 export { claimableMissions, incomeReward, isMissionDone } from './missions'
@@ -101,9 +113,13 @@ export { newGame, type NewGameOptions } from './new-game'
 export {
   affordableProperties,
   checkBuyProperty,
+  checkHomeUse,
+  emptyHomeChoice,
   extraHousingCost,
   financingTerms,
+  homeLots,
   homesInUse,
+  homeUse,
   housingCost,
   initialMarket,
   isPropertyUnlocked,
@@ -118,6 +134,7 @@ export {
   ownedPlaces,
   paybackYears,
   placeRent,
+  placesInUse,
   propertiesLeft,
   propertyPrice,
   purchaseCost,
@@ -130,6 +147,7 @@ export {
   transferTaxOf,
   vacantUnits,
   visiblePropertyTypes,
+  withHomeUse,
   type FinancingTerms,
   type PropertyCheck,
 } from './properties'
@@ -151,6 +169,7 @@ export {
   baseAptitude,
   halfTimeCaregivers,
   inheritAptitude,
+  paidSchoolFee,
   schoolFee,
   schoolScore,
   stageFee,

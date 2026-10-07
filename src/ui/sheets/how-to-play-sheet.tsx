@@ -105,6 +105,8 @@ function topics(): Topic[] {
         `Sem lugar em casa: aluguel de ${formatMoney(housing.rentPerPlace)}/mês por pessoa.`,
         `Depois de ${housing.basePlaces} pessoas de aluguel, cada lugar a mais custa ${growth(housing.rentGrowth)}.`,
         'Quem funda a família mora com os pais enquanto está sozinho e solteiro.',
+        'Em Imóveis, toque em Moradia para escolher onde a família mora: cada moradia dela fica para morar, no automático ou para alugar.',
+        'Morar: a família mora nela sempre. Automático: mora quando precisa de lugar, a começar pelas que rendem menos por lugar. Alugar: fica alugada mesmo com gente pagando aluguel.',
       ],
     },
     {
@@ -143,6 +145,8 @@ function topics(): Topic[] {
         `ENEM no janeiro dos ${BALANCE.adultAge}: a nota, ±${college.enemSpread}.`,
         'Federal pela nota de corte, particular, técnico, cursinho ou trabalho.',
         `Cursinho: +${college.prep.points} no ENEM seguinte.`,
+        'Quem trabalha pode voltar a estudar à noite, numa particular, sem largar o emprego, pela ficha da pessoa: as aulas começam em janeiro, e o curso de promoção espera.',
+        'Formado, escolhe entre continuar no emprego e começar na carreira da área.',
       ],
     },
     {
@@ -153,6 +157,7 @@ function topics(): Topic[] {
         `Mensalidade: ${percent(careers.courseFeeShare)} do aumento.`,
         'Dedicação: metade do tempo, o dobro por mês, sem namoro nem filho.',
         `Com até ${jobs.offers.maxFamily} pessoas na família, quem está numa carreira de ensino médio pode receber proposta de outra, no mesmo nível, pagando ${percent(jobs.offers.minRaise)} a mais; aceitar recomeça o tempo no nível.`,
+        'Pela ficha, dá para mudar de carreira: recomeça do nível de entrada, e servidor deixa o serviço público.',
         `Aposentadoria aos ${BALANCE.retirementAge}, com ${percent(BALANCE.pensionRatio)} do salário.`,
       ],
     },

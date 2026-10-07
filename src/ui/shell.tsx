@@ -14,12 +14,14 @@ import { BottomNav } from './bottom-nav'
 import { showMember } from './flows'
 import { choicesKey, loveActions, nodeActions, type LoveActions } from './selectors'
 import { AwaySheet } from './sheets/away-sheet'
+import { CareerSheet } from './sheets/career-sheet'
 import { ChoiceSheet } from './sheets/choice-sheet'
 import { CloudLoginSheet } from './sheets/cloud-login-sheet'
 import { ConfirmNewFamilySheet } from './sheets/confirm-new-family-sheet'
 import { ConflictSheet } from './sheets/conflict-sheet'
 import { CourseSheet } from './sheets/course-sheet'
 import { DebtSheet } from './sheets/debt-sheet'
+import { HomesSheet } from './sheets/homes-sheet'
 import { HowToPlaySheet } from './sheets/how-to-play-sheet'
 import { MemberSheet } from './sheets/member-sheet'
 import { MissionsSheet } from './sheets/missions-sheet'
@@ -149,6 +151,12 @@ function SheetHost({ game, sheet }: { game: GameState; sheet: Sheet }) {
       const member = game.members[sheet.memberId]
       return member ? <CourseSheet game={game} member={member} /> : null
     }
+    case 'career': {
+      const member = game.members[sheet.memberId]
+      return member ? <CareerSheet game={game} member={member} /> : null
+    }
+    case 'homes':
+      return <HomesSheet game={game} />
     case 'howToPlay':
       return <HowToPlaySheet />
     case 'rename':

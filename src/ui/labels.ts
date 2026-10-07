@@ -42,7 +42,13 @@ import {
   type Member,
   type PropertyEvent,
 } from '@/engine'
-import { formatAge, formatDuration, formatGameSpan, formatMoney } from '@/lib/format'
+import {
+  formatAge,
+  formatDuration,
+  formatGameSpan,
+  formatMoney,
+  formatMonthYear,
+} from '@/lib/format'
 
 /** Escolhe a palavra conforme o gênero do membro. */
 export function byGender(member: Pick<Member, 'gender'>, female: string, male: string): string {
@@ -108,16 +114,20 @@ export function promotionStatus(member: Member, day: number): string | null {
   if (career.level >= topLevel(career.id)) return 'Topo da carreira'
   const due = promotionDay(career)
   if (due !== null) return `Promoção em ${span(due)}`
+  if (member.education.school) return 'Curso só depois de se formar'
   if (courseOffer(member, day, false)) return 'Curso disponível'
   const available = courseAvailableDay(career)
   return day < available && !isUnemployed(member, day) ? `Curso em ${span(available)}` : null
 }
 
-/** O que a pessoa é ou faz hoje: "Bebê", "Estudante de Direito", "Enfermeira", "Aposentado". */
+/**
+ * O que a pessoa é ou faz hoje: "Bebê", "Estudante de Direito", "Enfermeira",
+ * "Aposentado". Quem trabalha e estuda à noite aparece pelo emprego.
+ */
 export function roleLabel(member: Member, day: number): string {
   const age = ageOf(member, day)
   if (age < 3) return 'Bebê'
-  const school = member.education.school
+  const school = member.career ? null : member.education.school
   if (school?.stage === 'faculdade' && school.degree) {
     return `Estudante de ${degree(school.degree).name}`
   }
@@ -228,6 +238,10 @@ export function describeEvent(state: GameState, event: GameEvent): string {
     case 'changedJob': {
       const title = lowerFirst(levelTitle(member, event.careerId, event.level))
       return `${name} aceitou a proposta e trocou de emprego: ${title}`
+    }
+    case 'startedOver': {
+      const title = lowerFirst(levelTitle(member, event.careerId, event.level))
+      return `${name} mudou de carreira e recomeçou como ${title}`
     }
     case 'concurso': {
       if (event.careerId === null) return `${name} não passou no concurso: nota ${event.score}`
@@ -383,17 +397,31 @@ export function gradeLabel(stage: SchoolStage, ageThisYear: number): string {
 
 /** Ano de quem está no cursinho, no técnico ou na faculdade: "2º ano de Direito". */
 export function higherGradeLabel(school: Enrollment): string {
-  const left = school.yearsLeft ?? 1
   if (school.stage === 'cursinho') return 'Cursinho para o ENEM'
+  const year = Math.max(1, higherYears(school) - (school.yearsLeft ?? 1) + 1)
   if (school.stage === 'tecnico') {
-    const year = BALANCE.college.technical.years - left + 1
     return `${year}º ano do técnico${school.course ? ` em ${techCourseName(school.course)}` : ''}`
   }
-  if (school.degree) {
-    const course = degree(school.degree)
-    return `${course.years - left + 1}º ano de ${course.name}`
-  }
+  if (school.degree) return `${year}º ano de ${degree(school.degree).name}`
   return 'Faculdade'
+}
+
+/** Anos do técnico ou da faculdade, com o ano a mais de quem estuda à noite. */
+function higherYears(school: Enrollment): number {
+  const base =
+    school.stage === 'tecnico'
+      ? BALANCE.college.technical.years
+      : school.degree
+        ? degree(school.degree).years
+        : 1
+  return base + (school.night ? BALANCE.college.night.extraYears : 0)
+}
+
+/** Nome do curso de quem está no técnico ou na faculdade: "Licenciatura", "Informática". */
+export function higherCourseName(school: Enrollment): string | null {
+  if (school.degree) return degree(school.degree).name
+  if (school.course) return techCourseName(school.course)
+  return null
 }
 
 /** Ano escolar de qualquer matrícula, da creche à faculdade. */
@@ -401,6 +429,27 @@ export function schoolYearLabel(school: Enrollment, ageThisYear: number): string
   return isHigherStage(school.stage)
     ? higherGradeLabel(school)
     : gradeLabel(school.stage, ageThisYear)
+}
+
+/** As aulas ainda não começaram: quem se matriculou no meio do ano espera janeiro. */
+export function classesPending(state: GameState, school: Enrollment): boolean {
+  return school.startsOn !== undefined && state.clock.day < school.startsOn
+}
+
+/**
+ * Situação de quem está no cursinho, no técnico ou na faculdade: quando as
+ * aulas começam, para quem se matriculou no meio do ano, ou o ano do curso e
+ * o janeiro em que se forma (no cursinho, o do ENEM novo).
+ */
+export function higherStudyLine(state: GameState, school: Enrollment): string {
+  if (school.startsOn !== undefined && classesPending(state, school)) {
+    return `Começa em ${formatMonthYear(calendarDate(state.startDate, school.startsOn), 'short')}`
+  }
+  const year = Number(calendarDate(state.startDate, state.clock.day).slice(0, 4))
+  const end = formatMonthYear(`${year + (school.yearsLeft ?? 1)}-01-01`, 'short')
+  if (school.stage === 'cursinho') return `ENEM em ${end}`
+  const current = Math.max(1, higherYears(school) - (school.yearsLeft ?? 1) + 1)
+  return `${current}º ano · forma em ${end}`
 }
 
 /** Formação em palavras: "Ensino médio", "Técnica em Informática", "Formado em Direito". */

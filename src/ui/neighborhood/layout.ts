@@ -1,6 +1,6 @@
 import { PROPERTY_IDS, PROPERTY_TYPES, type PropertyId } from '@/content/properties'
 import {
-  homesInUse,
+  homeLots,
   isPropertyUnlocked,
   livingCount,
   lotsForSale,
@@ -114,12 +114,12 @@ const BOTTOM = 6
 /**
  * Monta o bairro a partir do estado: as fileiras dos tipos liberados e uma de
  * terrenos em obras para o próximo, então o bairro cresce com a família. Cada
- * lote é um imóvel com número: da família (ela mora nos primeiros dela), à
+ * lote é um imóvel com número: da família (alugado ou com ela morando), à
  * venda ou de um vizinho. Quando a família tem mais comerciais do que os
  * lotes da rua, o primeiro lote dela mostra o total.
  */
 export function neighborhoodLayout(state: GameState): NeighborhoodLayout {
-  const inUse = homesInUse(state, livingCount(state))
+  const living = livingCount(state)
   const next = PROPERTY_TYPES.find((type) => !isPropertyUnlocked(state, type.id))?.id
   const rows: MapRow[] = []
   const firstLot: Partial<Record<PropertyId, number>> = {}
@@ -133,7 +133,7 @@ export function neighborhoodLayout(state: GameState): NeighborhoodLayout {
     const spacing = (MAP_WIDTH - MARGIN * 2) / spec.slots
     const start = firstLot[spec.typeId] ?? 0
     firstLot[spec.typeId] = start + spec.slots
-    const lots = (locked ? lockedLots(spec) : lotsOf(state, spec, start, inUse)).map(
+    const lots = (locked ? lockedLots(spec) : lotsOf(state, spec, start, living)).map(
       (info, slot): MapLot => ({
         key: `${specIndex}-${slot}`,
         typeId: spec.typeId,
@@ -160,13 +160,13 @@ export function neighborhoodLayout(state: GameState): NeighborhoodLayout {
 
 /**
  * O que muda o desenho: quantos a família tem de cada tipo, quais lotes, em
- * quantos ela mora e quantos estão à venda.
+ * quais ela mora e quantos estão à venda.
  */
 function layoutKey(state: GameState): string {
-  const inUse = homesInUse(state, livingCount(state))
+  const living = livingCount(state)
   return PROPERTY_IDS.map(
     (id) =>
-      `${ownedCount(state, id)}:${ownedLots(state, id).join(',')}:${inUse[id] ?? 0}:${propertiesLeft(state, id)}`,
+      `${ownedCount(state, id)}:${ownedLots(state, id).join(',')}:${homeLots(state, id, living).join(',')}:${propertiesLeft(state, id)}`,
   ).join('|')
 }
 
@@ -196,17 +196,13 @@ function addressOf(spec: RowSpec, slot: number): string {
 
 /**
  * Situação de cada lote de uma fileira liberada, a partir do lote `start` do
- * tipo: a família mora nos primeiros lotes dela, até o número de imóveis em
- * uso, e aluga os outros; os à venda e os de vizinhos vêm da engine.
+ * tipo: a família mora nos lotes que a engine diz (os escolhidos e, no
+ * automático, os primeiros dela) e aluga os outros; os à venda e os de
+ * vizinhos também vêm da engine.
  */
-function lotsOf(
-  state: GameState,
-  spec: RowSpec,
-  start: number,
-  inUse: Partial<Record<PropertyId, number>>,
-): LotInfo[] {
+function lotsOf(state: GameState, spec: RowSpec, start: number, living: number): LotInfo[] {
   const owned = ownedLots(state, spec.typeId)
-  const lived = new Set(owned.slice(0, inUse[spec.typeId] ?? 0))
+  const lived = new Set(homeLots(state, spec.typeId, living))
   const family = new Set(owned)
   const forSale = new Set(lotsForSale(state, spec.typeId))
   const total = ownedCount(state, spec.typeId)

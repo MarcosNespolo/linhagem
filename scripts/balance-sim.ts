@@ -56,6 +56,7 @@ const snapshot = ({ state, counters, elapsedMs }: Autoplay) => {
     nascimentos: counters.births,
     mortes: counters.deaths,
     cursos: counters.courses,
+    noite: counters.studies,
     imóveis: totalProperties(state),
     financ: counters.loans,
     dívida: formatMoney(totalDebt(state)),

@@ -1,11 +1,13 @@
 import { BALANCE } from '../content/balance'
+import type { CareerId } from '../content/careers'
 import type { MissionId } from '../content/missions'
 import { inheritAppearance } from './appearance'
 import type { PropertyId } from '../content/properties'
 import type { Network } from '../content/schools'
 import { applyPicks, checkPicks, type ChoicePick } from './choices'
+import { checkLeaveSchool, checkReturnToSchool, openReturnToSchool } from './college'
 import { checkStudyForConcurso, quitToStudy } from './concurso'
-import { acceptJobOffer, hasJobOffer } from './jobs'
+import { acceptJobOffer, checkChangeCareer, hasJobOffer, startCareer } from './jobs'
 import { FAMILY_NAME_MAX_LENGTH } from './constants'
 import { draftOf } from './draft'
 import { familyRates } from './economy'
@@ -16,11 +18,17 @@ import { recordEvents } from './log'
 import { addMember, ageOf, isAlive } from './members'
 import { claimReward, drawMissions, isMissionDone, trackMissions } from './missions'
 import { beginCourse, courseOffer } from './promotions'
-import { buyProperty as applyPurchase, checkBuyProperty } from './properties'
+import {
+  buyProperty as applyPurchase,
+  checkBuyProperty,
+  checkHomeUse,
+  emptyHomeChoice,
+  withHomeUse,
+} from './properties'
 import { createRng } from './rng'
 import { inheritAptitude } from './school'
 import { canHaveTutor, setTutor as applyTutor } from './tutor'
-import type { GameEvent, GameState, MemberId } from './types'
+import type { GameEvent, GameState, HomeUse, MemberId } from './types'
 
 export type { ActionError }
 
@@ -58,6 +66,19 @@ export type Action =
   | { type: 'studyForConcurso'; memberId: MemberId }
   /** Responde a proposta de outra empresa: aceita e troca de carreira, ou recusa. */
   | { type: 'answerJobOffer'; memberId: MemberId; accept: boolean }
+  /**
+   * Volta a estudar, à noite, sem largar o emprego: abre a escolha de quem
+   * termina o médio, com o ENEM que a pessoa tem ou um novo.
+   */
+  | { type: 'returnToSchool'; memberId: MemberId }
+  /** Para de estudar à noite: sai da faculdade, do técnico ou do cursinho, sem a formação. */
+  | { type: 'leaveSchool'; memberId: MemberId }
+  /** Recomeça do zero em outra carreira que a formação permite. */
+  | { type: 'changeCareer'; memberId: MemberId; careerId: CareerId }
+  /** Escolhe o uso de um imóvel de moradia da família: morar sempre, automático ou alugar sempre. */
+  | { type: 'setHomeUse'; propertyId: PropertyId; lot: number; use: HomeUse }
+  /** Devolve todos os imóveis de moradia ao automático. */
+  | { type: 'resetHomes' }
 
 export type ActionResult = { ok: true; state: GameState; events: GameEvent[] } | Refusal
 
@@ -97,6 +118,16 @@ export function applyAction(state: GameState, action: Action): ActionResult {
       return studyForConcurso(state, action.memberId)
     case 'answerJobOffer':
       return answerJobOffer(state, action.memberId, action.accept)
+    case 'returnToSchool':
+      return returnToSchool(state, action.memberId)
+    case 'leaveSchool':
+      return leaveSchool(state, action.memberId)
+    case 'changeCareer':
+      return changeCareer(state, action.memberId, action.careerId)
+    case 'setHomeUse':
+      return setHomeUse(state, action.propertyId, action.lot, action.use)
+    case 'resetHomes':
+      return done({ ...state, homes: emptyHomeChoice() })
   }
 }
 
@@ -297,6 +328,45 @@ function answerJobOffer(state: GameState, memberId: MemberId, accept: boolean): 
   const events = [acceptJobOffer(target, draft.clock.day)]
   recordEvents(draft, events)
   return done(draft, events)
+}
+
+function returnToSchool(state: GameState, memberId: MemberId): ActionResult {
+  const check = checkReturnToSchool(state, memberId)
+  if (!check.ok) return check
+
+  const draft = draftOf(state)
+  const rng = createRng(draft.rngState)
+  const events: GameEvent[] = []
+  openReturnToSchool(draft, rng, draft.members[memberId], events)
+  draft.rngState = rng.state
+  recordEvents(draft, events)
+  return done(draft, events)
+}
+
+function leaveSchool(state: GameState, memberId: MemberId): ActionResult {
+  const check = checkLeaveSchool(state, memberId)
+  if (!check.ok) return check
+
+  const draft = draftOf(state)
+  draft.members[memberId].education.school = null
+  return done(draft)
+}
+
+function changeCareer(state: GameState, memberId: MemberId, careerId: CareerId): ActionResult {
+  const check = checkChangeCareer(state, memberId, careerId)
+  if (!check.ok) return check
+
+  const draft = draftOf(state)
+  const events = [startCareer(draft.members[memberId], check.offer, draft.clock.day)]
+  recordEvents(draft, events)
+  return done(draft, events)
+}
+
+function setHomeUse(state: GameState, id: PropertyId, lot: number, use: HomeUse): ActionResult {
+  const check = checkHomeUse(state, id, lot)
+  if (!check.ok) return check
+  if (use !== 'live' && use !== 'auto' && use !== 'rent') return refuse('optionNotFound')
+  return done({ ...state, homes: withHomeUse(state.homes, id, lot, use) })
 }
 
 function done(state: GameState, events: GameEvent[] = []): ActionResult {
